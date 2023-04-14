@@ -23,16 +23,15 @@ function install_arch_name() {
     case "$1" in
         "amd64") 
             echo "x86_64"
-            return 
         ;;
+
         "x86") 
             echo "x86" 
-            return
         ;;
+
         *) 
             echo "Error: unknown arch: $1" > /dev/stderr
             echo ""
-            return 
         ;;
     esac
 }
@@ -48,7 +47,7 @@ function backup_installer() {
     
     if [ ! -f "$SRC_FILE" ]; then
         echo "ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
-        return
+        return 1
     fi
     
     if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
@@ -71,7 +70,7 @@ function show_elapsed_time() {
                 echo "USAGE: show_elapsed_time [help] [--dump]"
                 echo "    help: shows this message"
                 echo "    --dump: show and dump times to $NVBLD_OUTPUT_DIR/SHOW_ELAPSED_TIME"
-                return
+                return 0
             ;;
             
             --dump)
@@ -82,7 +81,7 @@ function show_elapsed_time() {
             *)
                 echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
                 show_elapsed_time help
-                return
+                return 1
             ;;
         esac
         shift
@@ -106,7 +105,7 @@ function list_nvidia_so() {
                 echo "USAGE: list_nvidia_so [help] [--changed]"
                 echo "    help: show this message"
                 echo "    --changed: show so(s) that have changed since last build"
-                return
+                return 0
             ;;
       
             --changed)
@@ -116,7 +115,7 @@ function list_nvidia_so() {
             *)
                 echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
                 list_nvidia_so help
-                return
+                return 1
             ;;
         esac
         shift
@@ -124,7 +123,7 @@ function list_nvidia_so() {
     
     if [ ! -f "$NVBLD_LOCK_FILE" ]; then
         echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
-        return
+        return 1
     fi
 
     mkdir -p "$NVBLD_OUTPUT_DIR"

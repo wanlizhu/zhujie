@@ -62,7 +62,16 @@ echo " LOCAL IP: $IP_192_168"
 echo "   VPN IP: $IP_10_19"
 
 function zjvpn-connect() {
-    sudo openconnect --authgroup Employee -u wanliz https://ngvpn32.vpn.nvidia.com:8443
+    local VPNURL="https://ngvpn32.vpn.nvidia.com:8443"
+    local AUTHGROUP="--authgroup Employee"
+    local USERNAME="-u wanliz"
+
+    if [ -z "$1" ]; then
+        echo "ERROR: PLEASE GIVE DUO PASS CODE" > /dev/stderr
+        return 1
+    fi
+
+    (echo "zhujie"; echo "Xavier#35224047,$1" ) | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
 }
 
 function ddnet-in-pts() {
@@ -76,12 +85,12 @@ function ddnet-in-pts() {
 
 function talos-principle-in-pts() {
     # Launch steam if it's not currently running
-    pgrep -x steam >/dev/null && echo "steam is running..." || gnome-terminal -- sh -c "steam"
-    sleep 10
+    pgrep -x steam >/dev/null && echo "STEAM IS RUNNING..." || gnome-terminal -- sh -c "steam"
+    sleep 15
 
     if ! [[ -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
-        echo "Install Talos Principle in Steam's window and try again"
-        return
+        echo "INSTALL Talos Principle IN STEAM'S WINDOW AND TRY AGAIN"
+        return 1
     fi
 
     # Vulkan
