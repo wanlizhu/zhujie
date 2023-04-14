@@ -51,11 +51,8 @@ function user_cancel() {
 
 function devenv_pull() {
     if [ ! -d "$HOME/NVIDIA/BIN" ]; then
-        mkdir -p "$HOME/NVIDIA/BIN"
-        git clone $NVIDIA_BIN_URL "$HOME/NVIDIA/BIN" || (
-            echo "ERROR: FAILED TO CLONE $NVIDIA_BIN_URL"
-            exit 1
-        )
+        echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
+        exit 1
     fi
     
     pushd "$HOME/NVIDIA/BIN" > /dev/null
