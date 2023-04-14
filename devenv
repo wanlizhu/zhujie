@@ -1,0 +1,65 @@
+#!/bin/bash
+
+function devenv_init() {
+    # GNOME 
+    gsettings set org.gnome.desktop.screensaver lock-enabled false
+    gsettings set org.gnome.desktop.screensaver lock-delay 0
+    gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
+
+    # Linux Perf
+    sudo apt install linux-tools-generic -y
+    sudo apt install linux-cloud-tools-generic -y
+    sudo apt install linux-tools-`uname -r` -y
+    sudo apt install linux-cloud-tools-`uname -r` -y
+
+    if [ "$(cat /proc/sys/kernel/perf_event_paranoid)" != "-1" ]; then
+        sudo sh -c "echo -1 > /proc/sys/kernel/perf_event_paranoid"
+        sudo echo "kernel.perf_event_paranoid = -1" >> /etc/sysctl.conf
+    fi
+
+    # Git
+    sudo apt install git -y
+    sudo apt install gh -y # Use `gh auth login` to store GitHub credential locally
+    sudo git config --global user.email wanlizhu@hotmail.com
+    sudo git config --global user.name "Wanli Zhu"
+
+    # Tools
+    sudo apt install openssh-server -y
+    sudo apt install build-essential -y
+    sudo apt install cmake -y
+    sudo apt install sshfs -y
+    sudo apt install vim -y
+    sudo apt install net-tools -y
+    sudo apt install pkg-config -y
+    sudo apt install libglvnd-dev -y
+    sudo apt install openconnect -y
+    sudo apt install steam -y
+    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev -y
+}
+
+DEVENV_INIT=0
+
+while [ -n "$1" ]; do
+    case "$1" in
+        help)
+            echo "USAGE: devenv [help] [init]"
+            echo "    help: show this message"
+            echo "    init: initialize devenv"
+            exit 0
+        ;;
+    
+        init)
+            DEVENV_INIT=1
+        ;;
+        
+        *)
+            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+            devenv help
+        ;;
+    esac
+    shift
+done
+    
+if [ "$DEVENV_INIT" = "1" ]; then
+    devenv_init
+fi

@@ -1,0 +1,120 @@
+#!/bin/bash
+
+FG_SECONDS=$(date +%s)
+FG_SVG_FILE="$HOME/FLAMEGRAPH-GEN/perf-$FG_SECONDS.svg"
+FG_PERF_DATA="$HOME/FLAMEGRAPH-GEN/perf-$FG_SECONDS.data"
+FG_PERF_RECORD_SYSTEM_WIDE=1
+FG_PERF_RECORD_PID=" -a "
+FG_PERF_RECORD_SECONDS=10
+FG_PERF_RECORD_ARGS=" -F 100 -g --call-graph dwarf "
+FG_SUDO="sudo"
+
+#############
+## MAIN FUNC
+#############
+
+while [ -n "$1" ]; do
+    case "$1" in
+        help)
+            echo "USAGE: flamegraph-gen [help] [--perf-data FILE] [--pid PID]"
+            echo "    help: shows this message"
+            echo "    --perf-data FILE: perf generated data to parse (default is to generate a new record)"
+            echo "    --pid PID: record callstacks of PID only (default is system-wide recording)"
+            echo "    --sleep SEC: record for SEC seconds"
+            exit 0
+        ;;
+
+        --perf-data)
+            shift
+            FG_PERF_DATA="$1"
+            FG_SVG_FILE="$1.svg"
+        ;;
+
+        --pid)
+            shift
+            FG_PERF_RECORD_SYSTEM_WIDE=0
+            FG_PERF_RECORD_PID=" --pid=$1 "
+            FG_SUDO=""
+        ;;
+
+        --sleep)
+            shift
+            FG_PERF_RECORD_SECONDS=$1
+        ;;
+
+        *)
+            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+            glamegraph-gen help
+            exit 1
+        ;;
+    esac
+    shift
+done
+
+if [ ! -d "$FLAMEGRAPH" ]; then
+    echo "ERROR: FLAMEGRAPH PATH DOES NOT EXIST" > /dev/stderr
+    exit 1
+fi
+
+if [ ! -f "$FG_PERF_DATA" ]; then
+    echo "RUN PERF RECORD:"
+    echo "   OUTPUT: $FG_PERF_DATA"
+    echo "    SLEEP: $FG_PERF_RECORD_SECONDS SECONDS"
+    echo "      PID: $([[ $FG_PERF_RECORD_SYSTEM_WIDE -ne 0 ]] && echo \"[SYSTEM WIDE]\" || echo \"$FG_PERF_RECORD_PID\")"
+    echo "    OTHER: $FG_PERF_RECORD_ARGS"
+    echo ""
+
+    mkdir -p "$HOME/FLAMEGRAPH-GEN"
+    $FG_SUDO perf record $FG_PERF_RECORD_PID $FG_PERF_RECORD_ARGS --output="$FG_PERF_DATA" -- sleep $FG_PERF_RECORD_SECONDS
+
+    if [ ! -z "$FG_SUDO" ]; then
+        sudo  chmod 777 "$FG_PERF_DATA"
+    fi
+fi
+
+if [ -f "$FG_PERF_DATA" ]; then
+    echo "GENERATE FLAMEGRAPH SVG (ZOOM AND SEARCH):"
+    echo "    PERF DATA: $FG_PERF_DATA"
+    echo "     SVG FILE: $FG_SVG_FILE"
+    echo ""
+    BASENAME=$(basename -- "$FG_PERF_DATA")
+    
+    perf script \
+        --input="$FG_PERF_DATA" \
+        1> "/tmp/$BASENAME.perf" \
+        2> "/tmp/$BASENAME.perf.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf" ]; then
+        cat "/tmp/$BASENAME.perf.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/stackcollapse-perf.pl" \
+        "/tmp/$BASENAME.perf" \
+        1> "/tmp/$BASENAME.perf.folded" \
+        2> "/tmp/$BASENAME.perf.folded.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf.folded" ]; then
+        cat "/tmp/$BASENAME.perf.folded.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/stackcollapse-recursive.pl" \
+       "/tmp/$BASENAME.perf.folded" \
+       1> "/tmp/$BASENAME.perf.folded.recursive" \
+       2> "/tmp/$BASENAME.perf.folded.recursive.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf.folded.recursive" ]; then
+        cat "/tmp/$BASENAME.perf.folded.recursive.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/flamegraph.pl" \
+       "/tmp/$BASENAME.perf.folded.recursive" \
+       > "$FG_SVG_FILE" || (
+           echo "ERROR: FAILED TO GENERATE SVG FILE" > /dev/stderr
+       )
+else
+    echo "ERROR: PERF DATA FILE DOES NOT EXIST: $FG_PERF_DATA" > /dev/stderr
+    exit 1
+fi

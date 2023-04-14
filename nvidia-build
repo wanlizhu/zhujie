@@ -1,0 +1,296 @@
+#!/bin/bash
+
+NVBLD_PLATFORM=linux
+NVBLD_ARCH=amd64
+NVBLD_BUILD_TYPE=release
+NVBLD_SWEEP=0
+NVBLD_PPP=0
+NVBLD_NVSRC="$HOME/NVIDIA/SRC_ON_P4"
+NVBLD_BRANCH="sw/dev/gpu_drv/dev_a"
+NVBLD_LOCK_FILE=/tmp/NVIDIA-BUILD.LOCK
+NVBLD_OUTPUT_DIR="$HOME/NVIDIA-BUILD"
+NVBLD_SO_LIST="$NVBLD_OUTPUT_DIR/NVIDIA_SO_LIST"
+NVBLD_EXCLUDE_BUILD_MODULES=""
+NVBLD_UNIX_BUILD_ARGS=""
+NVBLD_NVMAKE_ARGS=""
+
+function nvidia_source_version() {
+    echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
+}
+
+function install_arch_name() {
+    case "$1" in
+        "amd64") 
+            echo "x86_64"
+            return 
+        ;;
+        "x86") 
+            echo "x86" 
+            return
+        ;;
+        *) 
+            echo "Error: unknown arch: $1" > /dev/stderr
+            echo ""
+            return 
+        ;;
+    esac
+}
+
+function backup_installer() {
+    local FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
+    local VERSION=$(nvidia_source_version)
+    local SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+    local FILENAME="NVIDIA-Linux-$(install_arch_name $NVBLD_ARCH)-$VERSION$SUFFIX.run"
+    local SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
+    local DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
+    
+    if [ ! -f "$SRC_FILE" ]; then
+        echo "ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
+        return
+    fi
+    
+    if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
+        mkdir -p "$NVBLD_OUTPUT_DIR"
+    fi
+    
+    cp "$SRC_FILE" "$DST_FILE" && (
+        echo "BACKUP NVIDIA INSTALLER:"
+        echo "SRC PATH: $SRC_FILE"
+        echo "DST PATH: $DST_FILE" 
+    )
+}
+
+function show_elapsed_time() {
+    local DUMP_TO_FILE=""
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            help)
+                echo "USAGE: show_elapsed_time [help] [--dump]"
+                echo "    help: shows this message"
+                echo "    --dump: show and dump times to $NVBLD_OUTPUT_DIR/SHOW_ELAPSED_TIME"
+                return
+            ;;
+            
+            --dump)
+                DUMP_TO_FILE="$NVBLD_OUTPUT_DIR/SHOW_ELAPSED_TIME"
+                mkdir -p "$NVBLD_OUTPUT_DIR"
+            ;;
+        
+            *)
+                echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+                show_elapsed_time help
+                return
+            ;;
+        esac
+        shift
+    done
+    
+    SECONDS_END=$SECONDS
+    echo "ELAPSED TIME: $SECONDS_END SECONDS ($(expr $SECONDS_END / 60) MINS)"
+    
+    if [ ! -z "$DUMP_TO_FILE" ]; then
+        DATE_NOW="$(date)"
+        echo "[$DATE_NOW] ELAPSED TIME: $SECONDS_END SECONDS ($(expr $SECONDS_END / 60) MINS)" >> "$DUMP_TO_FILE"
+    fi
+}
+
+function list_nvidia_so() {
+    local CHANGED=0
+
+    while [ -n "$1" ]; do
+        case "$1" in
+            help)
+                echo "USAGE: list_nvidia_so [help] [--changed]"
+                echo "    help: show this message"
+                echo "    --changed: show so(s) that have changed since last build"
+                return
+            ;;
+      
+            --changed)
+                CHANGED=1
+            ;;
+            
+            *)
+                echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+                list_nvidia_so help
+                return
+            ;;
+        esac
+        shift
+    done
+    
+    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
+        echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
+        return
+    fi
+
+    mkdir -p "$NVBLD_OUTPUT_DIR"
+
+    if [ "$CHANGED" = "1" ]; then 
+        echo "LIST NVIDIA SO CHANGED SINCE BUILD BEGINS:"
+        find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type f -newer "$NVBLD_LOCK_FILE" \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_SO_LIST" || (
+            echo "ERROR: FAILED TO RUN COMMAND: find \"$NVBLD_NVSRC/$NVBLD_BRANCH\" -type f -newer \"$NVBLD_LOCK_FILE\" ( -name \"*.so\" -o -name \"*.so.*\" ) > \"$NVBLD_SO_LIST\""
+        )
+    else 
+        echo "LIST NVIDIA SO:"
+        find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type -f \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_SO_LIST" || (
+            echo "ERROR: FAILED TO RUN COMMAND: find \"$NVBLD_NVSRC/$NVBLD_BRANCH\" -type -f ( -name \"*.so\" -o -name \"*.so.*\" ) > \"$NVBLD_SO_LIST\""
+        )
+    fi
+
+    echo "[$(wc -l < $NVBLD_SO_LIST) FILES FOUND]"
+    
+    head -9 "$NVBLD_SO_LIST" |
+    while read LINE; do
+        echo $LINE
+    done
+    
+    if [ $(wc -l < $NVBLD_SO_LIST) -gt 9 ]; then
+        echo "..."
+    fi
+}
+
+#############
+## MAIN FUNC
+#############
+
+while [ -n "$1" ]; do
+    case "$1" in
+        help)
+            echo "USAGE: nvidia-build [help] [VALUES]"
+            echo "    help: shows this message"
+            echo ""
+            echo "AVAILABEL VALUES:"
+            echo "    NVBLD_ARCH: default value is $NVBLD_ARCH"
+            echo "    NVBLD_BUILD_TYPE: default value is $NVBLD_BUILD_TYPE"
+            echo "    NVBLD_PPP: default value is $NVBLD_PPP"
+            echo "    NVBLD_SWEEP: default value is $NVBLD_SWEEP"
+            exit 0
+        ;;
+
+        amd64)
+            NVBLD_ARCH=amd64
+        ;;
+
+        x86)
+            NVBLD_ARCH=x86
+        ;;
+
+        release)
+            NVBLD_BUILD_TYPE=release
+        ;;
+
+        debug) 
+            NVBLD_BUILD_TYPE=debug
+        ;;
+
+        develop)
+            NVBLD_BUILD_TYPE=develop
+        ;;
+
+        sweep)
+            NVBLD_SWEEP=1
+        ;;
+
+        ppp)
+            NVBLD_PPP=1
+        ;;
+    
+        *)
+            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+            nvidia-build help
+            exit 1
+        ;;
+    esac
+    shift
+done
+
+if [ -f "$NVBLD_LOCK_FILE" ]; then
+    echo "ERROR: FILE $NVBLD_LOCK_FILE EXISTS" > /dev/stderr
+    exit 1
+fi
+
+if [ -z "$NVBLD_NVSRC" ]; then
+    echo "ERROR: NVBLD_NVSRC IS NOT DEFINED" > /dev/stderr
+    exit 1
+fi
+
+if [ -z "$NVBLD_BRANCH" ]; then
+    echo "ERROR: NVBLD_BRANCH IS NOT DEFINED" > /dev/stderr
+    exit 1
+fi
+
+if [ "$(stat -c '%U' $NVBLD_NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
+    NVBLD_UNIX_BUILD_ARGS=" --unshare-namespaces"
+fi
+
+if [ "$NVBLD_SWEEP" = "1" ]; then
+    cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
+    ionice -c2 nice \
+    $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
+    --tools "$NVBLD_NVSRC/sw/tools" \
+    --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
+    nvmake \
+    sweep
+else
+    if [ "$NVBLD_PPP" = "1" ]; then
+        NVBLD_NVMAKE_ARGS+=" post-process-packages dist"
+    else
+        NVBLD_NVMAKE_ARGS+=" drivers dist"
+    fi
+
+    SECONDS=0
+    TIMESTAMP=$(date +%s)
+    STDOUT_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDOUT"
+    STDERR_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDERR"
+    mkdir -p "$NVBLD_OUTPUT_DIR/LOG/"
+    cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
+
+    echo "BEGINS: $(date)"
+    echo "STDOUT: $STDOUT_FILE"
+    echo "STDERR: $STDERR_FILE"
+    echo "NVMAKE: PLATFORM=$NVBLD_PLATFORM"
+    echo "        ARCH=$NVBLD_ARCH"
+    echo "        BUILD_TYPE=$NVBLD_BUILD_TYPE"
+    echo "        OTHER_ARGS=\"$NVBLD_NVMAKE_ARGS\""
+    echo ""
+    echo "$TIMESTAMP" > "$NVBLD_LOCK_FILE"
+
+    ionice -c2 nice \
+    $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
+    --tools "$NVBLD_NVSRC/sw/tools" \
+    --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
+    nvmake \
+    NV_COLOR_OUTPUT=1 \
+    NV_COMPRESS_THREADS=16 \
+    NV_FAST_PACKAGE_COMPRESSION=1 \
+    NV_EXCLUDE_BUILD_MODULES="$NVBLD_EXCLUDE_BUILD_MODULES" \
+    NV_KEEP_UNSTRIPPED_BINARIES=1 \
+    NV_GUARDWORD=0 \
+    -j16 \
+    $NVBLD_PLATFORM \
+    $NVBLD_ARCH \
+    $NVBLD_BUILD_TYPE \
+    $NVBLD_NVMAKE_ARGS \
+    1> "$STDOUT_FILE" \
+    2> "$STDERR_FILE" && (
+        echo "   END: $(date)"
+        show_elapsed_time --dump
+        echo "STATUS: OK"
+        echo ""
+        backup_installer
+        echo ""
+        list_nvidia_so --changed 
+    ) || (
+        echo "   END: $(date)"
+        show_elapsed_time --dump
+        echo "STATUS: FAILED"
+        echo ""
+        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"
+    )
+
+    echo ""
+    rm "$NVBLD_LOCK_FILE"
+fi
+

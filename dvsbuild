@@ -1,0 +1,29 @@
+#!/bin/bash
+
+DVS_DOWNLOAD=""
+
+while [ -n "$1" ]; do
+    case "$1" in
+        help)
+            echo "USAGE: dvsbuild [help] [download CL]"
+            echo "    help: show this message"
+            echo "    download CL: download driver with CL applied"
+            exit 0
+        ;;
+
+        download)
+            shift
+            DVS_DOWNLOAD="$1"
+        ;;
+        
+        *)
+            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
+            dvsbuild help
+        ;;
+    esac
+    shift
+done
+
+if [ ! -z "DVS_DOWNLOAD" ]; then
+    echo "TODO"
+fi
