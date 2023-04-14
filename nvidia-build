@@ -13,6 +13,7 @@ NVBLD_SO_LIST="$NVBLD_OUTPUT_DIR/NVIDIA_SO_LIST"
 NVBLD_EXCLUDE_BUILD_MODULES=""
 NVBLD_UNIX_BUILD_ARGS=""
 NVBLD_NVMAKE_ARGS=""
+NVBLD_NICKNAME=""
 
 function nvidia_source_version() {
     echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
@@ -41,8 +42,9 @@ function backup_installer() {
     local VERSION=$(nvidia_source_version)
     local SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
     local FILENAME="NVIDIA-Linux-$(install_arch_name $NVBLD_ARCH)-$VERSION$SUFFIX.run"
+    local NICKNAME=$([ ! -z "$1" ] && echo "-$1" || echo "")
     local SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
-    local DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
+    local DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     
     if [ ! -f "$SRC_FILE" ]; then
         echo "ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
@@ -158,14 +160,13 @@ function list_nvidia_so() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: nvidia-build [help] [VALUES]"
+            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [nickname NAME]"
             echo "    help: shows this message"
-            echo ""
-            echo "AVAILABEL VALUES:"
-            echo "    NVBLD_ARCH: default value is $NVBLD_ARCH"
-            echo "    NVBLD_BUILD_TYPE: default value is $NVBLD_BUILD_TYPE"
-            echo "    NVBLD_PPP: default value is $NVBLD_PPP"
-            echo "    NVBLD_SWEEP: default value is $NVBLD_SWEEP"
+            echo "    [NVBLD_ARCH]: default value is $NVBLD_ARCH [amd64|x86]"
+            echo "    [NVBLD_BUILD_TYPE]: default value is $NVBLD_BUILD_TYPE [debug|release|develop]"
+            echo "    ppp: default value is $NVBLD_PPP"
+            echo "    sweep: default value is $NVBLD_SWEEP"
+            echo "    nickname NAME: append NAME to final output filename"
             exit 0
         ;;
 
@@ -195,6 +196,11 @@ while [ -n "$1" ]; do
 
         ppp)
             NVBLD_PPP=1
+        ;;
+        
+        nickname)
+            shift
+            NVBLD_NICKNAME="$1"
         ;;
     
         *)
@@ -279,7 +285,7 @@ else
         show_elapsed_time --dump
         echo "STATUS: OK"
         echo ""
-        backup_installer
+        backup_installer "$NVBLD_NICKNAME"
         echo ""
         list_nvidia_so --changed 
     ) || (
