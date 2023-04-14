@@ -1,5 +1,7 @@
 #!/bin/bash
 
+NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
+
 function devenv_init() {
     # GNOME 
     gsettings set org.gnome.desktop.screensaver lock-enabled false
@@ -35,21 +37,73 @@ function devenv_init() {
     sudo apt install openconnect -y
     sudo apt install steam -y
     sudo apt install libncurses-dev bison flex libssl-dev libelf-dev -y
+    
+    # Git Auth
+    gh auth login
+    
 }
 
-DEVENV_INIT=0
+function user_cancel() {
+    echo ""
+    popd > /dev/null
+    exit 0
+}
+
+function devenv_pull() {
+    if [ ! -d "$HOME/NVIDIA/BIN" ]; then
+        mkdir -p "$HOME/NVIDIA/BIN"
+        git clone $NVIDIA_BIN_URL "$HOME/NVIDIA/BIN" || (
+            echo "ERROR: FAILED TO CLONE $NVIDIA_BIN_URL"
+            exit 1
+        )
+    fi
+    
+    pushd "$HOME/NVIDIA/BIN" > /dev/null
+    git pull $NVIDIA_BIN_URL master
+    popd > /dev/null 
+}
+
+function devenv_push() {
+    if [ ! -d "$HOME/NVIDIA/BIN" ]; then
+        echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
+        exit 1
+    fi
+    
+    pushd "$HOME/NVIDIA/BIN" > /dev/null
+    du -sh * | sort -rh
+    echo ""
+
+    trap user_cancel INT
+    read -r -n 1 -p "PRESS [ENTER] TO CONTINUE OR CTRL-C TO CANCEL: "
+    echo ""
+    
+    git add .
+    git commit -m "$(date)"
+    git push --set-upstream $NVIDIA_BIN_URL master
+    popd > /dev/null
+}
 
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: devenv [help] [init]"
+            echo "USAGE: devenv [help] [init] [pull] [push]"
             echo "    help: show this message"
             echo "    init: initialize devenv"
+            echo "    pull: pull from $NVIDIA_BIN_URL"
+            echo "    push: push to $NVIDIA_BIN_URL"
             exit 0
         ;;
     
         init)
-            DEVENV_INIT=1
+            devenv_init
+        ;;
+        
+        pull)
+            devenv_pull
+        ;;
+        
+        push)
+            devenv_push
         ;;
         
         *)
@@ -60,6 +114,3 @@ while [ -n "$1" ]; do
     shift
 done
     
-if [ "$DEVENV_INIT" = "1" ]; then
-    devenv_init
-fi
