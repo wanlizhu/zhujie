@@ -1,0 +1,10 @@
+#!/bin/bash
+SECONDS=0
+exec "$@"
+ENDTIME=$SECONDS
+echo "TIME COST: $ENDTIME SECONDS ($(expr $ENDTIME / 60) MINS)"
+
+DUMP_FILE="/tmp/TIMED_RUN"
+if [ ! -z "$DUMP_FILE" ]; then
+    echo "[$(date)] TIME COST: $ENDTIME SECONDS ($(expr $ENDTIME / 60) MINS) COMMAND: $@" >> "$DUMP_FILE"
+fi

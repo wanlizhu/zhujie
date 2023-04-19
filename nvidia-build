@@ -14,6 +14,7 @@ NVBLD_EXCLUDE_BUILD_MODULES=""
 NVBLD_UNIX_BUILD_ARGS=""
 NVBLD_NVMAKE_ARGS=""
 NVBLD_NICKNAME=""
+TIMED_RUN="$HOME/NVIDIA/BIN/timed-run"
 
 function nvidia_source_version() {
     echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
@@ -59,41 +60,6 @@ function backup_installer() {
         echo "SRC PATH: $SRC_FILE"
         echo "DST PATH: $DST_FILE" 
     )
-}
-
-function show_elapsed_time() {
-    local DUMP_TO_FILE=""
-    
-    while [ -n "$1" ]; do
-        case "$1" in
-            help)
-                echo "USAGE: show_elapsed_time [help] [--dump]"
-                echo "    help: shows this message"
-                echo "    --dump: show and dump times to $NVBLD_OUTPUT_DIR/SHOW_ELAPSED_TIME"
-                return 0
-            ;;
-            
-            --dump)
-                DUMP_TO_FILE="$NVBLD_OUTPUT_DIR/SHOW_ELAPSED_TIME"
-                mkdir -p "$NVBLD_OUTPUT_DIR"
-            ;;
-        
-            *)
-                echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-                show_elapsed_time help
-                return 1
-            ;;
-        esac
-        shift
-    done
-    
-    SECONDS_END=$SECONDS
-    echo "ELAPSED TIME: $SECONDS_END SECONDS ($(expr $SECONDS_END / 60) MINS)"
-    
-    if [ ! -z "$DUMP_TO_FILE" ]; then
-        DATE_NOW="$(date)"
-        echo "[$DATE_NOW] ELAPSED TIME: $SECONDS_END SECONDS ($(expr $SECONDS_END / 60) MINS)" >> "$DUMP_TO_FILE"
-    fi
 }
 
 function list_nvidia_so() {
@@ -232,7 +198,7 @@ fi
 
 if [ "$NVBLD_SWEEP" = "1" ]; then
     cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
-    ionice -c2 nice \
+    $TIMED_RUN ionice -c2 nice \
     $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
     --tools "$NVBLD_NVSRC/sw/tools" \
     --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
@@ -262,7 +228,7 @@ else
     echo ""
     echo "$TIMESTAMP" > "$NVBLD_LOCK_FILE"
 
-    ionice -c2 nice \
+    $TIMED_RUN ionice -c2 nice \
     $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
     --tools "$NVBLD_NVSRC/sw/tools" \
     --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
@@ -281,21 +247,20 @@ else
     1> "$STDOUT_FILE" \
     2> "$STDERR_FILE" && (
         echo "   END: $(date)"
-        show_elapsed_time --dump
         echo "STATUS: OK"
         echo ""
         backup_installer "$NVBLD_NICKNAME"
         echo ""
         list_nvidia_so --changed 
+        echo ""
     ) || (
         echo "   END: $(date)"
-        show_elapsed_time --dump
         echo "STATUS: FAILED"
         echo ""
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"
+        echo ""
     )
 
-    echo ""
     rm "$NVBLD_LOCK_FILE"
 fi
 
