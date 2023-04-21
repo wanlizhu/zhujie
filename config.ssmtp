@@ -1,8 +1,0 @@
-HostName=sinoxavier@outlook.com
-AuthUser=sinoxavier@outlook.com
-AuthPass=Microsoft#35224047
-AuthMethod=LOGIN
-UseTLS=YES
-UseSTARTTLS=YES
-FromLineOverride=YES
-mailhub=smtp-mail.outlook.com:587
