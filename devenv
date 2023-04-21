@@ -2,7 +2,7 @@
 
 NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
 
-function devenv_init() {
+function devenv-init() {
     # GNOME 
     gsettings set org.gnome.desktop.screensaver lock-enabled false
     gsettings set org.gnome.desktop.screensaver lock-delay 0
@@ -43,13 +43,13 @@ function devenv_init() {
     
 }
 
-function user_cancel() {
+function user-cancel() {
     echo ""
     popd > /dev/null
     exit 0
 }
 
-function devenv_pull() {
+function devenv-pull() {
     if [ ! -d "$HOME/NVIDIA/BIN" ]; then
         echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
         exit 1
@@ -60,7 +60,7 @@ function devenv_pull() {
     popd > /dev/null 
 }
 
-function devenv_push() {
+function devenv-push() {
     if [ ! -d "$HOME/NVIDIA/BIN" ]; then
         echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
         exit 1
@@ -70,7 +70,7 @@ function devenv_push() {
     du -sh * | sort -rh
     echo ""
 
-    trap user_cancel INT
+    trap user-cancel INT
     read -r -n 1 -p "PRESS [ENTER] TO CONTINUE OR CTRL-C TO CANCEL: "
     echo ""
     
@@ -92,15 +92,15 @@ while [ -n "$1" ]; do
         ;;
     
         init)
-            devenv_init
+            devenv-init
         ;;
         
         pull)
-            devenv_pull
+            devenv-pull
         ;;
         
         push)
-            devenv_push
+            devenv-push
         ;;
         
         *)
