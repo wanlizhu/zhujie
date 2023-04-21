@@ -11,16 +11,20 @@ NVBLD_MODULES_FILE="$NVBLD_OUTPUT_DIR/NVIDIA_MODULES"
 NVBLD_EXCLUDE_BUILD_MODULES=""
 NVBLD_UNIX_BUILD_ARGS=""
 NVBLD_MODULES="drivers dist"
+NVBLD_BACKUP=1
+NVBLD_INSTALL=0
 NVBLD_DEPLOY=""
-NVBLD_INSTALL_IP=""
 NVBLD_NICKNAME=""
-TIMED_RUN="$HOME/NVIDIA/BIN/timed-run"
 
 function nvidia-source-version() {
     echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
 }
 
-function nvidia-installer() {
+function nvidia-backup() {
+    if [ "$NVBLD_BACKUP" = "0" ]; then
+        return
+    fi
+
     FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
     VERSION=$(nvidia-source-version)
     ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "$NVBLD_ARCH")
@@ -40,52 +44,62 @@ function nvidia-installer() {
         return 1
     fi
     
-    while [ -n "$1" ]; do
-        case "$1" in
-            --backup)
-                if [[ "$NVBLD_LOCK_FILE" -nt "$SRC_FILE" ]]; then
-                    echo "INFO: NOTHING TO BACK UP"
-                    continue
-                fi
-                
-                if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
-                    mkdir -p "$NVBLD_OUTPUT_DIR"
-                fi
-                
-                cp "$SRC_FILE" "$DST_FILE" && (
-                    echo "BACK UP NVIDIA INSTALLER:"
-                    echo "    SRC: $SRC_FILE"
-                    echo "    DST: $DST_FILE" 
-                )
-                
-                ln -s -f "$DST_FILE" "$NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
-                echo "UPDATED: $NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
-            ;;
+    if [[ "$NVBLD_LOCK_FILE" -nt "$SRC_FILE" ]]; then
+        echo "INFO: NOTHING TO BACK UP"
+    else
+        if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
+            mkdir -p "$NVBLD_OUTPUT_DIR"
+        fi
         
-            --install)
-                if [ ! -z "$NVBLD_INSTALL_IP" ]; then
-                    if [ "$NVBLD_INSTALL_IP" = "localhost" ]; then
-                        # sudo systemctl isolate multi-user
-                        # sudo "$SRC_FILE" -sb
-                        # sudo systemctl isolate graphical
-                        echo TODO
-                    else
-                        echo TODO
-                    fi
-                fi
-            ;;
-            
-            *)
-                echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-                return 1
-            ;;
-        esac
-        shift
-    done
-    
+        cp "$SRC_FILE" "$DST_FILE" && (
+            echo "NVIDIA BACKUP:"
+            echo "    SRC: $SRC_FILE"
+            echo "    DST: $DST_FILE" 
+        )
+        
+        ln -s -f "$DST_FILE" "$NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
+        echo "UPDATED: $NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
+    fi
 }
 
-function list-nvidia-modules-changed() {
+function nvidia-install() {
+    if [ "$NVBLD_INSTALL" = "0" ]; then
+        return
+    fi
+
+    FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
+    VERSION=$(nvidia-source-version)
+    ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "$NVBLD_ARCH")
+    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+    FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
+    NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
+    SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
+    DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
+    
+    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
+        echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
+        return 1
+    fi
+
+    if [ ! -f "$SRC_FILE" ]; then
+        echo "ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
+        return 1
+    fi
+
+    who am i > /dev/null && (
+        echo "NVIDIA INSTALL:" 
+        echo "==> ENTER MULTI-USER MODE"
+        sudo systemctl isolate multi-user
+
+        echo "==> RUN NVIDIA INSTALLER"
+        sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
+
+        echo "==> ENTER GRAPHICAL MODE"
+        sudo systemctl isolate graphical
+    ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
+}
+
+function nvidia-changed() {
     if [ ! -f "$NVBLD_LOCK_FILE" ]; then
         echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
         return 1
@@ -93,7 +107,7 @@ function list-nvidia-modules-changed() {
 
     mkdir -p "$NVBLD_OUTPUT_DIR"
 
-    echo "LIST NVIDIA MODULES CHANGED:"
+    echo "NVIDIA MODULES CHANGED:"
     find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type f -newer "$NVBLD_LOCK_FILE" \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_MODULES_FILE" || (
         echo "ERROR: FAILED TO FIND NVIDIA MODULES"
     )
@@ -109,10 +123,10 @@ function list-nvidia-modules-changed() {
     fi
 }
 
-function deploy-nvidia-module() {
+function nvidia-deploy() {
     case "$NVBLD_DEPLOY" in
         opengl)
-            echo "DEPLOY NVIDIA MODULE: opengl"
+            echo "NVIDIA DEPLOY: opengl"
             FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
             OUTDIR="$NVBLD_NVSRC/$NVBLD_BRANCH/drivers/OpenGL/_out/$FOLDER"
             FILENAME="libnvidia-glcore.so"
@@ -137,14 +151,14 @@ function deploy-nvidia-module() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [deploy] [install IP] [nickname NAME]"
+            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [deploy MODULE] [install] [nickname NAME]"
             echo "    help: shows this message"
             echo "    [NVBLD_ARCH]: default value is $NVBLD_ARCH [amd64|x86]"
             echo "    [NVBLD_BUILD_TYPE]: default value is $NVBLD_BUILD_TYPE [debug|release|develop]"
             echo "    ppp: post-process-packages"
             echo "    sweep: sweep"
-            echo "    deploy: deploy nvidia module to local host"
-            echo "    install IP: install to IP, IP can be localhost"
+            echo "    deploy MODULE: deploy nvidia module to local host"
+            echo "    install: run installer on local host"
             echo "    nickname NAME: append NAME to final output filename"
             exit 0
         ;;
@@ -183,8 +197,7 @@ while [ -n "$1" ]; do
         ;;
         
         install)
-            shift
-            NVBLD_INSTALL_IP="$1"
+            NVBLD_INSTALL=1
         ;;
         
         nickname)
@@ -227,10 +240,9 @@ STDERR_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDERR"
 mkdir -p "$NVBLD_OUTPUT_DIR/LOG/"
 cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
 
+echo "BEGINS: $(date)"
 echo "MODULE: $NVBLD_MODULES"
 echo "DEPLOY: $NVBLD_DEPLOY"
-echo "REMOTE: $NVBLD_INSTALL_IP"
-echo "BEGINS: $(date)"
 echo "STDOUT: $STDOUT_FILE"
 echo "STDERR: $STDERR_FILE"
 echo "NVMAKE: PLATFORM=$NVBLD_PLATFORM"
@@ -261,20 +273,16 @@ $NVBLD_MODULES \
     echo "   END: $(date)"
     echo "  COST: $(expr $SECONDS / 60) MINS"
     echo ""
-    list-nvidia-modules-changed
-    echo ""
-    nvidia-installer --backup 
-    echo ""
-    deploy-nvidia-module 
-    echo ""
-    
+    nvidia-changed; echo ""
+    nvidia-backup; echo ""
+    nvidia-install; echo ""
+    nvidia-deploy; echo ""
 ) || (
     echo "STATUS: FAILED"
     echo "   END: $(date)"
     echo "  COST: $(expr $SECONDS / 60) MINS"
     echo ""
-    grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"
-    echo ""
+    grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; echo ""
 )
 
 rm -rf "$NVBLD_LOCK_FILE"
