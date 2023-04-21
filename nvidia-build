@@ -3,90 +3,89 @@
 NVBLD_PLATFORM=linux
 NVBLD_ARCH=amd64
 NVBLD_BUILD_TYPE=release
-NVBLD_SWEEP=0
-NVBLD_PPP=0
 NVBLD_NVSRC="$HOME/NVIDIA/SRC_ON_P4"
 NVBLD_BRANCH="sw/dev/gpu_drv/dev_a"
 NVBLD_LOCK_FILE=/tmp/NVIDIA-BUILD.LOCK
 NVBLD_OUTPUT_DIR="$HOME/NVIDIA-BUILD"
-NVBLD_SO_LIST="$NVBLD_OUTPUT_DIR/NVIDIA_SO_LIST"
+NVBLD_MODULES_FILE="$NVBLD_OUTPUT_DIR/NVIDIA_MODULES"
 NVBLD_EXCLUDE_BUILD_MODULES=""
 NVBLD_UNIX_BUILD_ARGS=""
-NVBLD_NVMAKE_ARGS=""
+NVBLD_MODULES="drivers dist"
+NVBLD_DEPLOY=""
+NVBLD_INSTALL_IP=""
 NVBLD_NICKNAME=""
 TIMED_RUN="$HOME/NVIDIA/BIN/timed-run"
 
-function nvidia_source_version() {
+function nvidia-source-version() {
     echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
 }
 
-function install_arch_name() {
-    case "$1" in
-        "amd64") 
-            echo "x86_64"
-        ;;
-
-        "x86") 
-            echo "x86" 
-        ;;
-
-        *) 
-            echo "Error: unknown arch: $1" > /dev/stderr
-            echo ""
-        ;;
-    esac
-}
-
-function backup_installer() {
-    local FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
-    local VERSION=$(nvidia_source_version)
-    local SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
-    local FILENAME="NVIDIA-Linux-$(install_arch_name $NVBLD_ARCH)-$VERSION$SUFFIX.run"
-    local NICKNAME=$([ ! -z "$1" ] && echo "-$1" || echo "")
-    local SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
-    local DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
+function nvidia-installer() {
+    FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
+    VERSION=$(nvidia-source-version)
+    ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "$NVBLD_ARCH")
+    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+    FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
+    NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
+    SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
+    DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     
+    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
+        echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
+        return 1
+    fi
+
     if [ ! -f "$SRC_FILE" ]; then
         echo "ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
         return 1
     fi
     
-    if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
-        mkdir -p "$NVBLD_OUTPUT_DIR"
-    fi
-    
-    cp "$SRC_FILE" "$DST_FILE" && (
-        echo "BACKUP NVIDIA INSTALLER:"
-        echo "SRC PATH: $SRC_FILE"
-        echo "DST PATH: $DST_FILE" 
-    )
-}
-
-function list_nvidia_so() {
-    local CHANGED=0
-
     while [ -n "$1" ]; do
         case "$1" in
-            help)
-                echo "USAGE: list_nvidia_so [help] [--changed]"
-                echo "    help: show this message"
-                echo "    --changed: show so(s) that have changed since last build"
-                return 0
+            --backup)
+                if [[ "$NVBLD_LOCK_FILE" -nt "$SRC_FILE" ]]; then
+                    echo "INFO: NOTHING TO BACK UP"
+                    continue
+                fi
+                
+                if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
+                    mkdir -p "$NVBLD_OUTPUT_DIR"
+                fi
+                
+                cp "$SRC_FILE" "$DST_FILE" && (
+                    echo "BACK UP NVIDIA INSTALLER:"
+                    echo "    SRC: $SRC_FILE"
+                    echo "    DST: $DST_FILE" 
+                )
+                
+                ln -s -f "$DST_FILE" "$NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
+                echo "UPDATED: $NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
             ;;
-      
-            --changed)
-                CHANGED=1
+        
+            --install)
+                if [ ! -z "$NVBLD_INSTALL_IP" ]; then
+                    if [ "$NVBLD_INSTALL_IP" = "localhost" ]; then
+                        # sudo systemctl isolate multi-user
+                        # sudo "$SRC_FILE" -sb
+                        # sudo systemctl isolate graphical
+                        echo TODO
+                    else
+                        echo TODO
+                    fi
+                fi
             ;;
             
             *)
                 echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-                list_nvidia_so help
                 return 1
             ;;
         esac
         shift
     done
     
+}
+
+function list-nvidia-modules-changed() {
     if [ ! -f "$NVBLD_LOCK_FILE" ]; then
         echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
         return 1
@@ -94,28 +93,41 @@ function list_nvidia_so() {
 
     mkdir -p "$NVBLD_OUTPUT_DIR"
 
-    if [ "$CHANGED" = "1" ]; then 
-        echo "LIST NVIDIA SO CHANGED SINCE BUILD BEGINS:"
-        find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type f -newer "$NVBLD_LOCK_FILE" \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_SO_LIST" || (
-            echo "ERROR: FAILED TO RUN COMMAND: find \"$NVBLD_NVSRC/$NVBLD_BRANCH\" -type f -newer \"$NVBLD_LOCK_FILE\" ( -name \"*.so\" -o -name \"*.so.*\" ) > \"$NVBLD_SO_LIST\""
-        )
-    else 
-        echo "LIST NVIDIA SO:"
-        find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type -f \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_SO_LIST" || (
-            echo "ERROR: FAILED TO RUN COMMAND: find \"$NVBLD_NVSRC/$NVBLD_BRANCH\" -type -f ( -name \"*.so\" -o -name \"*.so.*\" ) > \"$NVBLD_SO_LIST\""
-        )
-    fi
-
-    echo "[$(wc -l < $NVBLD_SO_LIST) FILES FOUND]"
+    echo "LIST NVIDIA MODULES CHANGED:"
+    find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type f -newer "$NVBLD_LOCK_FILE" \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_MODULES_FILE" || (
+        echo "ERROR: FAILED TO FIND NVIDIA MODULES"
+    )
+    echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
     
-    head -9 "$NVBLD_SO_LIST" |
+    head -9 "$NVBLD_MODULES_FILE" |
     while read LINE; do
         echo $LINE
     done
     
-    if [ $(wc -l < $NVBLD_SO_LIST) -gt 9 ]; then
+    if [ $(wc -l < $NVBLD_MODULES_FILE) -gt 9 ]; then
         echo "..."
     fi
+}
+
+function deploy-nvidia-module() {
+    case "$NVBLD_DEPLOY" in
+        opengl)
+            echo "DEPLOY NVIDIA MODULE: opengl"
+            FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
+            OUTDIR="$NVBLD_NVSRC/$NVBLD_BRANCH/drivers/OpenGL/_out/$FOLDER"
+            FILENAME="libnvidia-glcore.so"
+            VERSION=$(nvidia-source-version)
+            ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+            TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$FILENAME.$VERSION"
+            
+            sudo cp -f "$OUTDIR/$FILENAME" "$TARGETNAME"
+            echo "==> $TARGETNAME"
+        ;;
+       
+        *)
+            return
+        ;;
+    esac
 }
 
 #############
@@ -125,12 +137,14 @@ function list_nvidia_so() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [nickname NAME]"
+            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [deploy] [install IP] [nickname NAME]"
             echo "    help: shows this message"
             echo "    [NVBLD_ARCH]: default value is $NVBLD_ARCH [amd64|x86]"
             echo "    [NVBLD_BUILD_TYPE]: default value is $NVBLD_BUILD_TYPE [debug|release|develop]"
-            echo "    ppp: default value is $NVBLD_PPP"
-            echo "    sweep: default value is $NVBLD_SWEEP"
+            echo "    ppp: post-process-packages"
+            echo "    sweep: sweep"
+            echo "    deploy: deploy nvidia module to local host"
+            echo "    install IP: install to IP, IP can be localhost"
             echo "    nickname NAME: append NAME to final output filename"
             exit 0
         ;;
@@ -156,11 +170,21 @@ while [ -n "$1" ]; do
         ;;
 
         sweep)
-            NVBLD_SWEEP=1
+            NVBLD_MODULES="sweep"
         ;;
 
         ppp)
-            NVBLD_PPP=1
+            NVBLD_MODULES="post-process-packages dist"
+        ;;
+        
+        deploy)
+            shift
+            NVBLD_DEPLOY="$1"
+        ;;
+        
+        install)
+            shift
+            NVBLD_INSTALL_IP="$1"
         ;;
         
         nickname)
@@ -196,71 +220,61 @@ if [ "$(stat -c '%U' $NVBLD_NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
     NVBLD_UNIX_BUILD_ARGS=" --unshare-namespaces"
 fi
 
-if [ "$NVBLD_SWEEP" = "1" ]; then
-    cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
-    $TIMED_RUN ionice -c2 nice \
-    $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
-    --tools "$NVBLD_NVSRC/sw/tools" \
-    --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
-    nvmake \
-    sweep
-else
-    if [ "$NVBLD_PPP" = "1" ]; then
-        NVBLD_NVMAKE_ARGS+=" post-process-packages dist"
-    else
-        NVBLD_NVMAKE_ARGS+=" drivers dist"
-    fi
+SECONDS=0
+TIMESTAMP=$(date +%s)
+STDOUT_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDOUT"
+STDERR_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDERR"
+mkdir -p "$NVBLD_OUTPUT_DIR/LOG/"
+cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
 
-    SECONDS=0
-    TIMESTAMP=$(date +%s)
-    STDOUT_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDOUT"
-    STDERR_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDERR"
-    mkdir -p "$NVBLD_OUTPUT_DIR/LOG/"
-    cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
+echo "MODULE: $NVBLD_MODULES"
+echo "DEPLOY: $NVBLD_DEPLOY"
+echo "REMOTE: $NVBLD_INSTALL_IP"
+echo "BEGINS: $(date)"
+echo "STDOUT: $STDOUT_FILE"
+echo "STDERR: $STDERR_FILE"
+echo "NVMAKE: PLATFORM=$NVBLD_PLATFORM"
+echo "        ARCH=$NVBLD_ARCH"
+echo "        BUILD_TYPE=$NVBLD_BUILD_TYPE"
+echo ""
+echo "$TIMESTAMP" > "$NVBLD_LOCK_FILE"
 
-    echo "BEGINS: $(date)"
-    echo "STDOUT: $STDOUT_FILE"
-    echo "STDERR: $STDERR_FILE"
-    echo "NVMAKE: PLATFORM=$NVBLD_PLATFORM"
-    echo "        ARCH=$NVBLD_ARCH"
-    echo "        BUILD_TYPE=$NVBLD_BUILD_TYPE"
-    echo "        OTHER_ARGS=\"$NVBLD_NVMAKE_ARGS\""
+ionice -c2 nice \
+$NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
+--tools "$NVBLD_NVSRC/sw/tools" \
+--devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
+nvmake \
+NV_COLOR_OUTPUT=1 \
+NV_COMPRESS_THREADS=16 \
+NV_FAST_PACKAGE_COMPRESSION=1 \
+NV_EXCLUDE_BUILD_MODULES="$NVBLD_EXCLUDE_BUILD_MODULES" \
+NV_KEEP_UNSTRIPPED_BINARIES=1 \
+NV_GUARDWORD=0 \
+-j16 \
+$NVBLD_PLATFORM \
+$NVBLD_ARCH \
+$NVBLD_BUILD_TYPE \
+$NVBLD_MODULES \
+1> "$STDOUT_FILE" \
+2> "$STDERR_FILE" && (
+    echo "STATUS: OK"
+    echo "   END: $(date)"
+    echo "  COST: $(expr $SECONDS / 60) MINS"
     echo ""
-    echo "$TIMESTAMP" > "$NVBLD_LOCK_FILE"
+    list-nvidia-modules-changed
+    echo ""
+    nvidia-installer --backup 
+    echo ""
+    deploy-nvidia-module 
+    echo ""
+    
+) || (
+    echo "STATUS: FAILED"
+    echo "   END: $(date)"
+    echo "  COST: $(expr $SECONDS / 60) MINS"
+    echo ""
+    grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"
+    echo ""
+)
 
-    $TIMED_RUN ionice -c2 nice \
-    $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
-    --tools "$NVBLD_NVSRC/sw/tools" \
-    --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
-    nvmake \
-    NV_COLOR_OUTPUT=1 \
-    NV_COMPRESS_THREADS=16 \
-    NV_FAST_PACKAGE_COMPRESSION=1 \
-    NV_EXCLUDE_BUILD_MODULES="$NVBLD_EXCLUDE_BUILD_MODULES" \
-    NV_KEEP_UNSTRIPPED_BINARIES=1 \
-    NV_GUARDWORD=0 \
-    -j16 \
-    $NVBLD_PLATFORM \
-    $NVBLD_ARCH \
-    $NVBLD_BUILD_TYPE \
-    $NVBLD_NVMAKE_ARGS \
-    1> "$STDOUT_FILE" \
-    2> "$STDERR_FILE" && (
-        echo "   END: $(date)"
-        echo "STATUS: OK"
-        echo ""
-        backup_installer "$NVBLD_NICKNAME"
-        echo ""
-        list_nvidia_so --changed 
-        echo ""
-    ) || (
-        echo "   END: $(date)"
-        echo "STATUS: FAILED"
-        echo ""
-        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"
-        echo ""
-    )
-
-    rm "$NVBLD_LOCK_FILE"
-fi
-
+rm -rf "$NVBLD_LOCK_FILE"
