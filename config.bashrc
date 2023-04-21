@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# System
+export DISPLAY=:0
+
 # NVIDIA tools
 export P4V=$HOME/NVIDIA/P4V
 export PIC_V=$HOME/NVIDIA/PIC-V

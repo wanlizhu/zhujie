@@ -45,6 +45,11 @@ function devenv-init() {
     
     # Run sudo without password
     sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
+    
+    # Install ZeroTier One
+    curl -s https://install.zerotier.com | sudo bash
+    sudo systemctl enable zerotier-one.service
+    sudo zerotier-cli join db64858fed3b37c1
 }
 
 function user-cancel() {
