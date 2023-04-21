@@ -47,22 +47,27 @@ if [ ! -f "$HOME/.gtl_api_key" ]; then
 fi
 
 # IP
-export IP_192_168=""
-export IP_10_19=""
+export IP_ROUTER=""
+export IP_NVIDIA=""
+export IP_ZEROTIER=""
 
 export PATH="$HOME/NVIDIA/BIN:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
 
 for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
-    if [[ "$IP" =~ ^192\.168\..* ]]; then
-        IP_192_168=$IP
+    if [[ "$IP" =~ ^192\.168\.192\..* ]]; then
+        IP_ZEROTIER=$IP
+    elif [[ "$IP" =~ ^192\.168\..* ]]; then
+        IP_ROUTER=$IP
     fi
+    
     if [[ "$IP" =~ ^10\.19\..* ]]; then
-        IP_10_19=$IP
+        IP_NVIDIA=$IP
     fi
 done
 
-echo " LOCAL IP: $IP_192_168"
-echo "   VPN IP: $IP_10_19"
+echo "    ROUTER IP: $IP_ROUTER"
+echo "    NVIDIA IP: $IP_NVIDIA"
+echo " ZERO-TIER IP: $IP_ZEROTIER"
 
 
 function ddnet-in-pts() {

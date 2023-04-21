@@ -45,11 +45,6 @@ function devenv-init() {
     
     # Run sudo without password
     sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
-    
-    # Install ZeroTier One
-    curl -s https://install.zerotier.com | sudo bash
-    sudo systemctl enable zerotier-one.service
-    sudo zerotier-cli join db64858fed3b37c1
 }
 
 function user-cancel() {
@@ -89,10 +84,16 @@ function devenv-push() {
     popd > /dev/null
 }
 
+function devenv-zerotier-join() {
+    curl -s https://install.zerotier.com | sudo bash
+    sudo systemctl enable zerotier-one.service
+    sudo zerotier-cli join db64858fed3b37c1
+}
+
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: devenv [help] [init] [pull] [push]"
+            echo "USAGE: devenv [help] [init] [pull] [push] [zerotier] [ssh-keys]"
             echo "    help: show this message"
             echo "    init: initialize devenv"
             exit 0
@@ -108,6 +109,10 @@ while [ -n "$1" ]; do
         
         push)
             devenv-push
+        ;;
+        
+        zerotier)
+            devenv-zerotier-join
         ;;
         
         *)
