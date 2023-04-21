@@ -36,7 +36,7 @@ function devenv_init() {
     sudo apt install libglvnd-dev -y
     sudo apt install openconnect -y
     sudo apt install steam -y
-    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev -y
+    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev screen -y
     
     # Git Auth
     gh auth login
