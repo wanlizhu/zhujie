@@ -61,18 +61,6 @@ done
 echo " LOCAL IP: $IP_192_168"
 echo "   VPN IP: $IP_10_19"
 
-function zjvpn-connect() {
-    local VPNURL="https://ngvpn32.vpn.nvidia.com:8443"
-    local AUTHGROUP="--authgroup Employee"
-    local USERNAME="-u wanliz"
-
-    if [ -z "$1" ]; then
-        echo "ERROR: PLEASE GIVE DUO PASS CODE" > /dev/stderr
-        return 1
-    fi
-
-    (echo "zhujie"; echo "Xavier#35224047,$1" ) | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
-}
 
 function ddnet-in-pts() {
     # 2560x1440

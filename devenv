@@ -36,11 +36,15 @@ function devenv-init() {
     sudo apt install libglvnd-dev -y
     sudo apt install openconnect -y
     sudo apt install steam -y
-    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev screen -y
+    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev 
+    sudo apt install screen -y
+    sudo apt install mailutils -y
     
     # Git Auth
     gh auth login
     
+    # Run sudo without password
+    sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
 }
 
 function user-cancel() {
@@ -86,8 +90,6 @@ while [ -n "$1" ]; do
             echo "USAGE: devenv [help] [init] [pull] [push]"
             echo "    help: show this message"
             echo "    init: initialize devenv"
-            echo "    pull: pull from $NVIDIA_BIN_URL"
-            echo "    push: push to $NVIDIA_BIN_URL"
             exit 0
         ;;
     

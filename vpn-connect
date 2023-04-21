@@ -1,0 +1,32 @@
+#!/bin/bash
+VPNURL="https://ngvpn32.vpn.nvidia.com:8443"
+AUTHGROUP="--authgroup Employee"
+USERNAME="-u wanliz"
+FIXEDPASSCODE="Xavier#35224047"
+DUOPASSCODE=""
+
+while [ -n "$1" ]; do
+    case "$1" in
+        --detach|-d)
+            echo TODO
+        ;;
+        *)
+            DUOPASSCODE="$1"
+        ;;
+    esac
+    shift
+done
+
+if [ -z "$DUOPASSCODE" -a -f "$HOME/NVIDIA/BIN/DUOPASSCODE" ]; then
+    DUOPASSCODE=`cat $HOME/NVIDIA/BIN/DUOPASSCODE`
+fi
+
+if [ -z "$DUOPASSCODE" -a -f "$HOME/DUOPASSCODE" ]; then
+    DUOPASSCODE=`cat $HOME/DUOPASSCODE`
+fi
+
+if [ -z "$DUOPASSCODE" ]; then
+    read -p "DUO PASS CODE:" DUOPASSCODE
+fi
+
+echo "$FIXEDPASSCODE,$DUOPASSCODE" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
