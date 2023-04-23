@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# 2560x1440
+# Fullscreen
+# Vulkan
+# Default
+# RaiNyMore2 -- GPU-intensive 
+source prime-run
+(echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet

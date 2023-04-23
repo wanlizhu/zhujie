@@ -69,29 +69,3 @@ echo "    ROUTER IP: $IP_ROUTER"
 echo "    NVIDIA IP: $IP_NVIDIA"
 echo " ZERO-TIER IP: $IP_ZEROTIER"
 
-
-function ddnet-in-pts() {
-    # 2560x1440
-    # Fullscreen
-    # Vulkan
-    # Default
-    # RaiNyMore2 -- GPU-intensive 
-    (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
-}
-
-function talos-principle-in-pts() {
-    # Launch steam if it's not currently running
-    pgrep -x steam >/dev/null && echo "STEAM IS RUNNING..." || gnome-terminal -- sh -c "steam"
-    sleep 15
-
-    if ! [[ -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
-        echo "INSTALL Talos Principle IN STEAM'S WINDOW AND TRY AGAIN"
-        return 1
-    fi
-
-    # Vulkan
-    # 2560x1440
-    (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
-    
-    #~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64/Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-}

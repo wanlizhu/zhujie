@@ -14,7 +14,6 @@ NVBLD_MODULES="drivers dist"
 NVBLD_BACKUP=1
 NVBLD_INSTALL=0
 NVBLD_PPP=0
-NVBLD_DEPLOY=""
 NVBLD_NICKNAME=""
 
 function nvidia-source-version() {
@@ -106,7 +105,7 @@ function nvidia-changed() {
         echo "ERROR: FAILED TO FIND NVIDIA MODULES"
     )
     
-    echo "NVIDIA MODULES CHANGED: [$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
+    echo "NVIDIA MODULES CHANGED: [$(wc -l < $NVBLD_MODULES_FILE) SO FILES]"
     
     # echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
     # 
@@ -179,7 +178,6 @@ function nvidia-nvmake() {
         nvidia-changed; 
         nvidia-backup; 
         nvidia-install; 
-        nvidia-deploy; 
     ) || (
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; 
     )
@@ -188,6 +186,13 @@ function nvidia-nvmake() {
     echo ""
     rm -rf "$NVBLD_LOCK_FILE"
 }
+
+
+
+
+
+
+
 
 #############
 ## MAIN FUNC
@@ -283,3 +288,4 @@ if [ "$(stat -c '%U' $NVBLD_NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
 fi
 
 nvidia-nvmake
+

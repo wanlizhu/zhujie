@@ -11,3 +11,4 @@ for ELEMENT in "${ELEMENTS[@]}"; do
         exit 0
     fi
 done
+exit 1

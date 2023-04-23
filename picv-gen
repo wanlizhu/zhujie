@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "ERROR: PLEASE PROVIDE APPLICATION TO RUN AND CAPTURE" > /dev/stderr
+    exit 1
+fi
+
+# Launch pic-v if it's not running
+pgrep -x pic-v >/dev/null && echo "PIC-V IS RUNNING..." || (
+    gnome-terminal -- bash -c "cd $HOME/NVIDIA/PIC-V && ./pic-v || read -p \"PRESS ANY KEY TO CONTINUE...\""
+    sleep 3
+)
+
+# Launch game in current terminal 
+cd $HOME/NVIDIA/PIC-V
+source setup-env.sh
+"$@" && (
+    # Launch http server if it's not running
+    ps aux | grep "[p]ython3 -m http.server" && echo "PIC-V HTTP SERVER IS RUNNING..." || (
+        gnome-terminal -- bash -c "cd $HOME/NVIDIA/PIC-V/PerfInspector/output && ./launch-py3-server.sh || read -p \"PRESS ANY KEY TO CONTINUE...\""
+        sleep 1
+    )
+    chromium "http://localhost:8000/"
+)
