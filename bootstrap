@@ -1,5 +1,4 @@
 #!/bin/bash
-
 echo "BEGIN: $HOME/NVIDIA/BIN/boostrap"
 
 # Log in NVIDIA VPN

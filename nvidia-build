@@ -1,5 +1,4 @@
 #!/bin/bash
-
 NVBLD_PLATFORM=linux
 NVBLD_ARCH=amd64
 NVBLD_BUILD_TYPE=release

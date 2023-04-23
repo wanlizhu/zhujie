@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # System
 export DISPLAY=:0
 
