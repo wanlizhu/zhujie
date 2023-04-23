@@ -1,5 +1,4 @@
 #!/bin/bash
-
 FG_SECONDS=$(date +%s)
 FG_SVG_FILE="$HOME/FLAMEGRAPH-GEN/perf-$FG_SECONDS.svg"
 FG_PERF_DATA="$HOME/FLAMEGRAPH-GEN/perf-$FG_SECONDS.data"

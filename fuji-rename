@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+    echo "USAGE: fuji-rename <DIR> <OLDSTR> <NEWSTR>" > /dev/stderr
+    exit 1
+fi
+
+FOLDER="$1"
+OLDSTR="$2"
+NEWSTR="$3"
+
+IFS=$'\n'
+for FILE in `find "$FOLDER" -type f -name "$OLDSTR*" -printf '%p\n'`; do
+    NEWFILE=`echo "$FILE" | sed "s/\(.\{4\}\)\([0-9]\{4\}\)\.\(.*\)/$NEWSTR\2.\3/g"`
+    if [ -f "$NEWFILE" ]; then
+        echo "ERROR: FILE EXIST: $NEWFILE" > /dev/stderr
+        exit 1
+    fi
+    mv "$FILE" "$NEWFILE"
+    echo "RENAMED: `basename \"$FILE\"` ==> `basename \"$NEWFILE\"`"
+done
+IFS=

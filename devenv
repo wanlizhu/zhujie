@@ -1,5 +1,4 @@
 #!/bin/bash
-
 NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
 
 function devenv-init() {
