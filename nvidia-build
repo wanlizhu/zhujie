@@ -1,256 +1,285 @@
 #!/bin/bash
-NVBLD_PLATFORM=linux
-NVBLD_ARCH=amd64
-NVBLD_BUILD_TYPE=release
-NVBLD_NVSRC="$HOME/NVIDIA/SRC_ON_P4"
-NVBLD_BRANCH="sw/dev/gpu_drv/dev_a"
-NVBLD_LOCK_FILE=/tmp/NVIDIA-BUILD.LOCK
-NVBLD_OUTPUT_DIR="$HOME/NVIDIA-BUILD"
-NVBLD_MODULES_FILE="$NVBLD_OUTPUT_DIR/NVIDIA_MODULES"
-NVBLD_EXCLUDE_BUILD_MODULES=""
-NVBLD_UNIX_BUILD_ARGS=""
-NVBLD_MODULES="drivers dist"
-NVBLD_BACKUP=1
-NVBLD_INSTALL=0
-NVBLD_PPP=0
-NVBLD_DEPLOY=""
-NVBLD_NICKNAME=""
+NVSRC="$HOME/NVIDIA/SRC_ON_P4"
+NVBRANCH="sw/dev/gpu_drv/dev_a"
+NVBUILD_LOCK=/tmp/NVIDIA-BUILD.LOCK
+NVBUILD_OUT="$HOME/NVIDIA-BUILD"
+NVBUILD_SO_FILES="$NVBUILD_OUT/NVIDIA_SO_FILES"
+NVFLAG_BACKUP=0
+NVFLAG_INSTALL=0
 
 function nvidia-source-version() {
-    echo `grep '^#define NV_VERSION_STRING' $NVBLD_NVSRC/$NVBLD_BRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
+    echo `grep '^#define NV_VERSION_STRING' $NVSRC/$NVBRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
 }
 
 function nvidia-backup() {
-    if [ "$NVBLD_BACKUP" != "1" ]; then
-        echo "NVIDIA BACKUP: NOTHING TO BACKUP"
+    if [ "$NVFLAG_BACKUP" != "1" ]; then
         return
     fi
 
-    FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
-    VERSION=$(nvidia-source-version)
-    ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "$NVBLD_ARCH")
-    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
-    FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
-    NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
-    SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
-    DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
-    
-    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
-        echo "NVIDIA BACKUP: ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
+    if [ "$1" = "" -o "$2" = "" ]; then
+        echo "USAGE: nvidia-backup [ARCH] [BUILD_TYPE]" > /dev/stderr
         return 1
     fi
 
-    if [ ! -f "$SRC_FILE" ]; then
-        echo "NVIDIA BACKUP: ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
-        return 1
-    fi
+    ARCH="$1"
+    BUILD_TYPE="$2"
+    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
+    VERSION=$(nvidia-source-version)
+    ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
+    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+    FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
+    SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
+    DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
     
-    if [ ! -d "$NVBLD_OUTPUT_DIR" ]; then
-        mkdir -p "$NVBLD_OUTPUT_DIR"
+    if [ ! -d "$NVBUILD_OUT" ]; then
+        mkdir -p "$NVBUILD_OUT"
     fi
     
     cp "$SRC_FILE" "$DST_FILE" && (
         echo "NVIDIA BACKUP: NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
-    )
+    ) 
     
-    ln -s -f "$DST_FILE" "$NVBLD_OUTPUT_DIR/LATEST-BUILD.RUN"
+    ln -s -f "$DST_FILE" "$NVBUILD_OUT/LATEST-BUILD.RUN"
 }
 
 function nvidia-install() {
-    if [ "$NVBLD_INSTALL" != "1" ]; then
-        echo "NVIDIA INSTALL: NOTHING TO INSTALL"
+    if [ "$NVFLAG_INSTALL" != "1" ]; then
         return
     fi
 
-    FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
+    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+        echo "USAGE: nvidia-install [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
+        return 1
+    fi
+
+    ARCH="$1"
+    BUILD_TYPE="$2"
+    MODULE="$3"
+    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
     VERSION=$(nvidia-source-version)
-    ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "$NVBLD_ARCH")
-    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
-    FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
-    NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
-    SRC_FILE="$NVBLD_NVSRC/$NVBLD_BRANCH/_out/$FOLDER/$FILENAME"
-    DST_FILE="$NVBLD_OUTPUT_DIR/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
-    
-    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
-        echo "NVIDIA INSTALL: ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
-        return 1
-    fi
 
-    if [ ! -f "$SRC_FILE" ]; then
-        echo "NVIDIA INSTALL: ERROR: NVIDIA DRIVER DOES NOT EXIST AT $SRC_FILE" > /dev/stderr
-        return 1
-    fi
+    echo "NVIDIA INSTALL: $1" 
+    case "$MODULE" in
+        drivers|dist)
+            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
+            SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+            FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
+            #NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
+            SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
+            DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
+            
+            who am i > /dev/null && (
+                sudo systemctl isolate multi-user
+                sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
+                sudo systemctl isolate graphical
+            ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
+        ;;
 
-    who am i > /dev/null && (
-        echo "NVIDIA INSTALL: " 
-        echo "==> ENTER MULTI-USER MODE"
-        sudo systemctl isolate multi-user
-
-        echo "==> RUN NVIDIA INSTALLER"
-        sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
-
-        echo "==> ENTER GRAPHICAL MODE"
-        sudo systemctl isolate graphical
-    ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
-}
-
-function nvidia-changed() {
-    if [ ! -f "$NVBLD_LOCK_FILE" ]; then
-        echo "ERROR: FILE $NVBLD_LOCK_FILE IS MISSING" > /dev/stderr
-        return 1
-    fi
-
-    mkdir -p "$NVBLD_OUTPUT_DIR"
-    find "$NVBLD_NVSRC/$NVBLD_BRANCH" -type f -newer "$NVBLD_LOCK_FILE" \( -name "*.so" -o -name "*.so.*" \) > "$NVBLD_MODULES_FILE" || (
-        echo "ERROR: FAILED TO FIND NVIDIA MODULES"
-    )
-    
-    echo "NVIDIA MODULES CHANGED: [$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
-    
-    # echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
-    # 
-    # head -9 "$NVBLD_MODULES_FILE" |
-    # while read LINE; do
-    #     echo $LINE
-    # done
-    # 
-    # if [ $(wc -l < $NVBLD_MODULES_FILE) -gt 9 ]; then
-    #     echo "..."
-    # fi
-}
-
-function nvidia-deploy() {
-    if [ "$NVBLD_DEPLOY" = "" ]; then
-        echo "NVIDIA DEPLOY: NOTHING TO DEPLOY"
-        return
-    fi
-    
-    case "$NVBLD_DEPLOY" in
         opengl)
-            echo "NVIDIA DEPLOY: opengl"
-            FOLDER="Linux_"$NVBLD_ARCH"_$NVBLD_BUILD_TYPE"
-            OUTDIR="$NVBLD_NVSRC/$NVBLD_BRANCH/drivers/OpenGL/_out/$FOLDER"
+            FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
+            OUTDIR="$NVSRC/$NVBRANCH/drivers/OpenGL/_out/$FOLDER"
             FILENAME="libnvidia-glcore.so"
             VERSION=$(nvidia-source-version)
-            ARCHNAME=$([ "$NVBLD_ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
             TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$FILENAME.$VERSION"
             
             sudo cp -f "$OUTDIR/$FILENAME" "$TARGETNAME"
             echo "==> $TARGETNAME"
         ;;
-       
+
         *)
-            return
+            echo "ERROR: TO INSTALL MODULE $1 IS NOT SUPPORTED YET" > /dev/stderr
+            return 1
         ;;
-    esac
+    esac 
 }
 
-function nvidia-nvmake() {
-    SECONDS=0
-    TIMESTAMP=$(date +%s)
-    STDOUT_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDOUT"
-    STDERR_FILE="$NVBLD_OUTPUT_DIR/LOG/NVMAKE.STDERR"
-    mkdir -p "$NVBLD_OUTPUT_DIR/LOG/"
-    cd "$NVBLD_NVSRC/$NVBLD_BRANCH"
+# function nvidia-sofiles() {
+#     if [ "$NVBLD_SWEEP" = "1" ]; then
+#         return
+#     fi
+# 
+#     if [ ! -f "$NVBUILD_LOCK" ]; then
+#         echo "ERROR: FILE $NVBUILD_LOCK IS MISSING" > /dev/stderr
+#         return 1
+#     fi
+# 
+#     mkdir -p "$NVBUILD_OUT"
+#     find "`pwd`" -type f -newer "$NVBUILD_LOCK" \( -name "*.so" -o -name "*.so.*" \) > "$NVBUILD_SO_FILES" || (
+#         echo "ERROR: FAILED TO FIND NVIDIA SO FILES"
+#     )
+#     
+#     echo "NVIDIA SO FILES: [$(wc -l < $NVBUILD_SO_FILES) GENERATED]"
+#     
+#     # echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
+#     # 
+#     # head -9 "$NVBLD_MODULES_FILE" |
+#     # while read LINE; do
+#     #     echo $LINE
+#     # done
+#     # 
+#     # if [ $(wc -l < $NVBLD_MODULES_FILE) -gt 9 ]; then
+#     #     echo "..."
+#     # fi
+# }
 
-    echo "NVIDIA NVMAKE: BEGIN: $(date)"
-    echo "NVIDIA NVMAKE: $NVBLD_PLATFORM $NVBLD_ARCH $NVBLD_BUILD_TYPE $NVBLD_MODULES"
-    echo "$TIMESTAMP" > "$NVBLD_LOCK_FILE"
+function nvidia-nvmake() {
+    ARCH="$1"
+    BUILD_TYPE="$2"
+    MODULE="$3"
+    CWD_BACKUP="`pwd`"
+
+    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+        echo "USAGE: nvidia-nvmake [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
+        return 1
+    fi
+
+    if [ -f "$NVBUILD_LOCK" ]; then
+        echo "ERROR: FILE $NVBUILD_LOCK EXISTS" > /dev/stderr
+        return 1
+    fi
+
+    if [ -z "$NVSRC" ]; then
+        echo "ERROR: NVSRC IS NOT DEFINED" > /dev/stderr
+        return 1
+    fi
+
+    if [ -z "$NVBRANCH" ]; then
+        echo "ERROR: NVBRANCH IS NOT DEFINED" > /dev/stderr
+        return 1
+    fi
+
+    case "$MODULE" in
+        drivers|dist)
+            MODULE="drivers dist"
+            cd "$NVSRC/$NVBRANCH"
+        ;;
+
+        sweep)
+            MODULE="sweep"
+            cd "$NVSRC/$NVBRANCH"
+        ;;
+
+        ppp)
+            MODULE="post-process-packages dist"
+            cd "$NVSRC/$NVBRANCH"
+        ;;
+
+        opengl)
+            MODULE_NAME=""
+            cd "$NVSRC/$NVBRANCH/drivers/OpenGL"
+        ;;
+
+        *)
+            echo "ERROR: TO BUILD MODULE \"$1\" IS NOT SUPPORTED YET" > /dev/stderr
+            return 1
+        ;;
+    esac
+
+    SECONDS=0
+    STDOUT_FILE="$NVBUILD_OUT/LOG/NVMAKE.STDOUT"
+    STDERR_FILE="$NVBUILD_OUT/LOG/NVMAKE.STDERR"
+
+    mkdir -p "$NVBUILD_OUT/LOG/"
+    cd "$NVSRC/$NVBRANCH"
+
+    echo "NVIDIA NVMAKE: linux $ARCH $BUILD_TYPE $MODULE"
+    echo "`date +%s`" > "$NVBUILD_LOCK"
+
+    if [ "$(stat -c '%U' $NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
+        UNIX_BUILD_ARGS=" --unshare-namespaces"
+    else
+        UNIX_BUILD_ARGS=""
+    fi
 
     ionice -c2 nice \
-    $NVBLD_NVSRC/sw/misc/linux/unix-build $NVBLD_UNIX_BUILD_ARGS \
-    --tools "$NVBLD_NVSRC/sw/tools" \
-    --devrel "$NVBLD_NVSRC/sw/devrel/SDK/inc/GL" \
+    $NVSRC/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
+    --tools "$NVSRC/sw/tools" \
+    --devrel "$NVSRC/sw/devrel/SDK/inc/GL" \
     nvmake \
     NV_COLOR_OUTPUT=1 \
     NV_COMPRESS_THREADS=16 \
     NV_FAST_PACKAGE_COMPRESSION=1 \
-    NV_EXCLUDE_BUILD_MODULES="$NVBLD_EXCLUDE_BUILD_MODULES" \
+    NV_EXCLUDE_BUILD_MODULES="" \
     NV_KEEP_UNSTRIPPED_BINARIES=1 \
     NV_GUARDWORD=0 \
     -j16 \
-    $NVBLD_PLATFORM \
-    $NVBLD_ARCH \
-    $NVBLD_BUILD_TYPE \
-    $NVBLD_MODULES \
+    linux \
+    $ARCH \
+    $BUILD_TYPE \
+    $MODULE \
     1> "$STDOUT_FILE" \
     2> "$STDERR_FILE" && (
-        nvidia-changed; 
-        nvidia-backup; 
-        nvidia-install; 
-        nvidia-deploy; 
+        nvidia-backup  $ARCH $BUILD_TYPE
+        nvidia-install $ARCH $BUILD_TYPE $MODULE
     ) || (
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; 
     )
 
-    echo "NVIDIA NVMAKE: END: $(date) [COST: $(expr $SECONDS / 60) MINS]"
+    echo "NVIDIA NVMAKE: TIME COST: $(expr $SECONDS / 60) MINS]"
     echo ""
-    rm -rf "$NVBLD_LOCK_FILE"
+
+    rm -rf "$NVBUILD_LOCK"
+    cd "$CWD_BACKUP"
 }
 
 #############
 ## MAIN FUNC
 #############
 
+ARCHS="amd64"
+BUILD_TYPES="release"
+MODULES="dist"
+
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: nvidia-build [help] [NVBLD_ARCH] [NVBLD_BUILD_TYPE] [ppp] [sweep] [deploy MODULE] [install] [nickname NAME]"
-            echo "    help: shows this message"
-            echo "    [NVBLD_ARCH]: default value is $NVBLD_ARCH [amd64|x86]"
-            echo "    [NVBLD_BUILD_TYPE]: default value is $NVBLD_BUILD_TYPE [debug|release|develop]"
-            echo "    ppp: post-process-packages"
-            echo "    sweep: sweep"
-            echo "    deploy MODULE: deploy nvidia module to local host"
-            echo "    install: run installer on local host"
-            echo "    nickname NAME: append NAME to final output filename"
+            echo "USAGE: nvidia-build [help] [ARCH] [BUILD_TYPE] [ppp] [sweep] [--backup] [--install]"
             exit 0
         ;;
 
         amd64)
-            NVBLD_ARCH=amd64
+            echo "" > /dev/null
         ;;
 
         x86)
-            NVBLD_ARCH=x86
+            ARCHS="$ARCHS x86"
+        ;;
+
+        --backup)
+            NVFLAG_BACKUP=1
+        ;;
+
+        --install)
+            NVFLAG_INSTALL=1
         ;;
 
         release)
-            NVBLD_BUILD_TYPE=release
+            echo "" > /dev/null
         ;;
 
         debug) 
-            NVBLD_BUILD_TYPE=debug
+            BUILD_TYPES="$BUILD_TYPES debug"
         ;;
 
         develop)
-            NVBLD_BUILD_TYPE=develop
+            BUILD_TYPES="$BUILD_TYPES develop"
+        ;;
+
+        dist)
+            echo "" > /dev/null
         ;;
 
         sweep)
-            NVBLD_MODULES=sweep
+            MODULES="$MODULES sweep"
         ;;
 
         ppp)
-            NVBLD_PPP=1
-            NVBLD_MODULES="post-process-packages dist"
-            if [ -z "$NVBLD_NICKNAME" ]; then
-                NVBLD_NICKNAME="PPP"
-            fi
+            MODULES="$MODULES ppp"
         ;;
-        
-        deploy)
-            shift
-            NVBLD_DEPLOY="$1"
-        ;;
-        
-        install)
-            NVBLD_INSTALL=1
-        ;;
-        
-        nickname)
-            shift
-            NVBLD_NICKNAME="$1"
+
+        opengl)
+            MODULES="$MODULES opengl"
         ;;
     
         *)
@@ -262,23 +291,10 @@ while [ -n "$1" ]; do
     shift
 done
 
-if [ -f "$NVBLD_LOCK_FILE" ]; then
-    echo "ERROR: FILE $NVBLD_LOCK_FILE EXISTS" > /dev/stderr
-    exit 1
-fi
-
-if [ -z "$NVBLD_NVSRC" ]; then
-    echo "ERROR: NVBLD_NVSRC IS NOT DEFINED" > /dev/stderr
-    exit 1
-fi
-
-if [ -z "$NVBLD_BRANCH" ]; then
-    echo "ERROR: NVBLD_BRANCH IS NOT DEFINED" > /dev/stderr
-    exit 1
-fi
-
-if [ "$(stat -c '%U' $NVBLD_NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
-    NVBLD_UNIX_BUILD_ARGS=" --unshare-namespaces"
-fi
-
-nvidia-nvmake
+for ARCH in $ARCHS; do
+    for BUILD_TYPE in $BUILD_TYPES; do
+        for MODULE in $MODULES; do
+            nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
+        done 
+    done
+done
