@@ -188,6 +188,7 @@ function nvidia-nvmake() {
         UNIX_BUILD_ARGS=""
     fi
 
+    ERRORCODE=0
     ionice -c2 nice \
     $NVSRC/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
     --tools "$NVSRC/sw/tools" \
@@ -209,7 +210,8 @@ function nvidia-nvmake() {
         nvidia-backup  $ARCH $BUILD_TYPE $IS_PPP
         nvidia-install $ARCH $BUILD_TYPE $MODULE
     ) || (
-        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; 
+        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE";
+        ERRORCODE=1 
     )
 
     echo "NVIDIA NVMAKE: TIME COST: [$(expr $SECONDS / 60) MINS]"
@@ -217,6 +219,8 @@ function nvidia-nvmake() {
 
     rm -rf "$NVBUILD_LOCK"
     cd "$CWD_BACKUP"
+
+    return $ERRORCODE
 }
 
 
@@ -313,9 +317,10 @@ for ARCH in $ARCHS; do
                 BACKUP=$NVFLAG_INSTALL
                 NVFLAG_INSTALL=0
                 nvidia-nvmake amd64 $BUILD_TYPE dist &&
-                nvidia-nvmake x86   $BUILD_TYPE dist &&
-                NVFLAG_INSTALL=$BACKUP
-                nvidia-nvmake amd64 $BUILD_TYPE ppp
+                nvidia-nvmake x86   $BUILD_TYPE dist && (
+                    NVFLAG_INSTALL=$BACKUP
+                    nvidia-nvmake amd64 $BUILD_TYPE ppp
+                )
             else
                 nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
             fi
