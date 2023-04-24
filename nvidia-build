@@ -27,7 +27,7 @@ function nvidia-backup() {
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
     VERSION=$(nvidia-source-version)
     ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
-    SUFFIX=$([ "$IS_PPP" = "1" ] && echo "" || echo "-internal")
+    SUFFIX=$([ "$IS_PPP" = "1" ] && echo "-32compat" || echo "-internal")
     FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
     SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
     DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
@@ -40,7 +40,7 @@ function nvidia-backup() {
         echo "NVIDIA BACKUP: NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     ) 
     
-    ln -s -f "$DST_FILE" "$NVBUILD_OUT/LATEST-BUILD.RUN"
+    ln -s -f "$DST_FILE" "$NVBUILD_OUT/LAST-BUILD"
 }
 
 function nvidia-install() {
@@ -180,11 +180,8 @@ function nvidia-nvmake() {
     esac
 
     SECONDS=0
-    STDOUT_FILE="$NVBUILD_OUT/LOG/NVMAKE.STDOUT"
-    STDERR_FILE="$NVBUILD_OUT/LOG/NVMAKE.STDERR"
-
-    mkdir -p "$NVBUILD_OUT/LOG/"
-    cd "$NVSRC/$NVBRANCH"
+    STDOUT_FILE="$NVBUILD_OUT/NVMAKE_STDOUT"
+    STDERR_FILE="$NVBUILD_OUT/NVMAKE_STDERR"
 
     echo "NVIDIA NVMAKE: linux $ARCH $BUILD_TYPE $MODULE"
     echo "`date +%s`" > "$NVBUILD_LOCK"

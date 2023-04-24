@@ -1,3 +1,67 @@
 #!/bin/bash
+if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+    echo "USAGE: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
+fi
 
-p4 
+MODULE="$1"
+DATE_OLD="$2"
+DATE_NEW="$3"
+
+case "$MODULE" in
+    dev_a)
+        FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a"
+    ;;
+    opengl)
+        FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
+    ;;
+    *)
+        echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED YET" > /dev/stderr
+        exit 1
+    ;;
+esac
+
+p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $HOME/CHANGES
+LINE_COUNT=$(wc -l < $HOME/CHANGES)
+
+while [ $LINE_COUNT -gt 2 ]; do
+    LINE_NO=$(( $LINE_COUNT/2 ))
+    LINE=$(sed -n "${LINE_NO}p" $HOME/CHANGES)
+    IFS=" " read -ra SEGMENTS <<< "$LINE"
+    CL="${SEGMENTS[1]}"
+    DESC=$(p4 describe -s 32755357 | head -n 1)
+    IFS=" " read -ra SEGMENTS <<< "$DESC"
+    DATE="${SEGMENTS[5]}:${SEGMENTS[6]}"
+    ANSWERED=0
+
+    echo "TESTING CHANGE $CL @$DATE (OUT OF $LINE_COUNT CHANGES):"
+
+    ANSWERED=0
+    while [ "$ANSWERED" = "0" ]; do
+        read -p "    DOWNLOAD DVS BUILD? (Y/N): " ANS_DOWNLOAD
+        case "$ANS_DOWNLOAD" in
+            y|Y|1)
+                ANSWERED=1
+                dvsbuild download $CL 
+            ;;
+        esac
+    done
+
+    ANSWERED=0
+    while [ "$ANSWERED" = "0" ]; do
+        read -p "    IS THIS CHANGE NEW? (Y/N): " ANS_NEW 
+        case "$ANS_NEW" in
+            y|Y|1)
+                ANSWERED=1
+                DATE_NEW="$DATE"
+            ;;
+            n|N|0)
+                ANSWERED=1
+                DATE_OLD="$DATE"
+            ;;
+        esac
+    done
+
+    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $HOME/CHANGES
+    LINE_COUNT=$(wc -l < $HOME/CHANGES)
+    echo ""
+done

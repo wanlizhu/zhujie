@@ -1,18 +1,27 @@
 #!/bin/bash
-DVS_DOWNLOAD=""
+function download() {
+    if [ "$1" = "" ]; then
+        return 1
+    fi
+
+    CL="$1"
+    URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
+
+    axel -n30 $URL -o /tmp/NVIDIA-DVS-$CL.run && (
+        ln -s -f "/tmp/NVIDIA-DVS-$CL.run" "/tmp/LAST-DOWNLOAD"
+    )
+}
 
 while [ -n "$1" ]; do
     case "$1" in
         help)
             echo "USAGE: dvsbuild [help] [download CL]"
-            echo "    help: show this message"
-            echo "    download CL: download driver with CL applied"
             exit 0
         ;;
 
         download)
             shift
-            DVS_DOWNLOAD="$1"
+            download $1
         ;;
         
         *)
@@ -23,6 +32,3 @@ while [ -n "$1" ]; do
     shift
 done
 
-if [ ! -z "DVS_DOWNLOAD" ]; then
-    echo "TODO"
-fi
