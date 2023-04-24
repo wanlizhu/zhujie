@@ -216,7 +216,7 @@ function nvidia-nvmake() {
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; 
     )
 
-    echo "NVIDIA NVMAKE: TIME COST: $(expr $SECONDS / 60) MINS]"
+    echo "NVIDIA NVMAKE: TIME COST: [$(expr $SECONDS / 60) MINS]"
     echo ""
 
     rm -rf "$NVBUILD_LOCK"
@@ -314,8 +314,8 @@ for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
             if [ "$MODULE" = "" ]; then
-                nvidia-nvmake amd64 $BUILD_TYPE dist &&
-                nvidia-nvmake x86   $BUILD_TYPE dist &&
+                nvidia-nvmake amd64 $BUILD_TYPE dist
+                nvidia-nvmake x86   $BUILD_TYPE dist
                 nvidia-nvmake amd64 $BUILD_TYPE ppp
             else
                 nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
