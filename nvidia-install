@@ -47,16 +47,17 @@ function dist-install() {
 
 function module-install() {
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "USAGE: module-install [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
+        echo "USAGE: module-install [MODULE] [ARCH] [BUILD_TYPE]" > /dev/stderr
         return 1
     fi
 
-    ARCH="$1"
-    BUILD_TYPE="$2"
-    MODULE="$3"
+    MODULE="$1"
+    ARCH="$2"
+    BUILD_TYPE="$3"
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
     VERSION=$(nvidia-source-version)
 
+    echo "NVIDIA INSTALL: $MODULE $ARCH $BUILD_TYPE"
     case "$MODULE" in
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
@@ -76,3 +77,32 @@ function module-install() {
         ;;
     esac 
 }
+
+if [ "$1" = "" ]; then
+    echo "USAGE 1: nvidia-install <MODULE> <ARCH> <BUILD_TYPE>"
+    echo "USAGE 2: nvidia-install <INSTALLER_PATH>"
+    exit 1
+fi
+
+while [ -n "$1" ]; do
+    case "$1" in
+        opengl)
+            shift
+            ARCH="$1"
+            shift
+            BUILD_TYPE="$1"
+
+            module-install opengl "$ARCH" "$BUILD_TYPE"
+        ;;
+
+        *)
+            if [ -f "$1" ]; then
+                dist-install "$1"
+            else
+                echo "ERROR: INSTALLER IS MISSING: $1" > /dev/stderr
+                return 1
+            fi
+        ;;
+    esac
+    shift
+done
