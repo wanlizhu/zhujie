@@ -313,9 +313,9 @@ fi
 for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
-            if [ "$MODULE" = "" ]; then
-                nvidia-nvmake amd64 $BUILD_TYPE dist
-                nvidia-nvmake x86   $BUILD_TYPE dist
+            if [ "$MODULE" = "ppp" ]; then
+                nvidia-nvmake amd64 $BUILD_TYPE dist &&
+                nvidia-nvmake x86   $BUILD_TYPE dist &&
                 nvidia-nvmake amd64 $BUILD_TYPE ppp
             else
                 nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
