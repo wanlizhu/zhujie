@@ -234,23 +234,15 @@ function nvidia-nvmake() {
 ## MAIN FUNC
 #############
 
-ARCHS="amd64"
-BUILD_TYPES="release"
-MODULES="dist"
+ARCHS=""
+BUILD_TYPES=""
+MODULES=""
 
 while [ -n "$1" ]; do
     case "$1" in
         help)
             echo "USAGE: nvidia-build [help] [ARCH] [BUILD_TYPE] [ppp] [sweep] [--backup] [--install]"
             exit 0
-        ;;
-
-        amd64)
-            echo "" > /dev/null
-        ;;
-
-        x86)
-            ARCHS="$ARCHS x86"
         ;;
 
         --backup)
@@ -261,8 +253,16 @@ while [ -n "$1" ]; do
             NVFLAG_INSTALL=1
         ;;
 
+        amd64)
+            ARCHS="$ARCHS amd64"
+        ;;
+
+        x86)
+            ARCHS="$ARCHS x86"
+        ;;
+
         release)
-            echo "" > /dev/null
+            BUILD_TYPES="$BUILD_TYPES release"
         ;;
 
         debug) 
@@ -274,19 +274,19 @@ while [ -n "$1" ]; do
         ;;
 
         dist)
-            echo "" > /dev/null
+            MODULES="dist"
         ;;
 
         sweep)
-            MODULES="$MODULES sweep"
+            MODULES="sweep"
         ;;
 
         ppp)
-            MODULES="$MODULES ppp"
+            MODULES="ppp"
         ;;
 
         opengl)
-            MODULES="$MODULES opengl"
+            MODULES="opengl"
         ;;
     
         *)
@@ -298,10 +298,28 @@ while [ -n "$1" ]; do
     shift
 done
 
+if [ -z "$ARCHS" ]; then
+    ARCHS="amd64"
+fi
+
+if [ -z "$BUILD_TYPES" ]; then
+    BUILD_TYPES="release"
+fi
+
+if [ -z "$MODULES" ]; then
+    MODULES="dist"
+fi
+
 for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
-            nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
+            if [ "$MODULE" = "" ]; then
+                nvidia-nvmake amd64 $BUILD_TYPE dist &&
+                nvidia-nvmake x86   $BUILD_TYPE dist &&
+                nvidia-nvmake amd64 $BUILD_TYPE ppp
+            else
+                nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
+            fi
         done 
     done
 done
