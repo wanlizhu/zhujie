@@ -96,11 +96,11 @@ while [ -n "$1" ]; do
         ;;
 
         *)
-            if [ -f "$1" ]; then
+            if [ -f "$1" -o -L "$1" ]; then
                 dist-install "$1"
             else
                 echo "ERROR: INSTALLER IS MISSING: $1" > /dev/stderr
-                return 1
+                exit 1
             fi
         ;;
     esac
