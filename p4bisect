@@ -15,7 +15,7 @@ case "$MODULE" in
         FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
     ;;
     *)
-        echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED YET" > /dev/stderr
+        echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED" > /dev/stderr
         exit 1
     ;;
 esac

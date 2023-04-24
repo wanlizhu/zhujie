@@ -1,9 +1,9 @@
 #!/bin/bash
 NVSRC="$HOME/NVIDIA/SRC_ON_P4"
 NVBRANCH="sw/dev/gpu_drv/dev_a"
-NVBUILD_LOCK=/tmp/NVIDIA-BUILD.LOCK
+NVBUILD_LOCK=/tmp/NVBUILD_LOCK
 NVBUILD_OUT="$HOME/NVIDIA-BUILD"
-NVBUILD_SO_FILES="$NVBUILD_OUT/NVIDIA_SO_FILES"
+NVBUILD_SO_FILES="$NVBUILD_OUT/NVBUILD_SO_FILES"
 NVFLAG_BACKUP=0
 NVFLAG_INSTALL=0
 
@@ -61,21 +61,6 @@ function nvidia-install() {
 
     echo "NVIDIA INSTALL: $1" 
     case "$MODULE" in
-        drivers|dist)
-            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
-            SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
-            FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
-            #NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
-            SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
-            DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
-            
-            who am i > /dev/null && (
-                sudo systemctl isolate multi-user
-                sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
-                sudo systemctl isolate graphical
-            ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
-        ;;
-
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
             OUTDIR="$NVSRC/$NVBRANCH/drivers/OpenGL/_out/$FOLDER"
@@ -89,8 +74,18 @@ function nvidia-install() {
         ;;
 
         *)
-            echo "ERROR: TO INSTALL MODULE $1 IS NOT SUPPORTED YET" > /dev/stderr
-            return 1
+            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
+            SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+            FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
+            #NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
+            SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
+            DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
+            
+            who am i > /dev/null && (
+                sudo systemctl isolate multi-user
+                sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
+                sudo systemctl isolate graphical
+            ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
         ;;
     esac 
 }
@@ -130,6 +125,7 @@ function nvidia-nvmake() {
     MODULE="$3"
     IS_PPP=0
     CWD_BACKUP="`pwd`"
+    mkdir -p "$HOME/NVIDIA-BUILD"
 
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
         echo "USAGE: nvidia-nvmake [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
@@ -152,13 +148,13 @@ function nvidia-nvmake() {
     fi
 
     case "$MODULE" in
-        drivers|dist)
-            MODULE="drivers dist"
-            cd "$NVSRC/$NVBRANCH"
-        ;;
-
         sweep)
             MODULE="sweep"
+            cd "$NVSRC/$NVBRANCH"
+        ;;
+        
+        drivers|dist)
+            MODULE="drivers dist"
             cd "$NVSRC/$NVBRANCH"
         ;;
 
@@ -169,12 +165,12 @@ function nvidia-nvmake() {
         ;;
 
         opengl)
-            MODULE=""
+            MODULE="opengl"
             cd "$NVSRC/$NVBRANCH/drivers/OpenGL"
         ;;
 
         *)
-            echo "ERROR: TO BUILD MODULE \"$1\" IS NOT SUPPORTED YET" > /dev/stderr
+            echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED" > /dev/stderr
             return 1
         ;;
     esac
@@ -314,8 +310,11 @@ for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
             if [ "$MODULE" = "ppp" ]; then
+                BACKUP=$NVFLAG_INSTALL
+                NVFLAG_INSTALL=0
                 nvidia-nvmake amd64 $BUILD_TYPE dist &&
                 nvidia-nvmake x86   $BUILD_TYPE dist &&
+                NVFLAG_INSTALL=$BACKUP
                 nvidia-nvmake amd64 $BUILD_TYPE ppp
             else
                 nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
