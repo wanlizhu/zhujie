@@ -16,17 +16,18 @@ function nvidia-backup() {
         return
     fi
 
-    if [ "$1" = "" -o "$2" = "" ]; then
-        echo "USAGE: nvidia-backup [ARCH] [BUILD_TYPE]" > /dev/stderr
+    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+        echo "USAGE: nvidia-backup [ARCH] [BUILD_TYPE] [IS_PPP:BOOL]" > /dev/stderr
         return 1
     fi
 
     ARCH="$1"
     BUILD_TYPE="$2"
+    IS_PPP="$3"
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
     VERSION=$(nvidia-source-version)
     ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
-    SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
+    SUFFIX=$([ "$IS_PPP" = "1" ] && echo "" || echo "-internal")
     FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
     SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
     DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
@@ -127,6 +128,7 @@ function nvidia-nvmake() {
     ARCH="$1"
     BUILD_TYPE="$2"
     MODULE="$3"
+    IS_PPP=0
     CWD_BACKUP="`pwd`"
 
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
@@ -162,11 +164,12 @@ function nvidia-nvmake() {
 
         ppp)
             MODULE="post-process-packages dist"
+            IS_PPP=1
             cd "$NVSRC/$NVBRANCH"
         ;;
 
         opengl)
-            MODULE_NAME=""
+            MODULE=""
             cd "$NVSRC/$NVBRANCH/drivers/OpenGL"
         ;;
 
@@ -210,7 +213,7 @@ function nvidia-nvmake() {
     $MODULE \
     1> "$STDOUT_FILE" \
     2> "$STDERR_FILE" && (
-        nvidia-backup  $ARCH $BUILD_TYPE
+        nvidia-backup  $ARCH $BUILD_TYPE $IS_PPP
         nvidia-install $ARCH $BUILD_TYPE $MODULE
     ) || (
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE"; 
