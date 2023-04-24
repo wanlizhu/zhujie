@@ -27,10 +27,11 @@ function nvidia-backup() {
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
     VERSION=$(nvidia-source-version)
     ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
-    SUFFIX=$([ "$IS_PPP" = "1" ] && echo "-32compat" || echo "-internal")
+    SUFFIX=$([ "$IS_PPP" = "1" ] && echo "" || echo "-internal")
+    NICKNAME=$([ "$IS_PPP" = "1" ] && echo "-32compat" || echo "")
     FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
     SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
-    DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
+    DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     
     if [ ! -d "$NVBUILD_OUT" ]; then
         mkdir -p "$NVBUILD_OUT"
