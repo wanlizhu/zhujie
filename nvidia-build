@@ -131,7 +131,6 @@ function nvidia-nvmake() {
     1> "$STDOUT_FILE" \
     2> "$STDERR_FILE" && (
         nvidia-backup  $ARCH $BUILD_TYPE $IS_PPP
-        nvidia-install $ARCH $BUILD_TYPE $MODULE
     ) || (
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE";
         ERRORCODE=1 
