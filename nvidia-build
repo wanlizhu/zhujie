@@ -1,14 +1,12 @@
 #!/bin/bash
-NVSRC="$HOME/NVIDIA/SRC_ON_P4"
 NVBRANCH="sw/dev/gpu_drv/dev_a"
 NVBUILD_LOCK=/tmp/NVBUILD_LOCK
 NVBUILD_OUT="$HOME/NVIDIA-BUILD"
 NVBUILD_SO_FILES="$NVBUILD_OUT/NVBUILD_SO_FILES"
 NVFLAG_BACKUP=0
-NVFLAG_INSTALL=0
 
 function nvidia-source-version() {
-    echo `grep '^#define NV_VERSION_STRING' $NVSRC/$NVBRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
+    echo `grep '^#define NV_VERSION_STRING' $P4ROOT/$NVBRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
 }
 
 function nvidia-backup() {
@@ -30,7 +28,7 @@ function nvidia-backup() {
     SUFFIX=$([ "$IS_PPP" = "1" ] && echo "" || echo "-internal")
     NICKNAME=$([ "$IS_PPP" = "1" ] && echo "-32compat" || echo "")
     FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
-    SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
+    SRC_FILE="$P4ROOT/$NVBRANCH/_out/$FOLDER/$FILENAME"
     DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     
     if [ ! -d "$NVBUILD_OUT" ]; then
@@ -41,84 +39,8 @@ function nvidia-backup() {
         echo "NVIDIA BACKUP: NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     ) 
     
-    ln -s -f "$DST_FILE" "$NVBUILD_OUT/LAST-BUILD"
+    ln -s -f "$DST_FILE" "$NVBUILD_OUT/LAST_BUILD"
 }
-
-function nvidia-install() {
-    if [ "$NVFLAG_INSTALL" != "1" ]; then
-        return
-    fi
-
-    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "USAGE: nvidia-install [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
-        return 1
-    fi
-
-    ARCH="$1"
-    BUILD_TYPE="$2"
-    MODULE="$3"
-    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
-    VERSION=$(nvidia-source-version)
-
-    echo "NVIDIA INSTALL: $1" 
-    case "$MODULE" in
-        opengl)
-            FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
-            OUTDIR="$NVSRC/$NVBRANCH/drivers/OpenGL/_out/$FOLDER"
-            FILENAME="libnvidia-glcore.so"
-            VERSION=$(nvidia-source-version)
-            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
-            TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$FILENAME.$VERSION"
-            
-            sudo cp -f "$OUTDIR/$FILENAME" "$TARGETNAME"
-            echo "==> $TARGETNAME"
-        ;;
-
-        *)
-            ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
-            SUFFIX=$([ "$NVBLD_PPP" = "1" ] && echo "" || echo "-internal")
-            FILENAME="NVIDIA-Linux-$ARCHNAME-$VERSION$SUFFIX.run"
-            #NICKNAME=$([ ! -z "$NVBLD_NICKNAME" ] && echo "-$NVBLD_NICKNAME" || echo "")
-            SRC_FILE="$NVSRC/$NVBRANCH/_out/$FOLDER/$FILENAME"
-            DST_FILE="$NVBUILD_OUT/NVIDIA-$FOLDER-$VERSION$SUFFIX.run"
-            
-            who am i > /dev/null && (
-                sudo systemctl isolate multi-user
-                sudo $HOME/NVIDIA-BUILD/LATEST-BUILD.RUN -sb
-                sudo systemctl isolate graphical
-            ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
-        ;;
-    esac 
-}
-
-# function nvidia-sofiles() {
-#     if [ "$NVBLD_SWEEP" = "1" ]; then
-#         return
-#     fi
-# 
-#     if [ ! -f "$NVBUILD_LOCK" ]; then
-#         echo "ERROR: FILE $NVBUILD_LOCK IS MISSING" > /dev/stderr
-#         return 1
-#     fi
-# 
-#     mkdir -p "$NVBUILD_OUT"
-#     find "`pwd`" -type f -newer "$NVBUILD_LOCK" \( -name "*.so" -o -name "*.so.*" \) > "$NVBUILD_SO_FILES" || (
-#         echo "ERROR: FAILED TO FIND NVIDIA SO FILES"
-#     )
-#     
-#     echo "NVIDIA SO FILES: [$(wc -l < $NVBUILD_SO_FILES) GENERATED]"
-#     
-#     # echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
-#     # 
-#     # head -9 "$NVBLD_MODULES_FILE" |
-#     # while read LINE; do
-#     #     echo $LINE
-#     # done
-#     # 
-#     # if [ $(wc -l < $NVBLD_MODULES_FILE) -gt 9 ]; then
-#     #     echo "..."
-#     # fi
-# }
 
 function nvidia-nvmake() {
     ARCH="$1"
@@ -138,8 +60,8 @@ function nvidia-nvmake() {
         return 1
     fi
 
-    if [ -z "$NVSRC" ]; then
-        echo "ERROR: NVSRC IS NOT DEFINED" > /dev/stderr
+    if [ -z "$P4ROOT" ]; then
+        echo "ERROR: P4ROOT IS NOT DEFINED" > /dev/stderr
         return 1
     fi
 
@@ -151,23 +73,23 @@ function nvidia-nvmake() {
     case "$MODULE" in
         sweep)
             MODULE="sweep"
-            cd "$NVSRC/$NVBRANCH"
+            cd "$P4ROOT/$NVBRANCH"
         ;;
         
         drivers|dist)
             MODULE="drivers dist"
-            cd "$NVSRC/$NVBRANCH"
+            cd "$P4ROOT/$NVBRANCH"
         ;;
 
         ppp)
             MODULE="post-process-packages dist"
             IS_PPP=1
-            cd "$NVSRC/$NVBRANCH"
+            cd "$P4ROOT/$NVBRANCH"
         ;;
 
         opengl)
             MODULE="opengl"
-            cd "$NVSRC/$NVBRANCH/drivers/OpenGL"
+            cd "$P4ROOT/$NVBRANCH/drivers/OpenGL"
         ;;
 
         *)
@@ -183,7 +105,7 @@ function nvidia-nvmake() {
     echo "NVIDIA NVMAKE: linux $ARCH $BUILD_TYPE $MODULE"
     echo "`date +%s`" > "$NVBUILD_LOCK"
 
-    if [ "$(stat -c '%U' $NVSRC/sw/misc/linux/unix-build)" != "root" ]; then
+    if [ "$(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build)" != "root" ]; then
         UNIX_BUILD_ARGS=" --unshare-namespaces"
     else
         UNIX_BUILD_ARGS=""
@@ -191,9 +113,9 @@ function nvidia-nvmake() {
 
     ERRORCODE=0
     ionice -c2 nice \
-    $NVSRC/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
-    --tools "$NVSRC/sw/tools" \
-    --devrel "$NVSRC/sw/devrel/SDK/inc/GL" \
+    $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
+    --tools "$P4ROOT/sw/tools" \
+    --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
     nvmake \
     NV_COLOR_OUTPUT=1 \
     NV_COMPRESS_THREADS=16 \
@@ -248,10 +170,6 @@ while [ -n "$1" ]; do
 
         -b|--backup)
             NVFLAG_BACKUP=1
-        ;;
-
-        -i|--install)
-            NVFLAG_INSTALL=1
         ;;
 
         amd64)
@@ -315,13 +233,9 @@ for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
             if [ "$MODULE" = "ppp" ]; then
-                BACKUP=$NVFLAG_INSTALL
-                NVFLAG_INSTALL=0
                 nvidia-nvmake amd64 $BUILD_TYPE dist &&
-                nvidia-nvmake x86   $BUILD_TYPE dist && (
-                    NVFLAG_INSTALL=$BACKUP
-                    nvidia-nvmake amd64 $BUILD_TYPE ppp
-                )
+                nvidia-nvmake x86   $BUILD_TYPE dist &&
+                nvidia-nvmake amd64 $BUILD_TYPE ppp
             else
                 nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
             fi
