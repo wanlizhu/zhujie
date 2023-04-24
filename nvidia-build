@@ -245,11 +245,11 @@ while [ -n "$1" ]; do
             exit 0
         ;;
 
-        --backup)
+        -b|--backup)
             NVFLAG_BACKUP=1
         ;;
 
-        --install)
+        -i|--install)
             NVFLAG_INSTALL=1
         ;;
 
