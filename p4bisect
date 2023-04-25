@@ -37,7 +37,7 @@ while [ $LINE_COUNT -gt 2 ]; do
 
     ANSWERED=0
     while [ "$ANSWERED" = "0" ]; do
-        read -p "==> DOWNLOAD DVS BUILD? (Y/N): " ANS_DOWNLOAD
+        read -p "    DOWNLOAD DVS BUILD? (Y/N): " ANS_DOWNLOAD
         case "$ANS_DOWNLOAD" in
             y|Y|1)
                 ANSWERED=1
@@ -48,7 +48,7 @@ while [ $LINE_COUNT -gt 2 ]; do
 
     ANSWERED=0
     while [ "$ANSWERED" = "0" ]; do
-        read -p "==> IS THIS CHANGE NEW? (Y/N): " ANS_NEW 
+        read -p "    IS THIS CHANGE NEW? (Y/N): " ANS_NEW 
         case "$ANS_NEW" in
             y|Y|1)
                 ANSWERED=1

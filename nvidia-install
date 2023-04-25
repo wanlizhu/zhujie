@@ -1,35 +1,6 @@
 #!/bin/bash
 NVBRANCH="sw/dev/gpu_drv/dev_a"
 
-# function nvidia-sofiles() {
-#     if [ "$NVBLD_SWEEP" = "1" ]; then
-#         return
-#     fi
-# 
-#     if [ ! -f "$NVBUILD_LOCK" ]; then
-#         echo "ERROR: FILE $NVBUILD_LOCK IS MISSING" > /dev/stderr
-#         return 1
-#     fi
-# 
-#     mkdir -p "$NVBUILD_OUT"
-#     find "`pwd`" -type f -newer "$NVBUILD_LOCK" \( -name "*.so" -o -name "*.so.*" \) > "$NVBUILD_SO_FILES" || (
-#         echo "ERROR: FAILED TO FIND NVIDIA SO FILES"
-#     )
-#     
-#     echo "NVIDIA SO FILES: [$(wc -l < $NVBUILD_SO_FILES) GENERATED]"
-#     
-#     # echo "[$(wc -l < $NVBLD_MODULES_FILE) FILES FOUND]"
-#     # 
-#     # head -9 "$NVBLD_MODULES_FILE" |
-#     # while read LINE; do
-#     #     echo $LINE
-#     # done
-#     # 
-#     # if [ $(wc -l < $NVBLD_MODULES_FILE) -gt 9 ]; then
-#     #     echo "..."
-#     # fi
-# }
-
 function dist-install() {
     INSTALLER=$([ "$1" = "" ] && echo "$HOME/NVIDIA-BUILD/LAST_BUILD" || echo "$1")
     if [ ! -f "$INSTALLER" ]; then
@@ -68,7 +39,7 @@ function module-install() {
             TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$FILENAME.$VERSION"
             
             sudo cp -f "$OUTDIR/$FILENAME" "$TARGETNAME"
-            echo "==> $TARGETNAME"
+            echo "UPDATED: $TARGETNAME"
         ;;
 
         *)

@@ -1,0 +1,72 @@
+#!/bin/bash
+NVBRANCH="sw/dev/gpu_drv/dev_a"
+
+function libs-list() {
+    FLAG_ALL=0
+    FILTER=""
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            opengl)
+                FOLDER="$P4ROOT/$NVBRANCH/drivers/OpenGL"
+            ;;
+            
+            -a|--all)
+                FLAG_ALL=1
+            ;;
+            
+            -f|--filter)
+                shift
+                FILTER="$1"
+            ;;
+            
+            *)
+                if [ ! -d "$FOLDER" ]; then
+                    echo "ERROR: FOLDER IS MISSING: $FOLDER" > /dev/stderr
+                    return 1
+                fi
+            ;;
+        esac
+        shift
+    done
+    
+    if [ -z "$FOLDER" ]; then
+        FOLDER="$P4ROOT/$NVBRANCH"
+    fi
+    
+    find "$FOLDER" -type f -name "*.so" > "/tmp/LIBS_LIST" && (
+        echo "[$(wc -l < "/tmp/LIBS_LIST") SO FILES FOUND]"
+        
+        if [ "$FLAG_ALL" = "1" ]; then
+            cp -f "/tmp/LIBS_LIST" "/tmp/LIBS_LIST_FINAL"
+        else
+            head -5 "/tmp/LIBS_LIST" |
+            while read LINE; do
+                echo "$LINE" >> "/tmp/LIBS_LIST_FINAL"
+            done
+            if [ $(wc -l < "/tmp/LIBS_LIST") -gt 5 ]; then
+                echo "..." >> "/tmp/LIBS_LIST_FINAL"
+            fi
+        fi
+        
+        while read LINE; do
+            if [ "$LINE" = "..." ]; then
+                echo "..."
+            else
+                if [ ! -z "$FILTER" ]; then
+                    if [[ $LINE == *"$FILTER"* ]]; then
+                        echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
+                    fi
+                else
+                    echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
+                fi
+            fi
+        done < "/tmp/LIBS_LIST_FINAL"
+    ) || (
+        echo "ERROR: FAILED TO FIND NVIDIA LIBS IN $FOLDER"
+        return 1
+    )
+}
+
+libs-list $@
+
