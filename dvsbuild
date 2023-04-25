@@ -22,7 +22,7 @@ function download() {
 
     URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
 
-    axel -n30 -q $URL -o /tmp/NVIDIA-DVS-$CL.run && (
+    wget $URL -O /tmp/NVIDIA-DVS-$CL.run && (
         ln -s -f "/tmp/NVIDIA-DVS-$CL.run" "/tmp/LAST_DOWNLOAD"
         if [ "$INSTALL" = "1" ]; then
             nvidia-install "/tmp/NVIDIA-DVS-$CL.run"
