@@ -21,14 +21,21 @@ function download() {
     fi
 
     URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
-
-    wget $URL -O /tmp/NVIDIA-DVS-$CL.run && (
-        chmod 777 "/tmp/NVIDIA-DVS-$CL.run" 
-        ln -s -f "/tmp/NVIDIA-DVS-$CL.run" "/tmp/LAST_DOWNLOAD"
-        if [ "$INSTALL" = "1" ]; then
-            nvidia-install "/tmp/NVIDIA-DVS-$CL.run"
-        fi
-    )
+    OUT="/tmp/NVIDIA-DVS-$CL.run"
+    
+    if [ -f "$OUT" ]; then
+        echo "REUSE CACHE: $OUT"
+        chmod 777 "$OUT" 
+    else
+        wget $URL -O "$OUT" && (
+            chmod 777 "$OUT" 
+            ln -s -f "$OUT" "/tmp/LAST_DOWNLOAD"
+        )
+    fi
+    
+    if [ "$INSTALL" = "1" ]; then
+        nvidia-install "$OUT"
+    fi
 }
 
 if [ -z "$1" ]; then
