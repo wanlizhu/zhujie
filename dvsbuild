@@ -30,23 +30,24 @@ function download() {
     )
 }
 
+if [ -z "$1" ]; then
+    echo "USAGE: dvsbuild [download CL [-i]]"
+    exit 1
+fi
+
 while [ -n "$1" ]; do
     case "$1" in
-        help)
-            echo "USAGE: dvsbuild [help] [download CL]"
-            exit 0
-        ;;
-
         download)
             shift
-            download $1
+            download $@
+            exit 0
         ;;
         
         *)
-            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-            dvsbuild help
-        ;;
+        echo "ERROR: UNKNOWN COMMAND: $1" > /dev/stderr
+        exit 1
     esac
     shift
 done
+
 

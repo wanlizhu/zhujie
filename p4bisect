@@ -1,6 +1,7 @@
 #!/bin/bash
 if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
     echo "USAGE: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
+    exit 1
 fi
 
 MODULE="$1"
@@ -28,7 +29,7 @@ while [ $LINE_COUNT -gt 2 ]; do
     LINE=$(sed -n "${LINE_NO}p" $HOME/CHANGES)
     IFS=" " read -ra SEGMENTS <<< "$LINE"
     CL="${SEGMENTS[1]}"
-    DESC=$(p4 describe -s 32755357 | head -n 1)
+    DESC=$(p4 describe -s $CL | head -n 1)
     IFS=" " read -ra SEGMENTS <<< "$DESC"
     DATE="${SEGMENTS[5]}:${SEGMENTS[6]}"
     ANSWERED=0
