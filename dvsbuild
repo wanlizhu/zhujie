@@ -1,14 +1,32 @@
 #!/bin/bash
 function download() {
-    if [ "$1" = "" ]; then
+    INSTALL=0
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            -i|--install)
+                INSTALL=1
+            ;;
+            
+            [0-9]*)
+                CL="$1"
+            ;;
+        esac
+        shift
+    done
+    
+    if [ "$CL" = "" ]; then
+        echo "ERROR: CHANGELIST NUMBER IS MISSING" > /dev/stderr
         return 1
     fi
 
-    CL="$1"
     URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
 
     axel -n30 -q $URL -o /tmp/NVIDIA-DVS-$CL.run && (
         ln -s -f "/tmp/NVIDIA-DVS-$CL.run" "/tmp/LAST_DOWNLOAD"
+        if [ "$INSTALL" = "1" ]; then
+            nvidia-install "/tmp/NVIDIA-DVS-$CL.run"
+        fi
     )
 }
 
