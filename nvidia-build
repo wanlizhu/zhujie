@@ -72,6 +72,8 @@ function nvidia-nvmake() {
 
     case "$MODULE" in
         sweep)
+            ARCH=""
+            BUILD_TYPE=""
             MODULE="sweep"
             cd "$P4ROOT/$NVBRANCH"
         ;;
@@ -106,7 +108,7 @@ function nvidia-nvmake() {
     echo "`date +%s`" > "$NVBUILD_LOCK"
 
     if [ "$(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build)" != "root" ]; then
-        UNIX_BUILD_ARGS=" --unshare-namespaces"
+        UNIX_BUILD_ARGS="--unshare-namespaces"
     else
         UNIX_BUILD_ARGS=""
     fi
