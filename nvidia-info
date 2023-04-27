@@ -11,10 +11,6 @@ function libs-list() {
                 FOLDER="$P4ROOT/$NVBRANCH/drivers/OpenGL"
             ;;
             
-            -a|--all)
-                FLAG_ALL=1
-            ;;
-            
             -f|--filter)
                 shift
                 FILTER="$1"
@@ -34,34 +30,17 @@ function libs-list() {
         FOLDER="$P4ROOT/$NVBRANCH"
     fi
     
+    echo "" > /tmp/LIBS_LIST
     find "$FOLDER" -type f -name "*.so" > "/tmp/LIBS_LIST" && (
-        echo "[$(wc -l < "/tmp/LIBS_LIST") SO FILES FOUND]"
-        
-        if [ "$FLAG_ALL" = "1" ]; then
-            cp -f "/tmp/LIBS_LIST" "/tmp/LIBS_LIST_FINAL"
-        else
-            head -5 "/tmp/LIBS_LIST" |
-            while read LINE; do
-                echo "$LINE" >> "/tmp/LIBS_LIST_FINAL"
-            done
-            if [ $(wc -l < "/tmp/LIBS_LIST") -gt 5 ]; then
-                echo "..." >> "/tmp/LIBS_LIST_FINAL"
-            fi
-        fi
-        
         while read LINE; do
-            if [ "$LINE" = "..." ]; then
-                echo "..."
-            else
-                if [ ! -z "$FILTER" ]; then
-                    if [[ $LINE == *"$FILTER"* ]]; then
-                        echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
-                    fi
-                else
+            if [ ! -z "$FILTER" ]; then
+                if [[ $LINE == *"$FILTER"* ]]; then
                     echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
                 fi
+            else
+                echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
             fi
-        done < "/tmp/LIBS_LIST_FINAL"
+        done < "/tmp/LIBS_LIST"
     ) || (
         echo "ERROR: FAILED TO FIND NVIDIA LIBS IN $FOLDER"
         return 1

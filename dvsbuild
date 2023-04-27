@@ -1,5 +1,10 @@
 #!/bin/bash
+DVSBUILD_DOWNLOADS="$HOME/NVIDIA/DVSBUILD_DOWNLOADS"
+mkdir -p "$DVSBUILD_DOWNLOADS"
+
 function download() {
+    URL=""
+    OUT=""
     INSTALL=0
     
     while [ -n "$1" ]; do
@@ -8,20 +13,42 @@ function download() {
                 INSTALL=1
             ;;
             
-            [0-9]*)
+            dev_a)
+                shift
                 CL="$1"
+                URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$CL.run"
+                echo "DOWNLOADING: $OUT"
+            ;;
+            
+            release)
+                shift
+                ID="$1"
+                SUFFIX=""
+                URL_PATCH=""
+                if [[ $ID == *":dev"* ]]; then
+                    ID="${ID%:*}"
+                    SUFFIX=":dev"
+                fi
+                if [ "$SUFFIX" = ":dev" ]; then
+                    URL_PATCH="/develop"
+                fi
+                URL="http://linuxqa/builds/release/display/x86_64$URL_PATCH/$ID/NVIDIA-Linux-x86_64-$ID.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-RELEASE-$ID$SUFFIX.run"
+                echo "DOWNLOADING: $OUT"
+            ;;
+            
+            [0-9]*)
+                
             ;;
         esac
         shift
     done
     
-    if [ "$CL" = "" ]; then
-        echo "ERROR: CHANGELIST NUMBER IS MISSING" > /dev/stderr
-        return 1
+    if [ "$URL" = "" -o "$OUT" = "" ]; then
+        dvsbuild # Show usage
+        exit 1
     fi
-
-    URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
-    OUT="/tmp/NVIDIA-DVS-$CL.run"
     
     if [ -f "$OUT" ]; then
         echo "REUSE CACHE: $OUT"
@@ -29,7 +56,9 @@ function download() {
     else
         wget $URL -O "$OUT" && (
             chmod 777 "$OUT" 
-            ln -s -f "$OUT" "/tmp/LAST_DOWNLOAD"
+            ln -s -f "$OUT" "$DVSBUILD_DOWNLOADS/LAST_DOWNLOAD"
+        ) || (
+            INSTALL=0
         )
     fi
     
@@ -38,8 +67,13 @@ function download() {
     fi
 }
 
+## MAIN
+
 if [ -z "$1" ]; then
-    echo "USAGE: dvsbuild [download CL [-i]]"
+    echo "USAGE: dvsbuild [download [dev_a CL] [release ID[:dev]] [-i]]"
+    echo "  e.g. dvsbuild download dev_a CL"
+    echo "  e.g. dvsbuild download release ID"
+    echo "  e.g. dvsbuild download release ID:dev"
     exit 1
 fi
 

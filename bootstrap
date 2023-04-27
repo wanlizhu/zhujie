@@ -1,7 +1,0 @@
-#!/bin/bash
-echo "BEGIN: $HOME/NVIDIA/BIN/boostrap"
-
-# Log in NVIDIA VPN
-vpn-connect --detach
-
-echo "END: $HOME/NVIDIA/BIN/boostrap"

@@ -23,7 +23,8 @@ function devenv-init() {
     sudo apt install gh -y # Use `gh auth login` to store GitHub credential locally
     sudo git config --global user.email wanlizhu@hotmail.com
     sudo git config --global user.name "Wanli Zhu"
-
+    # gh auth login
+    
     # Tools
     sudo apt install openssh-server -y
     sudo apt install build-essential -y
@@ -39,11 +40,28 @@ function devenv-init() {
     sudo apt install screen -y
     sudo apt install mailutils -y
     
-    # Git Auth
-    gh auth login
-    
     # Run sudo without password
     sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
+    
+    # Mesa
+    python3 -m pip install mako
+    sudo python3 -m pip install mako
+    sudo apt install -y llvm wayland-protocols libwayland-egl-backend-dev libxcb-glx0 libxcb-glx0-dev libxcb-shm0 libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 libxcb-dri2-0 libxcb-dri2-0-dev libxcb-dri3-0 libxcb-dri3-dev libxcb-present-dev libxcb-present0 librust-wayland-scanner-dev wayland-scanner++ libvdpau-dev libomxil-bellagio-dev libva-dev libdrm-dev libxext-dev libxfixes-dev libxshmfence-dev libxxf86vm-dev libxrandr-dev
+
+    # P4V
+    sudo apt install -y libxkbcommon-x11-dev   
+    
+    # Steam
+    python3 -m pip install steamctl
+    
+    # Simu mouse and key actions
+    sudo apt install -y xdotool
+    
+    # CPolar
+    curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
+    cpolar authtoken NjgyZGY0N2UtY2Q0NS00NjExLWJmMTItNDU2OTNkNmY3YWQ5
+    sudo systemctl enable cpolar
+    sudo systemctl start cpolar
 }
 
 function user-cancel() {
@@ -83,18 +101,16 @@ function devenv-push() {
     popd > /dev/null
 }
 
-function devenv-zerotier-join() {
-    curl -s https://install.zerotier.com | sudo bash
-    sudo systemctl enable zerotier-one.service
-    sudo zerotier-cli join db64858fed3b37c1
-}
+# function devenv-zerotier-join() {
+#     curl -s https://install.zerotier.com | sudo bash
+#     sudo systemctl enable zerotier-one.service
+#     sudo zerotier-cli join db64858fed3b37c1
+# }
 
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "USAGE: devenv [help] [init] [pull] [push] [zerotier] [ssh-keys]"
-            echo "    help: show this message"
-            echo "    init: initialize devenv"
+            echo "USAGE: devenv [help] [init] [pull] [push]"
             exit 0
         ;;
     
@@ -110,8 +126,8 @@ while [ -n "$1" ]; do
             devenv-push
         ;;
         
-        zerotier)
-            devenv-zerotier-join
+        autostart)
+            devenv-autostart
         ;;
         
         *)

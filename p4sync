@@ -1,0 +1,14 @@
+#!/bin/bash
+if [ "$1" = "" -o "$2" = "" ]; then
+    echo "USAGE: p4sync <MODULE> <CL>"
+    exit 1
+fi
+
+case "$1" in
+    dev_a)  MODULE="//sw/dev/gpu_drv/dev_a/..." ;;
+    opengl) MODULE="//sw/dev/gpu_drv/dev_a/drivers/OpenGL/..." ;;
+    *) echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED" > /dev/stderr && exit 1 ;;
+esac
+CL="$2"
+
+p4 sync $MODULE@$CL

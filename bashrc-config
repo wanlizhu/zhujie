@@ -8,6 +8,7 @@ export PIC_V=$HOME/NVIDIA/PIC-V
 export PIC_G=$HOME/NVIDIA/PIC-G
 export NGFX=$HOME/NVIDIA/NSIGHT_GRAPHICS
 export FLAMEGRAPH=$HOME/NVIDIA/FLAMEGRAPH
+export APITRACE=$HOME/NVIDIA/APITRACE
 
 # Perforce
 export P4USER=wanliz
@@ -50,7 +51,7 @@ export IP_ROUTER=""
 export IP_NVIDIA=""
 export IP_ZEROTIER=""
 
-export PATH="$HOME/NVIDIA/BIN:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+export PATH="$HOME/NVIDIA/BIN:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
 
 for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
     if [[ "$IP" =~ ^192\.168\.192\..* ]]; then
@@ -64,7 +65,8 @@ for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
     fi
 done
 
-echo "    ROUTER IP: $IP_ROUTER"
-echo "    NVIDIA IP: $IP_NVIDIA"
-echo " ZERO-TIER IP: $IP_ZEROTIER"
+echo "ROUTER IP: $IP_ROUTER"
+echo "NVIDIA IP: $IP_NVIDIA"
+echo "ZERO-TIER: $IP_ZEROTIER"
+
 
