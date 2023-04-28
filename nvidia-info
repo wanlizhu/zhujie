@@ -1,7 +1,7 @@
 #!/bin/bash
 NVBRANCH="sw/dev/gpu_drv/dev_a"
 
-function libs-list() {
+function nvinfo-libs() {
     FLAG_ALL=0
     FILTER=""
     
@@ -15,23 +15,16 @@ function libs-list() {
                 shift
                 FILTER="$1"
             ;;
-            
-            *)
-                if [ ! -d "$FOLDER" ]; then
-                    echo "ERROR: FOLDER IS MISSING: $FOLDER" > /dev/stderr
-                    return 1
-                fi
-            ;;
         esac
         shift
     done
     
-    if [ -z "$FOLDER" ]; then
+    if [ ! -d "$FOLDER" ]; then
         FOLDER="$P4ROOT/$NVBRANCH"
     fi
     
-    echo "" > /tmp/LIBS_LIST
-    find "$FOLDER" -type f -name "*.so" > "/tmp/LIBS_LIST" && (
+    echo "" > /tmp/nvinfo.libs
+    find "$FOLDER" -type f -name "*.so" > "/tmp/nvinfo.libs" && (
         while read LINE; do
             if [ ! -z "$FILTER" ]; then
                 if [[ $LINE == *"$FILTER"* ]]; then
@@ -40,12 +33,12 @@ function libs-list() {
             else
                 echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
             fi
-        done < "/tmp/LIBS_LIST"
+        done < "/tmp/nvinfo.libs"
     ) || (
-        echo "ERROR: FAILED TO FIND NVIDIA LIBS IN $FOLDER"
+        echo "Error: Failed to find NVIDIA libs in $FOLDER"
         return 1
     )
 }
 
-libs-list $@
+nvinfo-libs $@
 

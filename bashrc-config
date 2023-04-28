@@ -6,9 +6,9 @@ export DISPLAY=:0
 export P4V=$HOME/NVIDIA/P4V
 export PIC_V=$HOME/NVIDIA/PIC-V
 export PIC_G=$HOME/NVIDIA/PIC-G
-export NGFX=$HOME/NVIDIA/NSIGHT_GRAPHICS
-export FLAMEGRAPH=$HOME/NVIDIA/FLAMEGRAPH
-export APITRACE=$HOME/NVIDIA/APITRACE
+export NGFX=$HOME/NVIDIA/Nsight_Graphics
+export FLAMEGRAPH=$HOME/NVIDIA/Flamegraph
+export APITRACE=$HOME/NVIDIA/APITrace
 
 # Perforce
 export P4USER=wanliz
@@ -42,7 +42,7 @@ export STEAM_PASSWORD=nv1d1a3d
 export NVM_GTLAPI_USER=wanliz
 export NVM_GTLAPI_PASSWORD="Xavier#35224047"
 if [ ! -f "$HOME/.gtl_api_key" ]; then
-    cp -f $HOME/NVIDIA/GTL_API_KEY ~/.gtl_api_key
+    cp -f $HOME/NVIDIA/bin/DOC/GTL_API_KEY ~/.gtl_api_key
     chmod 555 ~/.gtl_api_key
 fi
 

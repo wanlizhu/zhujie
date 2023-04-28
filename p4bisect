@@ -1,12 +1,14 @@
 #!/bin/bash
 if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-    echo "USAGE: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
+    echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
     exit 1
 fi
 
 MODULE="$1"
 DATE_OLD="$2"
 DATE_NEW="$3"
+P4BS_OUT="$HOME/NVIDIA-OUT/p4bisect"
+P4BS_CHANGES="$P4BS_OUT/changes-on-$MODULE"
 
 case "$MODULE" in
     dev_a)
@@ -16,29 +18,31 @@ case "$MODULE" in
         FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
     ;;
     *)
-        echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED" > /dev/stderr
+        echo "Error: Module \"$1\" is not supported" > /dev/stderr
         exit 1
     ;;
 esac
 
-p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $HOME/CHANGES
-LINE_COUNT=$(wc -l < $HOME/CHANGES)
+p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$P4BS_CHANGES"
+LINE_COUNT=$(wc -l < "$P4BS_CHANGES")
 
 while [ $LINE_COUNT -gt 2 ]; do
     LINE_NO=$(( $LINE_COUNT/2 ))
-    LINE=$(sed -n "${LINE_NO}p" $HOME/CHANGES)
+    LINE=$(sed -n "${LINE_NO}p" $P4BS_CHANGES)
+
     IFS=" " read -ra SEGMENTS <<< "$LINE"
     CL="${SEGMENTS[1]}"
     DESC=$(p4 describe -s $CL | head -n 1)
+    
     IFS=" " read -ra SEGMENTS <<< "$DESC"
     DATE="${SEGMENTS[5]}:${SEGMENTS[6]}"
     ANSWERED=0
 
-    echo "TESTING CHANGE $CL @$DATE (OUT OF $LINE_COUNT CHANGES):"
+    echo "Testing change $CL @$DATE (out of $LINE_COUNT changes):"
 
     ANSWERED=0
     while [ "$ANSWERED" = "0" ]; do
-        read -p "    DOWNLOAD DVS BUILD? (Y/N): " ANS_DOWNLOAD
+        read -p "    Download DVS build? (Y/n): " ANS_DOWNLOAD
         case "$ANS_DOWNLOAD" in
             y|Y|1)
                 ANSWERED=1
@@ -49,7 +53,7 @@ while [ $LINE_COUNT -gt 2 ]; do
 
     ANSWERED=0
     while [ "$ANSWERED" = "0" ]; do
-        read -p "    IS THIS CHANGE NEW? (Y/N): " ANS_NEW 
+        read -p "    Is this change new? (y/n): " ANS_NEW 
         case "$ANS_NEW" in
             y|Y|1)
                 ANSWERED=1
@@ -62,7 +66,8 @@ while [ $LINE_COUNT -gt 2 ]; do
         esac
     done
 
-    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $HOME/CHANGES
-    LINE_COUNT=$(wc -l < $HOME/CHANGES)
+    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$P4BS_CHANGES"
+    LINE_COUNT=$(wc -l < "$P4BS_CHANGES")
     echo ""
 done
+

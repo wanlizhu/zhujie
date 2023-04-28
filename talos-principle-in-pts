@@ -4,12 +4,12 @@
 
 # Launch steam if it's not currently running
 pgrep -x steam >/dev/null && echo "STEAM IS RUNNING..." || (
-    gnome-terminal -- bash -c "steam || echo \"$(date)\" >> $HOME/FAILED_TO_START_STEAM"
+    gnome-terminal -- bash -c "steam || echo \"$(date)\" >> $HOME/NVIDIA-OUT/FAILED-TO-START-STEAM"
     sleep 15
 )
 
 if ! [[ -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
-    echo "INSTALL Talos Principle IN STEAM'S WINDOW AND TRY AGAIN"
+    echo "Install \"Talos Principle\" in Steam's window and try again"
     exit 1
 fi
 

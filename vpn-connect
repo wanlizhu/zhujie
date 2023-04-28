@@ -26,7 +26,7 @@ if [ -z "$DUOPASSCODE" -a -f "$HOME/DUOPASSCODE" ]; then
 fi
 
 if [ -z "$DUOPASSCODE" ]; then
-    read -p "DUO PASS CODE:" DUOPASSCODE
+    read -p "Input DUO pass code:" DUOPASSCODE
 fi
 
 echo "$FIXEDPASSCODE,$DUOPASSCODE" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL

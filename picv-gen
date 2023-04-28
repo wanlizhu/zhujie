@@ -1,24 +1,30 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "ERROR: PLEASE PROVIDE APPLICATION TO RUN AND CAPTURE" > /dev/stderr
+    echo "Error: Application to capture is missing" > /dev/stderr
+    exit 1
+fi
+
+if [ ! -d "$PIC_V" ]; then
+    echo "Error: PIC_V is missing" > /dev/stderr
     exit 1
 fi
 
 # Launch pic-v if it's not running
-pgrep -x pic-v >/dev/null && echo "PIC-V IS RUNNING..." || (
-    gnome-terminal -- bash -c "cd $HOME/NVIDIA/PIC-V && ./pic-v || read -p \"PRESS ANY KEY TO CONTINUE...\""
+pgrep -x pic-v >/dev/null && echo "PIC-V is running..." || (
+    gnome-terminal -- bash -c "cd $PIC_V && ./pic-v || read -p \"Press any key to continue...\""
     sleep 3
 )
 
 # Launch game in current terminal 
-cd $HOME/NVIDIA/PIC-V
+cd $PIC_V
 source setup-env.sh
 "$@" && (
     # Launch http server if it's not running
-    ps aux | grep "[p]ython3 -m http.server" && echo "PIC-V HTTP SERVER IS RUNNING..." || (
-        gnome-terminal -- bash -c "cd $HOME/NVIDIA/PIC-V/PerfInspector/output && ./launch-py3-server.sh || read -p \"PRESS ANY KEY TO CONTINUE...\""
+    ps aux | grep "[p]ython3 -m http.server" && echo "PIC-V HTTP server is running..." || (
+        gnome-terminal -- bash -c "cd $PIC_V/PerfInspector/output && ./launch-py3-server.sh || read -p \"Press any key to continue...\""
         sleep 1
     )
     chromium "http://localhost:8000/"
 )
+

@@ -4,18 +4,21 @@ NVBRANCH="sw/dev/gpu_drv/dev_a"
 function dist-install() {
     INSTALLER=$([ "$1" = "" ] && echo "$HOME/NVIDIA-BUILD/LAST_BUILD" || echo "$1")
     if [ ! -f "$INSTALLER" ]; then
-        echo "ERROR: INSTALLER IS MISSING: $INSTALLER" > /dev/stderr
+        echo "Error: Installer is missing: $INSTALLER" > /dev/stderr
         return 1
     fi
 
     sudo chmod +x "$INSTALLER"
 
-    echo "NVIDIA INSTALL: $INSTALLER"
+    echo "Install NVIDIA Drivers: $INSTALLER"
     who am i > /dev/null && (
         sudo systemctl isolate multi-user
         sudo "$INSTALLER" -sb
         sudo systemctl isolate graphical
-    ) || echo "ERROR: YOU CAN ONLY RUN INSTALLER ON SSH" > /dev/stderr 
+    ) || (
+    	echo "Error: You can only run NVIDIA installer through SSH" > /dev/stderr
+        return 1
+    )	
 }
 
 function nvidia-source-version() {
@@ -24,7 +27,7 @@ function nvidia-source-version() {
 
 function nvidia-version-installed() {
     if [ "$1" = "" ]; then
-        echo "USAGE: nvidia-version-installed <ARCH>" > /dev/stderr
+        echo "Usage: nvidia-version-installed <ARCH>" > /dev/stderr
         return 1
     fi
 
@@ -38,14 +41,14 @@ function nvidia-version-installed() {
     if [ -f "/usr/lib/$ARCHNAME-linux-gnu/libnvidia-glvkspirv.so.$VERSION" ]; then
         echo "$VERSION"
     else
-        echo "ERROR: FAILED TO PARSE NVIDIA VERSION INSTALLED: $VERSION" > /dev/stderr
+        echo "Error: Failed to parse NVIDIA version installed: $VERSION" > /dev/stderr
         return 1
     fi
 }
 
 function module-install() {
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "USAGE: module-install [MODULE] [ARCH] [BUILD_TYPE]" > /dev/stderr
+        echo "Usage: module-install [MODULE] [ARCH] [BUILD_TYPE]" > /dev/stderr
         return 1
     fi
 
@@ -55,11 +58,11 @@ function module-install() {
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
 
     if [ "$(nvidia-source-version)" != "$(nvidia-version-installed $ARCH)" ]; then  
-        echo "ERROR: \"SOURCE VERSION [$(nvidia-source-version)]\" != \"INSTALLED VERSION [$(nvidia-version-installed $ARCH)]\"" > /dev/stderr
+        echo "Error: \"Source Version [$(nvidia-source-version)]\" != \"Installed Version [$(nvidia-version-installed $ARCH)]\"" > /dev/stderr
         return 1
     fi
 
-    echo "NVIDIA INSTALL: $MODULE $ARCH $BUILD_TYPE"
+    echo "Install NVIDIA Module: $MODULE $ARCH $BUILD_TYPE"
     case "$MODULE" in
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
@@ -75,15 +78,15 @@ function module-install() {
                 fi
                 sudo cp -f "$OUTDIR/$BASENAME" "$TARGETNAME"
             else
-                echo "ERROR: $TARGETNAME IS MISSING" > /dev/stderr
+                echo "Error: $TARGETNAME is missing" > /dev/stderr
                 return 1
             fi
 
-            echo "BACKUP & UPDATE: $TARGETNAME"
+            echo "Backup & Update: $TARGETNAME"
         ;;
 
         *)
-            echo "ERROR: MODULE \"$MODULE\" IS NOT SUPPORTED" > /dev/stderr
+            echo "Error: Module \"$MODULE\" is not supported" > /dev/stderr
             return 1
         ;;
     esac 
@@ -91,7 +94,7 @@ function module-install() {
 
 function module-revert() {
     if [ "$1" = "" ]; then
-        echo "USAGE: module-revert [ARCH]" > /dev/stderr
+        echo "Usage: module-revert [ARCH]" > /dev/stderr
         return 1
     fi
 
@@ -101,14 +104,15 @@ function module-revert() {
 
     for FILE in `ls $FOLDER/*.backup`; do
         sudo mv -f "$FILE" "${FILE%.*}"
-        echo "REVERTED: ${FILE%.*}"
+        echo "Reverted: ${FILE%.*}"
     done
 }
 
 if [ "$1" = "" ]; then
-    echo "USAGE 1: nvidia-install <INSTALLER_PATH>"
-    echo "USAGE 2: nvidia-install <MODULE> <ARCH> <BUILD_TYPE>"
-    echo "USAGE 3: nvidia-install <-r|--revert> <ARCH>"
+    echo "Usage: nvidia-install [OPTIONS]"
+    echo "  e.g. nvidia-install <INSTALLER_PATH>"
+    echo "  e.g. nvidia-install <MODULE> <ARCH> <BUILD_TYPE>"
+    echo "  e.g. nvidia-install <-r|--revert> <ARCH>"
     exit 1
 fi
 
@@ -131,10 +135,11 @@ while [ -n "$1" ]; do
                 dist-install "$1"
                 break
             else
-                echo "ERROR: INSTALLER IS MISSING: $1" > /dev/stderr
+                echo "Error: NVIDIA installer is missing: $1" > /dev/stderr
                 exit 1
             fi
         ;;
     esac
     shift
 done
+

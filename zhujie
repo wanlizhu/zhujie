@@ -1,8 +1,21 @@
 #!/bin/bash
 NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
 
-function devenv-init() {
-    # GNOME 
+function user-cancel() {
+    echo ""
+    popd > /dev/null
+    exit 0
+}
+
+function nvidia-packages-init() { 
+    # Git
+    sudo apt install git -y
+    sudo apt install gh -y # Use `gh auth login` to store GitHub credential locally
+    sudo git config --global user.email wanlizhu@hotmail.com
+    sudo git config --global user.name "Wanli Zhu"
+    gh auth login
+    
+    # GNOME
     gsettings set org.gnome.desktop.screensaver lock-enabled false
     gsettings set org.gnome.desktop.screensaver lock-delay 0
     gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
@@ -17,13 +30,6 @@ function devenv-init() {
         sudo sh -c "echo -1 > /proc/sys/kernel/perf_event_paranoid"
         sudo echo "kernel.perf_event_paranoid = -1" >> /etc/sysctl.conf
     fi
-
-    # Git
-    sudo apt install git -y
-    sudo apt install gh -y # Use `gh auth login` to store GitHub credential locally
-    sudo git config --global user.email wanlizhu@hotmail.com
-    sudo git config --global user.name "Wanli Zhu"
-    # gh auth login
     
     # Tools
     sudo apt install openssh-server -y
@@ -56,7 +62,12 @@ function devenv-init() {
     
     # Simu mouse and key actions
     sudo apt install -y xdotool
-    
+
+    # Zero Tier
+    curl -s https://install.zerotier.com | sudo bash
+    sudo systemctl enable zerotier-one.service
+    sudo zerotier-cli join db64858fed3b37c1
+
     # CPolar
     curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
     cpolar authtoken NjgyZGY0N2UtY2Q0NS00NjExLWJmMTItNDU2OTNkNmY3YWQ5
@@ -64,35 +75,29 @@ function devenv-init() {
     sudo systemctl start cpolar
 }
 
-function user-cancel() {
-    echo ""
-    popd > /dev/null
-    exit 0
-}
-
-function devenv-pull() {
-    if [ ! -d "$HOME/NVIDIA/BIN" ]; then
-        echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
+function nvidia-bin-pull() {
+    if [ ! -d "$HOME/NVIDIA/bin" ]; then
+        echo "Error: $HOME/NVIDIA/bin is missing"
         exit 1
     fi
     
-    pushd "$HOME/NVIDIA/BIN" > /dev/null
+    pushd "$HOME/NVIDIA/bin" > /dev/null
     git pull $NVIDIA_BIN_URL master
     popd > /dev/null 
 }
 
-function devenv-push() {
-    if [ ! -d "$HOME/NVIDIA/BIN" ]; then
-        echo "ERROR: $HOME/NVIDIA/BIN IS MISSING"
+function nvidia-bin-push() {
+    if [ ! -d "$HOME/NVIDIA/bin" ]; then
+        echo "Error: $HOME/NVIDIA/bin is missing"
         exit 1
     fi
     
-    pushd "$HOME/NVIDIA/BIN" > /dev/null
+    pushd "$HOME/NVIDIA/bin" > /dev/null
     du -sh * | sort -rh
     echo ""
 
     trap user-cancel INT
-    read -r -n 1 -p "PRESS [ENTER] TO CONTINUE OR CTRL-C TO CANCEL: "
+    read -r -n 1 -p "Press [ENTER] to continue or CTRL-C to cancel: "
     echo ""
     
     git add .
@@ -101,38 +106,28 @@ function devenv-push() {
     popd > /dev/null
 }
 
-# function devenv-zerotier-join() {
-#     curl -s https://install.zerotier.com | sudo bash
-#     sudo systemctl enable zerotier-one.service
-#     sudo zerotier-cli join db64858fed3b37c1
-# }
+if [ -z "$1" ]; then
+    echo "Usage: zhujie [init] [pull] [push]"
+    exit 1
+fi
 
 while [ -n "$1" ]; do
     case "$1" in
-        help)
-            echo "USAGE: devenv [help] [init] [pull] [push]"
-            exit 0
-        ;;
-    
         init)
-            devenv-init
+            nvidia-packages-init
         ;;
         
         pull)
-            devenv-pull
+            nvidia-bin-pull
         ;;
         
         push)
-            devenv-push
-        ;;
-        
-        autostart)
-            devenv-autostart
+            nvidia-bin-push
         ;;
         
         *)
-            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-            devenv help
+	    zhujie
+	    exit 1
         ;;
     esac
     shift

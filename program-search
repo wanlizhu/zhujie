@@ -1,4 +1,5 @@
 #!/bin/bash
+
 IFS=":" ELEMENTS=($PATH)
 for ELEMENT in "${ELEMENTS[@]}"; do 
     if [ ! -d "$ELEMENT" ]; then
@@ -11,4 +12,5 @@ for ELEMENT in "${ELEMENTS[@]}"; do
         exit 0
     fi
 done
+
 exit 1

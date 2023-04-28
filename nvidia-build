@@ -1,21 +1,21 @@
 #!/bin/bash
 NVBRANCH="sw/dev/gpu_drv/dev_a"
-NVBUILD_LOCK=/tmp/NVBUILD_LOCK
-NVBUILD_OUT="$HOME/NVIDIA-BUILD"
-NVBUILD_SO_FILES="$NVBUILD_OUT/NVBUILD_SO_FILES"
+NVBUILD_LOCK="/tmp/nvbuild.lock"
+NVBUILD_OUT="$HOME/NVIDIA-OUT/nvidia-build"
+NVBUILD_SO_FILES="$NVBUILD_OUT/nvmake.products"
 NVFLAG_BACKUP=0
 
-function nvidia-source-version() {
+function nvbuild-source-version() {
     echo `grep '^#define NV_VERSION_STRING' $P4ROOT/$NVBRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
 }
 
-function nvidia-backup() {
+function nvbuild-backup() {
     if [ "$NVFLAG_BACKUP" != "1" ]; then
         return
     fi
 
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "USAGE: nvidia-backup [ARCH] [BUILD_TYPE] [IS_PPP:BOOL]" > /dev/stderr
+        echo "Usage: nvbuild-backup [ARCH] [BUILD_TYPE] [IS_PPP:BOOL]" > /dev/stderr
         return 1
     fi
 
@@ -23,7 +23,7 @@ function nvidia-backup() {
     BUILD_TYPE="$2"
     IS_PPP="$3"
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
-    VERSION=$(nvidia-source-version)
+    VERSION=$(nvbuild-source-version)
     ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "$ARCH")
     SUFFIX=$([ "$IS_PPP" = "1" ] && echo "" || echo "-internal")
     NICKNAME=$([ "$IS_PPP" = "1" ] && echo "-32compat" || echo "")
@@ -36,37 +36,37 @@ function nvidia-backup() {
     fi
     
     cp "$SRC_FILE" "$DST_FILE" && (
-        echo "NVIDIA BACKUP: NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
+        echo "Create: NVIDIA-$FOLDER-$VERSION$SUFFIX$NICKNAME.run"
     ) 
     
     ln -s -f "$DST_FILE" "$NVBUILD_OUT/LAST_BUILD"
 }
 
-function nvidia-nvmake() {
+function nvbuild-nvmake() {
     ARCH="$1"
     BUILD_TYPE="$2"
     MODULE="$3"
     IS_PPP=0
     CWD_BACKUP="`pwd`"
-    mkdir -p "$HOME/NVIDIA-BUILD"
+    mkdir -p "$NVBUILD_OUT"
 
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "USAGE: nvidia-nvmake [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
+        echo "Usage: nvbuild-nvmake [ARCH] [BUILD_TYPE] [MODULE]" > /dev/stderr
         return 1
     fi
 
     if [ -f "$NVBUILD_LOCK" ]; then
-        echo "ERROR: FILE $NVBUILD_LOCK EXISTS" > /dev/stderr
+        echo "Error: Lock $NVBUILD_LOCK exist" > /dev/stderr
         return 1
     fi
 
     if [ -z "$P4ROOT" ]; then
-        echo "ERROR: P4ROOT IS NOT DEFINED" > /dev/stderr
+        echo "Error: P4ROOT is missing" > /dev/stderr
         return 1
     fi
 
     if [ -z "$NVBRANCH" ]; then
-        echo "ERROR: NVBRANCH IS NOT DEFINED" > /dev/stderr
+        echo "Error: NVBRANCH is missing" > /dev/stderr
         return 1
     fi
 
@@ -95,16 +95,16 @@ function nvidia-nvmake() {
         ;;
 
         *)
-            echo "ERROR: MODULE \"$1\" IS NOT SUPPORTED" > /dev/stderr
+            echo "Error: Module \"$1\" is not supported" > /dev/stderr
             return 1
         ;;
     esac
 
     SECONDS=0
-    STDOUT_FILE="$NVBUILD_OUT/NVMAKE_STDOUT"
-    STDERR_FILE="$NVBUILD_OUT/NVMAKE_STDERR"
+    STDOUT_FILE="$NVBUILD_OUT/nvmake.stdout"
+    STDERR_FILE="$NVBUILD_OUT/nvmake.stderr"
 
-    echo "NVIDIA NVMAKE: linux $ARCH $BUILD_TYPE $MODULE"
+    echo "NVMake: linux $ARCH $BUILD_TYPE $MODULE"
     echo "`date +%s`" > "$NVBUILD_LOCK"
 
     if [ "$(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build)" != "root" ]; then
@@ -138,7 +138,7 @@ function nvidia-nvmake() {
         ERRORCODE=1 
     )
 
-    echo "NVIDIA NVMAKE: TIME COST: [$(expr $SECONDS / 60) MINS]"
+    echo "NVMake: Time cost: [$(expr $SECONDS / 60) mins]"
     echo ""
 
     rm -rf "$NVBUILD_LOCK"
@@ -147,16 +147,17 @@ function nvidia-nvmake() {
     return $ERRORCODE
 }
 
+## MAIN
 
-
-
-
-
-
-
-#############
-## MAIN FUNC
-#############
+if [ -z "$1" ]; then
+    echo "Usage: nvidia-build [MODULE] [ARCH] [BUILD_TYPE] [ppp|sweep] [-b|--backup]"
+    echo "  e.g. nvidia-build sweep"
+    echo "  e.g. nvidia-build amd64 release -b"
+    echo "  e.g. nvidia-build amd64 release develop -b"
+    echo "  e.g. nvidia-build ppp -b"
+    echo "  e.g. nvidia-build ppp release develop -b"
+    exit 1
+fi
 
 ARCHS=""
 BUILD_TYPES=""
@@ -164,11 +165,6 @@ MODULES=""
 
 while [ -n "$1" ]; do
     case "$1" in
-        help)
-            echo "USAGE: nvidia-build [help] [ARCH] [BUILD_TYPE] [ppp] [sweep] [--backup] [--install]"
-            exit 0
-        ;;
-
         -b|--backup)
             NVFLAG_BACKUP=1
         ;;
@@ -210,8 +206,8 @@ while [ -n "$1" ]; do
         ;;
     
         *)
-            echo "ERROR: UNKNOWN ARGUMENT: $1" > /dev/stderr
-            nvidia-build help
+            echo "Error: Unknown argument: $1" > /dev/stderr
+            nvidia-build
             exit 1
         ;;
     esac
@@ -234,12 +230,13 @@ for ARCH in $ARCHS; do
     for BUILD_TYPE in $BUILD_TYPES; do
         for MODULE in $MODULES; do
             if [ "$MODULE" = "ppp" ]; then
-                nvidia-nvmake amd64 $BUILD_TYPE dist &&
-                nvidia-nvmake x86   $BUILD_TYPE dist &&
-                nvidia-nvmake amd64 $BUILD_TYPE ppp
+                nvbuild-nvmake amd64 $BUILD_TYPE dist &&
+                nvbuild-nvmake x86   $BUILD_TYPE dist &&
+                nvbuild-nvmake amd64 $BUILD_TYPE ppp
             else
-                nvidia-nvmake $ARCH $BUILD_TYPE $MODULE
+                nvbuild-nvmake $ARCH $BUILD_TYPE $MODULE
             fi
         done 
     done
 done
+

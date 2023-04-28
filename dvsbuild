@@ -1,8 +1,8 @@
 #!/bin/bash
-DVSBUILD_DOWNLOADS="$HOME/NVIDIA/DVSBUILD_DOWNLOADS"
+DVSBUILD_DOWNLOADS="$HOME/NVIDIA/DVSBuild-Downloads"
 mkdir -p "$DVSBUILD_DOWNLOADS"
 
-function download() {
+function dvsbuild-download() {
     URL=""
     OUT=""
     INSTALL=0
@@ -18,7 +18,7 @@ function download() {
                 CL="$1"
                 URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
                 OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$CL.run"
-                echo "DOWNLOADING: $OUT"
+                echo "Downloading: $OUT"
             ;;
             
             release)
@@ -35,7 +35,7 @@ function download() {
                 fi
                 URL="http://linuxqa/builds/release/display/x86_64$URL_PATCH/$ID/NVIDIA-Linux-x86_64-$ID.run"
                 OUT="$DVSBUILD_DOWNLOADS/NVIDIA-RELEASE-$ID$SUFFIX.run"
-                echo "DOWNLOADING: $OUT"
+                echo "Downloading: $OUT"
             ;;
             
             [0-9]*)
@@ -51,7 +51,7 @@ function download() {
     fi
     
     if [ -f "$OUT" ]; then
-        echo "REUSE CACHE: $OUT"
+        echo "Reuse cache: $OUT"
         chmod 777 "$OUT" 
     else
         wget $URL -O "$OUT" && (
@@ -70,7 +70,7 @@ function download() {
 ## MAIN
 
 if [ -z "$1" ]; then
-    echo "USAGE: dvsbuild [download [dev_a CL] [release ID[:dev]] [-i]]"
+    echo "Usage: dvsbuild [download [dev_a CL] [release ID[:dev]] [-i]]"
     echo "  e.g. dvsbuild download dev_a CL"
     echo "  e.g. dvsbuild download release ID"
     echo "  e.g. dvsbuild download release ID:dev"
@@ -81,12 +81,13 @@ while [ -n "$1" ]; do
     case "$1" in
         download)
             shift
-            download $@
+            dvsbuild-download $@
             exit 0
         ;;
         
         *)
-        echo "ERROR: UNKNOWN COMMAND: $1" > /dev/stderr
+        echo "Error: Unknown command: $1" > /dev/stderr
+	dvsbuild
         exit 1
     esac
     shift

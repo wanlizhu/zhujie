@@ -18,6 +18,7 @@ if [ ! -e "$HOME/Desktop/OPENGL" ]; then
 fi
 
 # Select the first GNOME window
-which xdotool > /dev/null || sudo apt install -y xdotool
-xdotool mousemove 0 0 click 1
+bash -c "sleep 3;\
+which xdotool > /dev/null || sudo apt install -y xdotool; \
+xdotool mousemove 0 0 click 1" &
 
