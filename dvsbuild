@@ -16,30 +16,33 @@ function dvsbuild-download() {
             dev_a)
                 shift
                 CL="$1"
-                URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_Release_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$CL.run"
+                TYPE="RELEASE"
+                URL_PATCH="Release"
+                URL_PATCH2=""
+                if [[ $CL == *":dbg"* ]]; then
+                    TYPE="DEBUG"
+                    URL_PATCH="Debug"
+                    URL_PATCH2="-internal"
+                fi
+                CL="${CL%:*}"
+                URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${URL_PATCH2}.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$TYPE-$CL.run"
                 echo "Downloading: $OUT"
             ;;
             
             release)
                 shift
                 ID="$1"
-                SUFFIX=""
+                TYPE="RELEASE"
                 URL_PATCH=""
                 if [[ $ID == *":dev"* ]]; then
-                    ID="${ID%:*}"
-                    SUFFIX=":dev"
-                fi
-                if [ "$SUFFIX" = ":dev" ]; then
+                    TYPE="DEVELOP"
                     URL_PATCH="/develop"
                 fi
-                URL="http://linuxqa/builds/release/display/x86_64$URL_PATCH/$ID/NVIDIA-Linux-x86_64-$ID.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-RELEASE-$ID$SUFFIX.run"
+                ID="${ID%:*}"
+                URL="http://linuxqa/builds/release/display/x86_64${URL_PATCH}/$ID/NVIDIA-Linux-x86_64-$ID.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-$TYPE-$ID.run"
                 echo "Downloading: $OUT"
-            ;;
-            
-            [0-9]*)
-                
             ;;
         esac
         shift

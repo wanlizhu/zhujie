@@ -17,15 +17,15 @@ export P4ROOT=$HOME/NVIDIA/SRC_ON_P4
 export P4PORT=p4proxy-zj.nvidia.com:2006
 export P4IGNORE=$HOME/NVIDIA/P4IGNORE
 case $(hostname) in
-    nvidia-desktop-master)
+    nvidia-master)
         export P4CLIENT=nvidia-src-zhujie
     ;;
-    nvidia-laptop)
-        export P4CLIENT=nvidia-src-zhujie-again
+    nvidia-wingman)
+        export P4CLIENT=nvidia-src-zhujie-wingman
     ;;
     *)
         export P4CLIENT=""
-        echo "P4 SRC IS NOT CONFIGURED ON THIS MACHINE"
+        echo "P4 SRC is not configured on $(hostname)"
     ;;
 esac
 if [ ! -f "$P4IGNORE" ]; then
@@ -51,7 +51,7 @@ export IP_ROUTER=""
 export IP_NVIDIA=""
 export IP_ZEROTIER=""
 
-export PATH="$HOME/NVIDIA/BIN:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+export PATH="$HOME/NVIDIA/bin:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
 
 for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
     if [[ "$IP" =~ ^192\.168\.192\..* ]]; then

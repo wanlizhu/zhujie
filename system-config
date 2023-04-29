@@ -1,20 +1,16 @@
 #!/bin/bash
 
 # Set up desktop links
-if [ ! -e "$HOME/Desktop/BIN" ]; then
-    ln -s "$HOME/NVIDIA/BIN" "$HOME/Desktop/BIN"
-fi
-
 if [ ! -e "$HOME/Desktop/MARKDOWN" ]; then
-    ln -s "$HOME/NVIDIA/BIN/DOC/MARKDOWN" "$HOME/Desktop/MARKDOWN"
+    ln -s "$HOME/NVIDIA/bin/DOC/MARKDOWN" "$HOME/Desktop/MARKDOWN"
 fi
 
 if [ ! -e "$HOME/Desktop/DEV_A" ]; then
     ln -s "$P4ROOT/sw/dev/gpu_drv/dev_a" "$HOME/Desktop/DEV_A"
 fi
 
-if [ ! -e "$HOME/Desktop/OPENGL" ]; then
-    ln -s "$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL" "$HOME/Desktop/OPENGL"
+if [ ! -e "$HOME/Desktop/OpenGL" ]; then
+    ln -s "$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL" "$HOME/Desktop/OpenGL"
 fi
 
 # Select the first GNOME window

@@ -3,12 +3,12 @@
 # 2560x1440
 
 # Launch steam if it's not currently running
-pgrep -x steam >/dev/null && echo "STEAM IS RUNNING..." || (
+pgrep -x steam >/dev/null && echo "Steam is running..." || (
     gnome-terminal -- bash -c "steam || echo \"$(date)\" >> $HOME/NVIDIA-OUT/FAILED-TO-START-STEAM"
     sleep 15
 )
 
-if ! [[ -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
+if [ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]; then
     echo "Install \"Talos Principle\" in Steam's window and try again"
     exit 1
 fi
@@ -17,12 +17,11 @@ PRIME_NO_RUN=1
 source prime-run
 PRIME_NO_RUN=""
 
-case "$1" in
-    -d|--direct)
-        ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64/Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-    ;;
-    
-    *)
-        (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
-    ;;
-esac
+if [ -z "$1" ]; then
+    (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
+elif [ "$1" = "-d" -o "$1" = "--direct" ]; then
+    CWD_BACKUP=$(pwd)
+    cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
+    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+    cd "$CWD_BACKUP"
+fi
