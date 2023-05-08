@@ -346,6 +346,7 @@ function install() {
         echo "  e.g. zhujie install <INSTALLER_PATH>"
         echo "  e.g. zhujie install <MODULE> <ARCH> <BUILD_TYPE>"
         echo "  e.g. zhujie install <-r|--revert> <ARCH>"
+        echo "  e.g. zhujie install mesa [version]"
         exit 1
     fi
     
@@ -360,6 +361,16 @@ function install() {
             -r|--revert)
                 shift
                 revert-libs $@
+                break
+            ;;
+            
+            mesa)
+                sudo apt update
+                sudo apt upgrade
+                sudo apt install wget apt-transport-https gnupg2 software-properties-common
+                sudo add-apt-repository ppa:ubuntu-x-swat/updates
+                sudo apt install mesa-utils
+                glxinfo | grep "OpenGL renderer"
                 break
             ;;
     
@@ -492,7 +503,22 @@ function nvidia-version-installed() {
 }
 
 function remove() {
-    echo
+    if [ "$1" = "" ]; then
+        echo "Usage: zhujie remove [OPTIONS]"
+        echo "  e.g. zhujie remove mesa"
+        exit 1
+    fi
+    
+    case "$1" in
+        mesa)
+            sudo apt remove mesa-utils
+        ;;
+        
+        *)
+            echo "Error: can't remove $1" > /dev/stderr
+            exit 1
+        ;;
+    esac
 }
 
 function ddnet() {
