@@ -205,8 +205,12 @@ function nvmake() {
     fi
     
     case "$MODULE" in
-        "*")
+        dev_a)
             MODULE="drivers dist"
+        ;;
+        
+        opengl)
+            echo xxx
         ;;
         
         ppp)
@@ -266,7 +270,7 @@ function nvmake() {
 
 function build() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie build [opengl|sweep|ppp] <ARCHS...> <TYPES...>"
+        echo "Usage: zhujie build [dev_a|opengl|sweep|ppp] <ARCHS...> <TYPES...>"
         exit 1
     fi
     
@@ -318,10 +322,6 @@ function build() {
         esac
         shift
     done
-    
-    if [ -z "$MODULES" ]; then
-        MODULES="*"
-    fi
     
     if [ -z "$ARCHS" ]; then
         ARCHS="amd64"
