@@ -2,7 +2,7 @@
 # System
 export DISPLAY=:0
 export GITLAB_TOKEN="glpat-sSepnfpLAQtyHxRVEo1H"
-export NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
+export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
 export PRIME_RUN="export __NV_PRIME_RENDER_OFFLOAD=1; \
 export __GLX_VENDOR_LIBRARY_NAME=nvidia; \
 export __VK_LAYER_NV_optimus=NVIDIA_only; \
@@ -233,7 +233,7 @@ function pull() {
     fi
     
     pushd "$HOME/NVIDIA/zhujie" > /dev/null
-    git pull $NVIDIA_BIN_URL master
+    git pull $ZHUJIE_URL master
     popd > /dev/null 
 }
 
@@ -253,7 +253,7 @@ function push() {
     
     git add .
     git commit -m "$(date)"
-    git push --set-upstream $NVIDIA_BIN_URL master
+    git push --set-upstream $ZHUJIE_URL master
     popd > /dev/null
 }
 
