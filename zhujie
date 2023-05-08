@@ -7,75 +7,148 @@ function user-cancel() {
     exit 0
 }
 
-function nvidia-packages-init() { 
-    # Git
-    sudo apt install git -y
-    sudo apt install gh -y # Use `gh auth login` to store GitHub credential locally
-    sudo git config --global user.email wanlizhu@hotmail.com
-    sudo git config --global user.name "Wanli Zhu"
-    gh auth login
-    
-    # GNOME
-    gsettings set org.gnome.desktop.screensaver lock-enabled false
-    gsettings set org.gnome.desktop.screensaver lock-delay 0
-    gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
+function ram-size() {
+    echo ""
+}
 
-    # Linux Perf
+function system-name() {
+    echo ""
+}
+
+function xserver-info() {
+    echo ""
+}
+
+function xwindow-info() {
+    echo ""
+}
+
+function cpu-name() {
+    echo ""
+}
+
+function cpu-physical-cores() {
+    echo ""
+}
+
+function cpu-logical-cores() {
+    echo ""
+}
+
+function cpu-prefetch() {
+    echo ""
+}
+
+function gpu-name() {
+    echo ""
+}
+
+function gpu-vram-size() {
+    echo ""
+}
+
+function gpu-driver() {
+    cat /proc/driver/nvidia/version
+}
+
+function opengl-version() {
+    echo ""
+}
+
+function vulkan-version() {
+    echo ""
+}
+
+function monitor-name() {
+    echo ""
+}
+
+function monitor-resolution() {
+    echo ""
+}
+
+function monitor-color-depth() {
+    echo ""
+}
+
+function sysinfo() {
+    echo "         System"
+    echo "==============="
+    echo "       OS Name: $(system-name)"
+    echo "        Kernel: $(uname -r)"
+    echo "      X Server: $(xserver-info)"
+    echo "      X Window: $(xwindow-info)"
+    echo "           CPU: $(cpu-name)"
+    echo "           GPU: $(gpu-name)"
+    echo "           RAM: $(ram-size)"
+    echo ""
+    
+    echo "            CPU"
+    echo "==============="
+    echo "          Name: $(cpu-name)"
+    echo "Physical Cores: $(cpu-physical-cores)"
+    echo " Logical Cores: $(cpu-logical-cores)"
+    echo "      Prefetch: $(cpu-prefetch)"
+    echo ""
+    
+    echo "            GPU"
+    echo "==============="
+    echo "          Name: $(gpu-name)"
+    echo "          VRAM: $(gpu-vram-size)"
+    echo "        Driver: $(gpu-driver)"
+    echo "    OpenGL API: $(opengl-version)"
+    echo "    Vulkan API: $(vulkan-version)"
+    echo "       Monitor: $(monitor-name)"
+    echo "    Resolution: $(monitor-resolution)"
+    echo "   Color Depth: $(monitor-color-depth)"
+    echo ""
+}
+
+function init() { 
+    # Basic tools
+    sudo apt install -y openssh-server build-essential cmake sshfs vim net-tools pkg-config libglvnd-dev python3 openconnect steam libncurses-dev bison flex libssl-dev libelf-dev libxkbcommon-x11-dev screen mailutils xdotool p7zip-full
+    
+    # Basic python tools
+    python3 -m pip install steamctl
+    python3 -m pip install mako
+    
+    # Linux perf tool
     sudo apt install linux-tools-generic -y
     sudo apt install linux-cloud-tools-generic -y
     sudo apt install linux-tools-`uname -r` -y
     sudo apt install linux-cloud-tools-`uname -r` -y
-
     if [ "$(cat /proc/sys/kernel/perf_event_paranoid)" != "-1" ]; then
         sudo sh -c "echo -1 > /proc/sys/kernel/perf_event_paranoid"
         sudo echo "kernel.perf_event_paranoid = -1" >> /etc/sysctl.conf
     fi
     
-    # Tools
-    sudo apt install openssh-server -y
-    sudo apt install build-essential -y
-    sudo apt install cmake -y
-    sudo apt install sshfs -y
-    sudo apt install vim -y
-    sudo apt install net-tools -y
-    sudo apt install pkg-config -y
-    sudo apt install libglvnd-dev -y
-    sudo apt install openconnect -y
-    sudo apt install steam -y
-    sudo apt install libncurses-dev bison flex libssl-dev libelf-dev 
-    sudo apt install screen -y
-    sudo apt install mailutils -y
+    # Requirements of building mesa
+    sudo python3 -m pip install mako
+    sudo apt install -y llvm wayland-protocols libwayland-egl-backend-dev libxcb-glx0 libxcb-glx0-dev libxcb-shm0 libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 libxcb-dri2-0 libxcb-dri2-0-dev libxcb-dri3-0 libxcb-dri3-dev libxcb-present-dev libxcb-present0 librust-wayland-scanner-dev wayland-scanner++ libvdpau-dev libomxil-bellagio-dev libva-dev libdrm-dev libxext-dev libxfixes-dev libxshmfence-dev libxxf86vm-dev libxrandr-dev
     
     # Run sudo without password
     sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
     
-    # Mesa
-    python3 -m pip install mako
-    sudo python3 -m pip install mako
-    sudo apt install -y llvm wayland-protocols libwayland-egl-backend-dev libxcb-glx0 libxcb-glx0-dev libxcb-shm0 libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 libxcb-dri2-0 libxcb-dri2-0-dev libxcb-dri3-0 libxcb-dri3-dev libxcb-present-dev libxcb-present0 librust-wayland-scanner-dev wayland-scanner++ libvdpau-dev libomxil-bellagio-dev libva-dev libdrm-dev libxext-dev libxfixes-dev libxshmfence-dev libxxf86vm-dev libxrandr-dev
-
-    # P4V
-    sudo apt install -y libxkbcommon-x11-dev   
+    if [ "$1" = "-a" ]; then
+        # GNOME
+        gsettings set org.gnome.desktop.screensaver lock-enabled false
+        gsettings set org.gnome.desktop.screensaver lock-delay 0
+        gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
     
-    # Steam
-    python3 -m pip install steamctl
-    
-    # Simu mouse and key actions
-    sudo apt install -y xdotool
+        # Zero Tier
+        curl -s https://install.zerotier.com | sudo bash
+        sudo systemctl enable zerotier-one.service
+        sudo zerotier-cli join db64858fed3b37c1
 
-    # Zero Tier
-    curl -s https://install.zerotier.com | sudo bash
-    sudo systemctl enable zerotier-one.service
-    sudo zerotier-cli join db64858fed3b37c1
-
-    # CPolar
-    curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
-    cpolar authtoken NjgyZGY0N2UtY2Q0NS00NjExLWJmMTItNDU2OTNkNmY3YWQ5
-    sudo systemctl enable cpolar
-    sudo systemctl start cpolar
+        # CPolar
+        curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
+        cpolar authtoken NjgyZGY0N2UtY2Q0NS00NjExLWJmMTItNDU2OTNkNmY3YWQ5
+        sudo systemctl enable cpolar
+        sudo systemctl start cpolar
+    fi
 }
 
-function nvidia-bin-pull() {
+function pull() {
     if [ ! -d "$HOME/NVIDIA/bin" ]; then
         echo "Error: $HOME/NVIDIA/bin is missing"
         exit 1
@@ -86,7 +159,7 @@ function nvidia-bin-pull() {
     popd > /dev/null 
 }
 
-function nvidia-bin-push() {
+function push() {
     if [ ! -d "$HOME/NVIDIA/bin" ]; then
         echo "Error: $HOME/NVIDIA/bin is missing"
         exit 1
@@ -106,28 +179,881 @@ function nvidia-bin-push() {
     popd > /dev/null
 }
 
+function nvmake() {
+    MODULE="$1"
+    ARCH="$2"
+    BUILD_TYPE="$3"
+    
+    if [ -z "$P4ROOT" ]; then
+        echo "Error: P4ROOT is missing" > /dev/stderr
+        exit 1
+    fi
+
+    if [ -z "$NVBRANCH" ]; then
+        echo "Error: NVBRANCH is missing" > /dev/stderr
+        exit 1
+    fi
+    
+    if [ "$(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build)" != "root" ]; then
+        UNIX_BUILD_ARGS="--unshare-namespaces"
+    else
+        UNIX_BUILD_ARGS=""
+    fi
+    
+    if [ "$MODULE" = "*" ]; then
+        MODULE="drivers dist"
+    fi
+    
+    case "$MODULE" in
+        "*")
+            MODULE="drivers dist"
+        ;;
+        
+        ppp)
+            MODULE="post-process-packages dist"
+        ;;
+        
+        sweep)
+            ionice -c2 nice \
+            $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
+            --tools "$P4ROOT/sw/tools" \
+            --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
+            nvmake sweep
+            return 0
+        ;;
+        
+        *)
+            echo "Error: module $MODULE is not supported" > /dev/stderr
+            exit 1
+        ;;
+    esac
+        
+    
+    echo "NVMake: linux $MODULE $ARCH $BUILD_TYPE"
+    mkdir -p "$HOME/NVIDIA/OUT/"
+    
+    ERRORCODE=0
+    SECONDS=0
+    ionice -c2 nice \
+    $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
+    --tools "$P4ROOT/sw/tools" \
+    --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
+    nvmake \
+    NV_COLOR_OUTPUT=1 \
+    NV_COMPRESS_THREADS=16 \
+    NV_FAST_PACKAGE_COMPRESSION=1 \
+    NV_EXCLUDE_BUILD_MODULES="" \
+    NV_KEEP_UNSTRIPPED_BINARIES=1 \
+    NV_GUARDWORD=0 \
+    -j16 \
+    linux \
+    $ARCH \
+    $BUILD_TYPE \
+    $MODULE \
+    1> "$HOME/NVIDIA/OUT/nvmake.stdout.log" \
+    2> "$HOME/NVIDIA/OUT/nvmake.stderr.log" && (
+        echo xxx
+    ) || (
+        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE";
+        ERRORCODE=1 
+    )
+
+    echo "NVMake: Time cost: [$(expr $SECONDS / 60) mins]"
+    echo ""
+
+    return $ERRORCODE
+}
+
+function build() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie build [opengl|sweep|ppp] <ARCHS...> <TYPES...>"
+        exit 1
+    fi
+    
+    ARCHS=""
+    BUILD_TYPES=""
+    MODULES=""
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            amd64)
+                ARCHS="$ARCHS amd64"
+            ;;
+
+            x86)
+                ARCHS="$ARCHS x86"
+            ;;
+
+            release)
+                BUILD_TYPES="$BUILD_TYPES release"
+            ;;
+
+            debug) 
+                BUILD_TYPES="$BUILD_TYPES debug"
+            ;;
+
+            develop)
+                BUILD_TYPES="$BUILD_TYPES develop"
+            ;;
+
+            sweep)
+                nvmake sweep * *
+                return 0
+            ;;
+
+            ppp)
+                nvmake ppp * *
+                return 0
+            ;;
+            
+            opengl)
+                MODULES="$MODULES opengl"
+            ;;
+    
+            *)
+                echo "Error: Unknown argument: $1" > /dev/stderr
+                nvidia-build
+                exit 1
+            ;;
+        esac
+        shift
+    done
+    
+    if [ -z "$MODULES" ]; then
+        MODULES="*"
+    fi
+    
+    if [ -z "$ARCHS" ]; then
+        ARCHS="amd64"
+    fi
+
+    if [ -z "$BUILD_TYPES" ]; then
+        BUILD_TYPES="release"
+    fi
+    
+    for MODULE in $MODULES; do
+        for ARCH in $ARCHS; do
+            for BUILD_TYPE in $BUILD_TYPES; do
+                nvmake "$MODULE" "$ARCH" "$BUILD_TYPE"
+            done
+        done
+    done    
+}
+
+function install() {
+    if [ "$1" = "" ]; then
+        echo "Usage: zhujie install [OPTIONS]"
+        echo "  e.g. zhujie install <INSTALLER_PATH>"
+        echo "  e.g. zhujie install <MODULE> <ARCH> <BUILD_TYPE>"
+        echo "  e.g. zhujie install <-r|--revert> <ARCH>"
+        exit 1
+    fi
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            opengl)
+                shift
+                update-libs opengl $@
+                break
+            ;;
+
+            -r|--revert)
+                shift
+                revert-libs $@
+                break
+            ;;
+    
+            *)
+                if [ -f "$1" -o -L "$1" ]; then
+                    run-installer "$1"
+                    break
+                else
+                    echo "Error: NVIDIA installer is missing: $1" > /dev/stderr
+                    exit 1
+                fi
+            ;;
+        esac
+        shift
+    done
+}
+
+function run-installer() {
+    if [ "$1" = "" ]; then
+        echo "Usage: zhujie install <INSTALLER_PATH>" > /dev/stderr
+        exit 1
+    fi
+    
+    INSTALLER="$1"
+    if [ ! -f "$INSTALLER" ]; then
+        echo "Error: Installer is missing: $INSTALLER" > /dev/stderr
+        exit 1
+    fi
+
+    sudo chmod +x "$INSTALLER"
+
+    echo "Install NVIDIA Drivers: $INSTALLER"
+    who am i > /dev/null && (
+        sudo systemctl isolate multi-user
+        sudo "$INSTALLER" -sb
+        sudo systemctl isolate graphical
+    ) || (
+    	echo "Error: You can only run NVIDIA installer remotely through SSH" > /dev/stderr
+        exit 1
+    )	
+}
+
+function revert-libs() {
+    if [ "$1" = "" ]; then
+        echo "Usage: zhujie install <-r|--revert> <ARCH>" > /dev/stderr
+        exit 1
+    fi
+
+    ARCH="$1" && shift
+    ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+    FOLDER="/usr/lib/$ARCHNAME-linux-gnu"
+
+    for FILE in `ls $FOLDER/*.backup`; do
+        sudo mv -f "$FILE" "${FILE%.*}"
+        echo "Reverted: ${FILE%.*}"
+    done
+}
+
+function update-libs() {
+    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+        echo "Usage: zhujie install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
+        return 1
+    fi
+
+    MODULE="$1" && shift
+    ARCH="$1" && shift
+    BUILD_TYPE="$1" && shift 
+    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
+
+    if [ "$(nvidia-source-version)" != "$(nvidia-version-installed $ARCH)" ]; then  
+        echo "Error: \"Source Version [$(nvidia-source-version)]\" != \"Installed Version [$(nvidia-version-installed $ARCH)]\"" > /dev/stderr
+        exit 1
+    fi
+
+    echo "Install NVIDIA Module: $MODULE $ARCH $BUILD_TYPE"
+    case "$MODULE" in
+        opengl)
+            FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
+            OUTDIR="$P4ROOT/$NVBRANCH/drivers/OpenGL/_out/$FOLDER"
+            BASENAMES="libnvidia-glcore.so"
+            for BASENAME in $BASENAMES; do
+                VERSION=$(nvidia-source-version)
+                ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+                TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$BASENAME.$VERSION"
+            
+                if [ -f "$TARGETNAME" -o -L "$TARGETNAME" ]; then
+                    if [ ! -f "$TARGETNAME.backup" ]; then
+                        sudo mv "$TARGETNAME" "$TARGETNAME.backup"
+                    fi
+                    sudo cp -f "$OUTDIR/$BASENAME" "$TARGETNAME"
+                else
+                    echo "Error: $TARGETNAME is missing" > /dev/stderr
+                    exit 1
+                fi
+
+                echo "Backup & Update: $TARGETNAME"
+            done
+        ;;
+
+        *)
+            echo "Error: Module \"$MODULE\" is not supported" > /dev/stderr
+            return 1
+        ;;
+    esac 
+}
+
+function nvidia-source-version() {
+    echo `grep '^#define NV_VERSION_STRING' $P4ROOT/$NVBRANCH/drivers/common/inc/nvUnixVersion.h  | awk '{print $3}' | sed 's/"//g'`
+}
+
+function nvidia-version-installed() {
+    if [ "$1" = "" ]; then
+        echo "Usage: nvidia-version-installed <ARCH>" > /dev/stderr
+        return 1
+    fi
+
+    ARCH="$1"
+    ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+    SOFILE=$(ls /usr/lib/$ARCHNAME-linux-gnu/libnvidia-glcore.so* | head -n 1)
+    POS=$([ "$ARCH" = "amd64" ] && echo "46" || echo "44")
+    LEN=$(( ${#SOFILE} - POS ))
+    VERSION="${SOFILE:$POS:$LEN}"
+
+    if [ -f "/usr/lib/$ARCHNAME-linux-gnu/libnvidia-glvkspirv.so.$VERSION" ]; then
+        echo "$VERSION"
+    else
+        echo "Error: Failed to parse NVIDIA version installed: $VERSION" > /dev/stderr
+        return 1
+    fi
+}
+
+function remove() {
+    echo
+}
+
+function ddnet() {
+    # 2560x1440
+    # Fullscreen
+    # Vulkan
+    # Default
+    # RaiNyMore2 -- GPU-intensive 
+
+    PRIME_NO_RUN=1
+    source prime-run
+    PRIME_NO_RUN=""
+
+    (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
+}
+
+function talos() {
+    # Vulkan
+    # 2560x1440
+
+    # Launch steam if it's not currently running
+    pgrep -x steam >/dev/null && echo "Steam is running..." || (
+        gnome-terminal -- bash -c "steam || echo \"$(date)\" >> $HOME/NVIDIA-OUT/FAILED-TO-START-STEAM"
+        sleep 15
+    )
+
+    if [ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]; then
+        echo "Install \"Talos Principle\" in Steam's window and try again"
+        exit 1
+    fi
+
+    PRIME_NO_RUN=1
+    source prime-run
+    PRIME_NO_RUN=""
+
+    if [ -z "$1" ]; then
+        (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
+    elif [ "$1" = "-d" -o "$1" = "--direct" ]; then
+        CWD_BACKUP=$(pwd)
+        cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
+        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+        cd "$CWD_BACKUP"
+    fi
+}
+
+function driver() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie driver [dev_a CL] [release_id[:dev]] [-i]"
+        echo "  e.g. zhujie driver dev_a CL"
+        echo "  e.g. zhujie driver release_id"
+        echo "  e.g. zhujie driver release_id:dev"
+        exit 1
+    fi
+
+    URL=""
+    OUT=""
+    INSTALL=0
+    DVSBUILD_DOWNLOADS="$HOME/NVIDIA/OUT/Drivers"
+    mkdir -p "$DVSBUILD_DOWNLOADS"
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            -i|--install)
+                INSTALL=1
+            ;;
+            
+            dev_a)
+                shift
+                CL="$1"
+                TYPE="RELEASE"
+                URL_PATCH="Release"
+                URL_PATCH2=""
+                if [[ $CL == *":dbg"* ]]; then
+                    TYPE="DEBUG"
+                    URL_PATCH="Debug"
+                    URL_PATCH2="-internal"
+                fi
+                CL="${CL%:*}"
+                URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${URL_PATCH2}.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$TYPE-$CL.run"
+                echo "Downloading: $OUT"
+            ;;
+            
+            release)
+                shift
+                ID="$1"
+                TYPE="RELEASE"
+                URL_PATCH=""
+                if [[ $ID == *":dev"* ]]; then
+                    TYPE="DEVELOP"
+                    URL_PATCH="/develop"
+                fi
+                ID="${ID%:*}"
+                URL="http://linuxqa/builds/release/display/x86_64${URL_PATCH}/$ID/NVIDIA-Linux-x86_64-$ID.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-$TYPE-$ID.run"
+                echo "Downloading: $OUT"
+            ;;
+        esac
+        shift
+    done
+    
+    if [ "$URL" = "" -o "$OUT" = "" ]; then
+        driver
+        exit 1
+    fi
+    
+    if [ -f "$OUT" ]; then
+        echo "Reuse cache: $OUT"
+        chmod 777 "$OUT" 
+    else
+        wget $URL -O "$OUT" && (
+            chmod 777 "$OUT" 
+        ) || (
+            INSTALL=0
+        )
+    fi
+    
+    if [ "$INSTALL" = "1" ]; then
+        install "$OUT"
+    fi
+}
+
+function flamegraph() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie flamegraph [--pid PID] [--sleep SEC]"
+        echo "    --pid PID: record callstacks of PID only (default is system-wide recording)"
+        echo "    --sleep SEC: record for SEC seconds"
+        exit 1
+    fi
+    
+    TIMESTAMP=$(date +%s)
+    OUT="$HOME/NVIDIA/OUT/flamegraph"
+    SVG_FILE="$OUT/perf-$TIMESTAMP.svg"
+    PERF_DATA="$OUT/perf-$TIMESTAMP.data"
+    PERF_RECORD_SYSTEM_WIDE=1
+    PERF_RECORD_PID=" -a "
+    PERF_RECORD_SECONDS=10
+    PERF_RECORD_ARGS=" -F 100 -g --call-graph dwarf "
+    SUDO="sudo"
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            --pid)
+                shift
+                PERF_RECORD_SYSTEM_WIDE=0
+                PERF_RECORD_PID=" --pid=$1 "
+                SUDO=""
+            ;;
+
+            --sleep)
+                shift
+                PERF_RECORD_SECONDS=$1
+            ;;
+
+            *)
+	            flamegraph
+	            exit 1
+            ;;
+        esac
+        shift
+    done
+    
+    if [ ! -d "$FLAMEGRAPH" ]; then
+        echo "Error: Flamegraph path is missing" > /dev/stderr
+        exit 1
+    fi
+    
+    if [ ! -f "$PERF_DATA" ]; then
+        echo "Run perf record:"
+        echo "   Output: $PERF_DATA"
+        echo "    Sleep: $PERF_RECORD_SECONDS SECONDS"
+        echo "      PID: $([[ $PERF_RECORD_SYSTEM_WIDE -ne 0 ]] && echo \"[SYSTEM WIDE]\" || echo \"$PERF_RECORD_PID\")"
+        echo "    Other: $PERF_RECORD_ARGS"
+        echo ""
+
+        mkdir -p "$OUT"
+        $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
+
+        if [ ! -z "$SUDO" ]; then
+            sudo  chmod 777 "$PERF_DATA"
+        fi
+    fi
+    
+    if [ ! -f "$PERF_DATA" ]; then
+        echo "Error: Perf data file is missing: $PERF_DATA" > /dev/stderr
+        exit 1
+    fi
+    
+    echo "Generate flamegraph SVG (Zoom and Search):"
+    echo "Perf data: $PERF_DATA"
+    echo " SVG file: $SVG_FILE"
+    echo ""
+    BASENAME=$(basename -- "$PERF_DATA")
+    
+    perf script \
+        --input="$PERF_DATA" \
+        1> "/tmp/$BASENAME.perf" \
+        2> "/tmp/$BASENAME.perf.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf" ]; then
+        cat "/tmp/$BASENAME.perf.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/stackcollapse-perf.pl" \
+        "/tmp/$BASENAME.perf" \
+        1> "/tmp/$BASENAME.perf.folded" \
+        2> "/tmp/$BASENAME.perf.folded.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf.folded" ]; then
+        cat "/tmp/$BASENAME.perf.folded.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/stackcollapse-recursive.pl" \
+       "/tmp/$BASENAME.perf.folded" \
+       1> "/tmp/$BASENAME.perf.folded.recursive" \
+       2> "/tmp/$BASENAME.perf.folded.recursive.error"
+    
+    if [ ! -f "/tmp/$BASENAME.perf.folded.recursive" ]; then
+        cat "/tmp/$BASENAME.perf.folded.recursive.error"
+        exit 1
+    fi
+    
+    "$FLAMEGRAPH/flamegraph.pl" \
+       "/tmp/$BASENAME.perf.folded.recursive" \
+       > "$SVG_FILE" || (
+           echo "Error: Failed to generate SVG file" > /dev/stderr
+       )
+}
+
+function fuji() {
+    while [ -n "$1" ]; do
+        case "$1" in
+            rename)
+                shift
+                fuji-rename "$@"
+                break
+            ;;
+            
+            sync)
+                shift
+                fuji-sync "$@"
+                break
+            ;;
+
+            *)
+                echo "Usage: zhujie fuji [rename ...] [sync]"
+	            exit 1
+            ;;
+        esac
+        shift
+    done
+}
+
+function fuji-rename() {
+    FOLDER="$1"
+    OLDSTR="$2"
+    NEWSTR="$3"
+
+    IFS=$'\n'
+    for FILE in `find "$FOLDER" -type f -name "$OLDSTR*" -printf '%p\n'`; do
+        NEWFILE=`echo "$FILE" | sed "s/\(.\{4\}\)\([0-9]\{4\}\)\.\(.*\)/$NEWSTR\2.\3/g"`
+        if [ -f "$NEWFILE" ]; then
+            echo "Error: file exist: $NEWFILE" > /dev/stderr
+            exit 1
+        fi
+        
+        mv "$FILE" "$NEWFILE"
+        echo "Renamed: `basename \"$FILE\"` ==> `basename \"$NEWFILE\"`"
+    done
+    IFS=
+}
+
+function fuji-sync() {
+    echo ""    
+}
+
+function nvlibs() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie nvlibs [opengl] [-f|--filter]"
+        exit 1
+    fi
+    
+    NVBRANCH="sw/dev/gpu_drv/dev_a"
+    FLAG_ALL=0
+    FILTER=""
+    
+    while [ -n "$1" ]; do
+        case "$1" in
+            opengl)
+                FOLDER="$P4ROOT/$NVBRANCH/drivers/OpenGL"
+            ;;
+            
+            -f|--filter)
+                shift
+                FILTER="$1"
+            ;;
+            
+            *)
+                nvlibs
+                exit 1
+            ;;
+        esac
+        shift
+    done
+    
+    if [ ! -d "$FOLDER" ]; then
+        FOLDER="$P4ROOT/$NVBRANCH"
+    fi
+    
+    echo "" > /tmp/nvinfo.libs
+    find "$FOLDER" -type f -name "*.so" > "/tmp/nvinfo.libs" && (
+        while read LINE; do
+            if [ ! -z "$FILTER" ]; then
+                if [[ $LINE == *"$FILTER"* ]]; then
+                    echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
+                fi
+            else
+                echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
+            fi
+        done < "/tmp/nvinfo.libs"
+    ) || (
+        echo "Error: Failed to find NVIDIA libs in $FOLDER"
+        return 1
+    )
+}
+
+function p4bisect() {
+    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+        echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
+        exit 1
+    fi
+    
+    MODULE="$1"
+    DATE_OLD="$2"
+    DATE_NEW="$3"
+    OUT="$HOME/NVIDIA/OUT/p4bisect"
+    CHANGES="$_OUT/changes-on-$MODULE"
+
+    case "$MODULE" in
+        dev_a)
+            FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a"
+        ;;
+        opengl)
+            FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
+        ;;
+        *)
+            echo "Error: Module \"$1\" is not supported" > /dev/stderr
+            exit 1
+        ;;
+    esac 
+    
+    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$CHANGES"
+    LINE_COUNT=$(wc -l < "$CHANGES")
+   
+    while [ $LINE_COUNT -gt 2 ]; do
+        LINE_NO=$(( $LINE_COUNT/2 ))
+        LINE=$(sed -n "${LINE_NO}p" $CHANGES)
+
+        IFS=" " read -ra SEGMENTS <<< "$LINE"
+        CL="${SEGMENTS[1]}"
+        DESC=$(p4 describe -s $CL | head -n 1)
+    
+        IFS=" " read -ra SEGMENTS <<< "$DESC"
+        DATE="${SEGMENTS[5]}:${SEGMENTS[6]}"
+        ANSWERED=0
+
+        echo "Testing change $CL @$DATE (out of $LINE_COUNT changes):"
+
+        ANSWERED=0
+        while [ "$ANSWERED" = "0" ]; do
+            read -p "    Download from DVS build? (Y/n): " ANS_DOWNLOAD
+            case "$ANS_DOWNLOAD" in
+                y|Y|1)
+                    ANSWERED=1
+                    driver $CL 
+                ;;
+                n|N|0)
+                    ANSWERED=1
+                ;;
+            esac
+        done
+
+        ANSWERED=0
+        while [ "$ANSWERED" = "0" ]; do
+            read -p "    Is this change new? (y/n): " ANS_NEW 
+            case "$ANS_NEW" in
+                y|Y|1)
+                    ANSWERED=1
+                    DATE_NEW="$DATE"
+                ;;
+                n|N|0)
+                    ANSWERED=1
+                    DATE_OLD="$DATE"
+                ;;
+            esac
+        done
+
+        p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$CHANGES"
+        LINE_COUNT=$(wc -l < "$CHANGES")
+        echo ""
+    done
+}
+
+function pic-v() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie pic-v [APP]"
+        exit 1
+    fi
+
+    if [ ! -d "$PIC_V" ]; then
+        echo "Error: PIC_V is missing" > /dev/stderr
+        exit 1
+    fi
+
+    # Launch pic-v if it's not running
+    pgrep -x pic-v >/dev/null && echo "PIC-V is running..." || (
+        gnome-terminal -- bash -c "cd $PIC_V && ./pic-v || read -p \"Press any key to continue...\""
+        sleep 3
+    )
+
+    # Launch game in current terminal 
+    cd $PIC_V
+    source setup-env.sh
+    "$@" && (
+        # Launch http server if it's not running
+        ps aux | grep "[p]ython3 -m http.server" && echo "PIC-V HTTP server is running..." || (
+            gnome-terminal -- bash -c "cd $PIC_V/PerfInspector/output && ./launch-py3-server.sh || read -p \"Press any key to continue...\""
+            sleep 1
+        )
+    
+        URL="http://localhost:8000/"
+        which firefox && firefox $URL || ( 
+            which chromium && chromium $URL || echo "Open http://localhost:8000/ in your browser" 
+        )
+    )
+}
+
+function vpn() {
+    VPNURL="https://ngvpn32.vpn.nvidia.com:8443"
+    AUTHGROUP="--authgroup Employee"
+    USERNAME="-u wanliz"
+    CODE1="Xavier#35224047"
+    CODE2="$1"
+    
+    if [ -z "$CODE2" ]; then
+        read -p "DUO pass code:" CODE2
+    fi
+    
+    echo "$CODE1,$CODE2" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
+}
+
+
+
+
+
+
+
+
 if [ -z "$1" ]; then
-    echo "Usage: zhujie [init] [pull] [push]"
+    echo "Usage: zhujie [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [find-in-path ...]"
     exit 1
 fi
 
 while [ -n "$1" ]; do
     case "$1" in
         init)
-            nvidia-packages-init
+            shift
+            init "$@"
+            break
         ;;
         
         pull)
-            nvidia-bin-pull
+            pull
+            break
         ;;
         
         push)
-            nvidia-bin-push
+            push
+            break
+        ;;
+        
+        build)
+            shift
+            build "$@"
+            break
+        ;;
+        
+        install)
+            shift
+            install "$@"  
+            break
+        ;;
+        
+        remove)
+            shift
+            remove "$@"
+            break
+        ;;
+        
+        ddnet)
+            pts-ddnet    
+            break
+        ;;
+        
+        talos)
+            pts-talos
+            break
+        ;;
+        
+        driver)
+            shift
+            driver-download "$@"
+            break
+        ;;
+        
+        framegraph)
+            shift
+            flamegraph "$@"
+            break
+        ;;
+        
+        fuji)
+            shift
+            fuji "$@"
+            break
+        ;;
+        
+        sysinfo)
+            sysinfo
+            break
+        ;;
+        
+        nvlibs)
+            shift
+            nvlibs "$@"
+            break
+        ;;
+        
+        p4bisect)
+            shift
+            p4bisect "$@"
+            break
+        ;;
+        
+        pic-v)
+            shift
+            pic-v "$@"
+            break
+        ;;
+        
+        vpn)
+            shift
+            vpn "$@"
+            break
         ;;
         
         *)
-	    zhujie
-	    exit 1
+	        zhujie
+	        exit 1
         ;;
     esac
     shift

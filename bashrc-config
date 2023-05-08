@@ -25,7 +25,7 @@ case $(hostname) in
     ;;
     *)
         export P4CLIENT=""
-        echo "P4 SRC is not configured on $(hostname)"
+        echo "P4 SRC is not configured for $(hostname)"
     ;;
 esac
 if [ ! -f "$P4IGNORE" ]; then
