@@ -1,6 +1,83 @@
 #!/bin/bash
-NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
+# System
+export DISPLAY=:0
+export NVIDIA_BIN_URL="https://github.com/wanlizhu/NVIDIA_BIN.git"
+export PRIME_RUN="export __NV_PRIME_RENDER_OFFLOAD=1; \
+export __GLX_VENDOR_LIBRARY_NAME=nvidia; \
+export __VK_LAYER_NV_optimus=NVIDIA_only; \
+export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json;\
+if [ ! -f '$VK_ICD_FILENAMES' ]; then \
+    export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json; \
+fi"
 
+# NVIDIA tools
+export P4V=$HOME/NVIDIA/P4V
+export PIC_V=$HOME/NVIDIA/PIC-V
+export PIC_G=$HOME/NVIDIA/PIC-G
+export NGFX=$HOME/NVIDIA/Nsight_Graphics
+export FLAMEGRAPH=$HOME/NVIDIA/Flamegraph
+export APITRACE=$HOME/NVIDIA/APITrace
+
+# Perforce
+export P4USER=wanliz
+export P4PASSWD="Xavier#35224047"
+export P4ROOT=$HOME/NVIDIA/SRC_ON_P4
+export P4PORT=p4proxy-zj.nvidia.com:2006
+export P4IGNORE=$HOME/NVIDIA/P4IGNORE
+case $(hostname) in
+    nvidia-master)
+        export P4CLIENT=nvidia-src-zhujie
+    ;;
+    nvidia-wingman)
+        export P4CLIENT=nvidia-src-zhujie-wingman
+    ;;
+    *)
+        export P4CLIENT=""
+        echo "P4 SRC is not configured for $(hostname)"
+    ;;
+esac
+if [ ! -f "$P4IGNORE" ]; then
+    echo "_out/" >> "$P4IGNORE"
+    echo ".git/" >> "$P4IGNORE" 
+    echo ".gitignore" >> "$P4IGNORE"
+fi
+
+# NVIDIA Steam account
+export STEAM_USER=nvidialinuxteam
+export STEAM_PASSWORD=nv1d1a3d
+
+# GTL
+export NVM_GTLAPI_USER=wanliz
+export NVM_GTLAPI_PASSWORD="Xavier#35224047"
+if [ ! -f "$HOME/.gtl_api_key" ]; then
+    cp -f $HOME/NVIDIA/bin/DOC/GTL_API_KEY ~/.gtl_api_key
+    chmod 555 ~/.gtl_api_key
+fi
+
+# IP
+export IP_ROUTER=""
+export IP_NVIDIA=""
+export IP_ZEROTIER=""
+
+export PATH="$HOME/NVIDIA/bin:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+
+for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
+    if [[ "$IP" =~ ^192\.168\.192\..* ]]; then
+        IP_ZEROTIER=$IP
+    elif [[ "$IP" =~ ^192\.168\..* ]]; then
+        IP_ROUTER=$IP
+    fi
+    
+    if [[ "$IP" =~ ^10\.19\..* ]]; then
+        IP_NVIDIA=$IP
+    fi
+done
+
+echo "ROUTER IP: $IP_ROUTER"
+echo "NVIDIA IP: $IP_NVIDIA"
+echo "ZERO-TIER: $IP_ZEROTIER"
+
+            
 function user-cancel() {
     echo ""
     popd > /dev/null
@@ -528,10 +605,7 @@ function ddnet() {
     # Default
     # RaiNyMore2 -- GPU-intensive 
 
-    PRIME_NO_RUN=1
-    source prime-run
-    PRIME_NO_RUN=""
-
+    $PRIME_RUN
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
@@ -550,10 +624,8 @@ function talos() {
         exit 1
     fi
 
-    PRIME_NO_RUN=1
-    source prime-run
-    PRIME_NO_RUN=""
-
+    $PRIME_RUN
+    
     if [ -z "$1" ]; then
         (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
     elif [ "$1" = "-d" -o "$1" = "--direct" ]; then
@@ -979,13 +1051,14 @@ function vpn() {
 
 
 
-if [ -z "$1" ]; then
-    echo "Usage: zhujie [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [find-in-path ...]"
-    exit 1
-fi
 
 while [ -n "$1" ]; do
     case "$1" in
+        help)
+            echo "Usage: zhujie [pass] [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...]"
+            exit 0
+        ;;
+        
         init)
             shift
             init "$@"
@@ -1077,8 +1150,15 @@ while [ -n "$1" ]; do
             break
         ;;
         
+        prime-run)
+            shift
+            $PRIME_RUN
+            exec "$@"
+            break
+        ;;
+        
         *)
-	        zhujie
+	        zhujie help
 	        exit 1
         ;;
     esac
