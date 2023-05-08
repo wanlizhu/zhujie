@@ -261,6 +261,7 @@ function nvmake() {
     MODULE="$1"
     ARCH="$2"
     BUILD_TYPE="$3"
+    NVBRANCH="sw/dev/gpu_drv/dev_a"
     
     if [ -z "$P4ROOT" ]; then
         echo "Error: P4ROOT is missing" > /dev/stderr
@@ -316,6 +317,9 @@ function nvmake() {
     
     ERRORCODE=0
     SECONDS=0
+    CWD_BAK=`pwd`
+    cd "$P4ROOT/$NVBRANCH"
+    
     ionice -c2 nice \
     $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
     --tools "$P4ROOT/sw/tools" \
@@ -343,6 +347,7 @@ function nvmake() {
     echo "NVMake: Time cost: [$(expr $SECONDS / 60) mins]"
     echo ""
 
+    cd "$CWD_BAK"
     return $ERRORCODE
 }
 
@@ -634,10 +639,10 @@ function talos() {
     if [ -z "$1" ]; then
         (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
     elif [ "$1" = "-d" -o "$1" = "--direct" ]; then
-        CWD_BACKUP=$(pwd)
+        CWD_BAK=$(pwd)
         cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-        cd "$CWD_BACKUP"
+        cd "$CWD_BAK"
     fi
 }
 
