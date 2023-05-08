@@ -388,13 +388,17 @@ function build() {
                 return 0
             ;;
             
+            dev_a)
+                MODULES="$MODULES dev_a"
+            ;;
+            
             opengl)
                 MODULES="$MODULES opengl"
             ;;
     
             *)
                 echo "Error: Unknown argument: $1" > /dev/stderr
-                nvidia-build
+                zhujie build
                 exit 1
             ;;
         esac
