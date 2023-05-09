@@ -288,11 +288,15 @@ function nvmake() {
         ;;
         
         sweep)
-            ionice -c2 nice \
+            CWD_BAK=`pwd`
+            cd "$P4ROOT/$NVBRANCH"
+            
             $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
             --tools "$P4ROOT/sw/tools" \
             --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
             nvmake sweep
+            
+            cd $CWD_BAK
             return 0
         ;;
         
@@ -311,7 +315,6 @@ function nvmake() {
     CWD_BAK=`pwd`
     cd "$P4ROOT/$NVBRANCH"
     
-    ionice -c2 nice \
     $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
     --tools "$P4ROOT/sw/tools" \
     --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
