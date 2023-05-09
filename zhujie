@@ -1151,15 +1151,32 @@ print(stat.mean(data))")
     python3 -c "$CMD"
 }
 
+function is-nvidia-gpu() {
+    LINE=$(lspci | grep NVIDIA)
+    if [ "$LINE" = "" ]; then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
 function fake-screen() {
     SIZE="$1"
-    if [ "$SIZE" = "" ]; then
-        echo "Usage: zhujie fake-screen <SIZE>"
-        echo "    SIZE: e.g. 3840x2160"
-        exit 1
+    if [ "$(is-nvidia-gpu)" = "1" ]; then
+        if [ "$SIZE" = "" ]; then
+            echo "Usage: zhujie fake-screen [SIZE]"
+            echo "    SIZE: e.g. 3840x2160 (only required for NVIDIA GPU to fake a display, size is not required for AMD GPU as there is always a physical monitor connected for AMD GPU)"
+            exit 1
+        fi
+    else
+        SIZE=""
     fi
     
-    /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000'
+    if [ "$(is-nvidia-gpu)" = "1" ]; then
+        /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000'
+    else
+        /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
+    fi
 }
 
 function nvtest() {
