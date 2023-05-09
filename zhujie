@@ -1126,6 +1126,77 @@ function use-kernel() {
     sudo update-grub
 }
 
+function stddev() {
+    FILE="$1"
+    if [ ! -f "$FILE" ]; then
+        echo "Error: input file '$FILE' doesn't exist" > /dev/stderr
+        exit 1
+    fi
+    
+    CMD=$(printf "
+import statistics as stat
+data=[]
+with open(\"$FILE\", \"r\") as file:
+    for line in file.readlines():
+        data.append(float(line))
+print(stat.stdev(data))")
+    python3 -c "$CMD"
+}
+
+function mean() {
+    FILE="$1"
+    if [ ! -f "$FILE" ]; then
+        echo "Error: input file '$FILE' doesn't exist" > /dev/stderr
+        exit 1
+    fi
+    
+    CMD=$(printf "
+import statistics as stat
+data=[]
+with open(\"$FILE\", \"r\") as file:
+    for line in file.readlines():
+        data.append(float(line))
+print(stat.mean(data))")
+    python3 -c "$CMD"
+}
+
+function nvtest() {
+    TIMES="$1"
+    KEYWORD="$2"
+    INDEX="$3"
+    CMD="$4"
+    if [ "$TIMES" = "" -o "$KEYWORD" = "" -o "$INDEX" = "" -o "$CMD" = "" ]; then
+        echo "Usage: zhujie nvtest <TIMES> <KEYWORD> <INDEX> <CMD>" > /dev/stderr
+        echo "    TIMES: Number of times to run CMD"
+        echo "  KEYWORD: filter output lines of CMD by KEYWORD"
+        echo "    INDEX: index of words (split output line by space)"
+        echo "      CMD: actual nvtest command to execute, quoted string"
+        exit 1
+    fi
+    
+    FAILED=0
+    OUT="nvtest-results.txt"
+    rm -rf "$OUT"
+    for i in `seq 1 $TIMES`; do 
+        $CMD 1> /tmp/nvtest-cmd.log || FAILED=1
+        if [ "$FAILED" = "1" ]; then
+            cat /tmp/nvtest-cmd.log
+            break
+        fi
+        LINE=$(cat /tmp/nvtest-cmd.log | grep "$KEYWORD")
+        IFS=" " read -r -a WORDS <<< "$LINE"
+        NUM="${WORDS[$INDEX]}"
+        if [[ $NUM =~ ^[+-]?([0-9]+)?([.][0-9]+)?$ ]]; then
+            echo $NUM
+            echo $NUM >> $OUT 
+        fi
+    done
+    
+    if [ -f $OUT ]; then
+        echo "  Mean: $(mean $OUT)"
+        echo "StdDev: $(stddev $OUT)"
+    fi
+}
 
 
 
@@ -1137,7 +1208,7 @@ function use-kernel() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "Usage: zhujie [pass] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel]"
+            echo "Usage: zhujie [pass] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev FILE]"
             exit 0
         ;;
         
@@ -1250,6 +1321,24 @@ while [ -n "$1" ]; do
         
         use-kernel)
             use-kernel
+            break
+        ;;
+        
+        stddev)
+            shift
+            stddev "$@"
+            break
+        ;;
+        
+        mean)
+            shift
+            mean "$@"
+            break
+        ;;
+        
+        nvtest)
+            shift
+            nvtest "$@"
             break
         ;;
         
