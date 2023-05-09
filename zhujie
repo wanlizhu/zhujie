@@ -59,7 +59,7 @@ export IP_ROUTER=""
 export IP_NVIDIA=""
 export IP_ZEROTIER=""
 
-export PATH="$HOME/NVIDIA/zhujie:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+export PATH="$HOME:$HOME/NVIDIA/zhujie:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
 
 for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
     if [[ "$IP" =~ ^192\.168\.192\..* ]]; then
@@ -457,6 +457,11 @@ function install() {
                 sudo apt install mainline
                 which mainline    
             ;;
+            
+            gtlfs)
+                wget https://gtlfs.nvidia.com/client/linux ~
+                chmod +x ~/gtlfs
+            ;;
     
             *)
                 if [ -f "$1" -o -L "$1" ]; then
@@ -487,6 +492,10 @@ function remove() {
         mainline)
             sudo add-apt-repository --remove ppa:cappelikan/ppa
             sudo apt remove mainline
+        ;;
+        
+        gtlfs)
+            rm -rf ~/gtlfs
         ;;
         
         *)
@@ -1115,7 +1124,7 @@ function use-kernel() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "Usage: zhujie [pass] [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel]"
+            echo "Usage: zhujie [pass] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel]"
             exit 0
         ;;
         
@@ -1133,12 +1142,14 @@ while [ -n "$1" ]; do
         ;;
         
         pull)
-            pull
+            shift
+            pull "$@"
             break
         ;;
         
         push)
-            push
+            shift
+            push "$@"
             break
         ;;
         
