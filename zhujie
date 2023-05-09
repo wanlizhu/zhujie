@@ -229,6 +229,8 @@ function pull() {
     pushd "$HOME/NVIDIA/zhujie" > /dev/null
     git pull $ZHUJIE_URL master
     popd > /dev/null 
+    
+    source "$HOME/NVIDIA/zhujie"
 }
 
 function push() {
