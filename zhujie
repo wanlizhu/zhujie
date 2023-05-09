@@ -1,7 +1,6 @@
 #!/bin/bash
 # System
 export DISPLAY=:0
-export GITLAB_TOKEN="glpat-sSepnfpLAQtyHxRVEo1H"
 export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
 export PRIME_RUN="export __NV_PRIME_RENDER_OFFLOAD=1; \
 export __GLX_VENDOR_LIBRARY_NAME=nvidia; \
@@ -21,7 +20,7 @@ export APITRACE=$HOME/NVIDIA/APITrace
 
 # Perforce
 export P4USER=wanliz
-export P4PASSWD="Xavier#35224047"
+export P4PASSWD=""
 export P4ROOT=$HOME/NVIDIA/SRC_ON_P4
 export P4PORT=p4proxy-zj.nvidia.com:2006
 export P4IGNORE=$HOME/NVIDIA/P4IGNORE
@@ -36,22 +35,10 @@ case $(hostname) in
         export P4CLIENT=""
     ;;
 esac
-if [ ! -f "$P4IGNORE" ]; then
+if [ "$P4CLIENT" != "" -a ! -f "$P4IGNORE" ]; then
     echo "_out/" >> "$P4IGNORE"
     echo ".git/" >> "$P4IGNORE" 
     echo ".gitignore" >> "$P4IGNORE"
-fi
-
-# NVIDIA Steam account
-export STEAM_USER=nvidialinuxteam
-export STEAM_PASSWORD=nv1d1a3d
-
-# GTL
-export NVM_GTLAPI_USER=wanliz
-export NVM_GTLAPI_PASSWORD="Xavier#35224047"
-if [ ! -f "$HOME/.gtl_api_key" ]; then
-    cp -f $HOME/NVIDIA/zhujie/GTL_API_KEY ~/.gtl_api_key
-    chmod 555 ~/.gtl_api_key
 fi
 
 # IP
@@ -213,10 +200,13 @@ function init() {
         sudo zerotier-cli join db64858fed3b37c1
 
         # CPolar
-        curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
-        cpolar authtoken NjgyZGY0N2UtY2Q0NS00NjExLWJmMTItNDU2OTNkNmY3YWQ5
-        sudo systemctl enable cpolar
-        sudo systemctl start cpolar
+        read -p "CPolar Token: " TOKEN
+        if [ "$TOKEN" != "" ]; then
+            curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
+            cpolar authtoken $TOKEN
+            sudo systemctl enable cpolar
+            sudo systemctl start cpolar
+        fi
     fi
 }
 
@@ -1178,14 +1168,14 @@ function nvtest() {
     
     FAILED=0
     OUT="nvtest-results.txt"
-    rm -rf "$OUT"
+    rm -rf $OUT
     for i in `seq 1 $TIMES`; do 
-        $CMD 1> /tmp/nvtest-cmd.log || FAILED=1
+        $CMD 1> nvtest-cmd.log || FAILED=1
         if [ "$FAILED" = "1" ]; then
-            cat /tmp/nvtest-cmd.log
+            cat nvtest-cmd.log
             break
         fi
-        LINE=$(cat /tmp/nvtest-cmd.log | grep "$KEYWORD")
+        LINE=$(cat nvtest-cmd.log | grep "$KEYWORD")
         IFS=" " read -r -a WORDS <<< "$LINE"
         NUM="${WORDS[$INDEX]}"
         if [[ $NUM =~ ^[+-]?([0-9]+)?([.][0-9]+)?$ ]]; then
@@ -1194,7 +1184,49 @@ function nvtest() {
         fi
     done
     
-    if [ -f $OUT ]; then
+    if [ "$TIMES" != "1" -a -f $OUT ]; then
+        echo "  Mean: $(mean $OUT)"
+        echo "StdDev: $(stddev $OUT)"
+    fi
+}
+
+function viewperf() {
+    TIMES="$1"
+    CASE="$2"
+    SIZE="$3"
+    if [ "$TIMES" = "" -o "$CASE" = "" -o "$SIZE" = "" ]; then
+        echo "Usage: zhujie viewperf <TIMES> <CASE> <SIZE>" > /dev/stderr
+        echo "    TIMES: Number of times to run CMD"
+        echo "     CASE: test case name to run"
+        echo "     SIZE: display resolution to run on"
+        exit 1
+    fi
+    
+    if [ "$TIMES" != "1" ]; then
+        echo "For now, you can only run viewperf once at a time"
+        echo xxx
+        exit 1
+    fi
+    
+    FAILED=0
+    CMD="viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $SIZE"
+    OUT="viewperf-results.txt"
+    CWD_BAK=`pwd`
+    cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
+    rm -rf $OUT
+    for `seq 1 $TIMES`; do
+        $CMD 1> viewperf-cmd.log || FAILED=1
+        if [ "$FAILED" = "1" ]; then
+            echo "Error: failed to run '$CMD'"
+            break
+        fi
+        
+        cat viewperf-cmd.log
+        echo xxx
+    done
+    cd "$CWD_BAK"
+    
+    if [ "$TIMES" != "1" -a -f $OUT ]; then
         echo "  Mean: $(mean $OUT)"
         echo "StdDev: $(stddev $OUT)"
     fi
@@ -1341,6 +1373,12 @@ while [ -n "$1" ]; do
         nvtest)
             shift
             nvtest "$@"
+            break
+        ;;
+        
+        viewperf)
+            shift
+            viewperf "$@"
             break
         ;;
         
