@@ -1170,6 +1170,7 @@ function fake-screen() {
         fi
     else
         SIZE=""
+        unset NVTEST_DRIVER_DIR
     fi
     
     if [ "$(is-nvidia-gpu)" = "1" ]; then
