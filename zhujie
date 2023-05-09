@@ -273,10 +273,6 @@ function nvmake() {
         UNIX_BUILD_ARGS=""
     fi
     
-    if [ "$MODULE" = "*" ]; then
-        MODULE="drivers dist"
-    fi
-    
     case "$MODULE" in
         dev_a)
             MODULE="drivers dist"
@@ -284,6 +280,7 @@ function nvmake() {
         
         opengl)
             echo xxx
+            exit 1
         ;;
         
         ppp)
@@ -334,7 +331,7 @@ function nvmake() {
     2> "$HOME/NVIDIA/OUT/nvmake.stderr.log" && (
         echo xxx
     ) || (
-        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$STDERR_FILE";
+        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$HOME/NVIDIA/OUT/nvmake.stderr.log";
         ERRORCODE=1 
     )
 
@@ -447,6 +444,7 @@ function install() {
             
             mesa)
                 echo xxx
+                exit 1
                 glxinfo | grep "OpenGL renderer"
                 break
             ;;
@@ -459,7 +457,7 @@ function install() {
             ;;
             
             gtlfs)
-                wget https://gtlfs.nvidia.com/client/linux ~
+                wget https://gtlfs.nvidia.com/client/linux -O ~/gtlfs
                 chmod +x ~/gtlfs
             ;;
     
@@ -487,6 +485,7 @@ function remove() {
     case "$1" in
         mesa)
             echo xxx
+            exit 1
         ;;
         
         mainline)
