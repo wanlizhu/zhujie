@@ -1161,7 +1161,6 @@ function fake-screen() {
     fi
     
     /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000' &
-    echo "A fake screen ($SIZE) is running on background..."
 }
 
 function nvtest() {
@@ -1197,7 +1196,7 @@ function nvtest() {
     done
     
     if [ "$TIMES" != "1" -a -f $OUT ]; then
-        echo "  Mean: $(mean $OUT)"
+        echo "Mean: $(mean $OUT)"
         echo "StdDev: $(stddev $OUT)"
     fi
 }
@@ -1227,19 +1226,18 @@ function viewperf() {
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
     rm -rf $OUT
     for i in `seq 1 $TIMES`; do
-        $CMD 1> viewperf-cmd.log || FAILED=1
+        $CMD || FAILED=1
         if [ "$FAILED" = "1" ]; then
             echo "Error: failed to run '$CMD'"
             break
         fi
         
-        cat viewperf-cmd.log
         echo xxx
     done
     cd "$CWD_BAK"
     
     if [ "$TIMES" != "1" -a -f $OUT ]; then
-        echo "  Mean: $(mean $OUT)"
+        echo "Mean: $(mean $OUT)"
         echo "StdDev: $(stddev $OUT)"
     fi
 }
