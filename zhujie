@@ -659,10 +659,11 @@ function talos() {
 
 function driver() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie driver [dev_a CL] [release_id[:dev]] [-i]"
+        echo "Usage: zhujie driver [dev_a [CL|current]] [public [release_id|current][:dev]] [-i]"
         echo "  e.g. zhujie driver dev_a CL"
-        echo "  e.g. zhujie driver release_id"
-        echo "  e.g. zhujie driver release_id:dev"
+        echo "  e.g. zhujie driver dev_a current"
+        echo "  e.g. zhujie driver public RELEASE_ID"
+        echo "  e.g. zhujie driver public RELEASE_ID:dev"
         exit 1
     fi
 
@@ -680,33 +681,43 @@ function driver() {
             
             dev_a)
                 shift
-                CL="$1"
-                TYPE="RELEASE"
+                if [ "$1" = "current" ]; then
+                    echo xxx
+                    exit 1
+                else 
+                    CL="$1"
+                fi
+                TYPE="Release"
                 URL_PATCH="Release"
                 URL_PATCH2=""
                 if [[ $CL == *":dbg"* ]]; then
-                    TYPE="DEBUG"
+                    TYPE="Debug"
                     URL_PATCH="Debug"
                     URL_PATCH2="-internal"
                 fi
                 CL="${CL%:*}"
                 URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${URL_PATCH2}.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-DEV_A-$TYPE-$CL.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-dev_a-$TYPE-CL$CL.run"
                 echo "Downloading: $OUT"
             ;;
             
-            release)
+            public)
                 shift
-                ID="$1"
-                TYPE="RELEASE"
+                if [ "$1" = "current" ]; then
+                    echo xxx
+                    exit 1
+                else
+                    ID="$1"
+                fi
+                TYPE="Release"
                 URL_PATCH=""
                 if [[ $ID == *":dev"* ]]; then
-                    TYPE="DEVELOP"
+                    TYPE="Develop"
                     URL_PATCH="/develop"
                 fi
                 ID="${ID%:*}"
                 URL="http://linuxqa/builds/release/display/x86_64${URL_PATCH}/$ID/NVIDIA-Linux-x86_64-$ID.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-$TYPE-$ID.run"
+                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-Public-$TYPE-$ID.run"
                 echo "Downloading: $OUT"
             ;;
         esac
@@ -1183,7 +1194,7 @@ while [ -n "$1" ]; do
         
         driver)
             shift
-            driver-download "$@"
+            driver "$@"
             break
         ;;
         
