@@ -220,7 +220,7 @@ function pull() {
     git pull $ZHUJIE_URL master
     popd > /dev/null 
     
-    source "$HOME/NVIDIA/zhujie"
+    source "$HOME/NVIDIA/zhujie/zhujie"
 }
 
 function push() {
