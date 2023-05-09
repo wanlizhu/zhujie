@@ -1218,22 +1218,10 @@ function viewperf() {
         echo xxx
         exit 1
     fi
-    
-    FAILED=0
-    CMD="viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $SIZE"
-    OUT="viewperf-results.txt"
-    CWD_BAK=`pwd`
+   
+    CWD_BAK=`pwd` 
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-    rm -rf $OUT
-    for i in `seq 1 $TIMES`; do
-        $CMD || FAILED=1
-        if [ "$FAILED" = "1" ]; then
-            echo "Error: failed to run '$CMD'"
-            break
-        fi
-        
-        echo xxx
-    done
+    viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $SIZEx
     cd "$CWD_BAK"
     
     if [ "$TIMES" != "1" -a -f $OUT ]; then
