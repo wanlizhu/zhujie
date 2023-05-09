@@ -1214,7 +1214,7 @@ function viewperf() {
     CWD_BAK=`pwd`
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
     rm -rf $OUT
-    for `seq 1 $TIMES`; do
+    for i in `seq 1 $TIMES`; do
         $CMD 1> viewperf-cmd.log || FAILED=1
         if [ "$FAILED" = "1" ]; then
             echo "Error: failed to run '$CMD'"
