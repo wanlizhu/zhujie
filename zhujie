@@ -34,7 +34,6 @@ case $(hostname) in
     ;;
     *)
         export P4CLIENT=""
-        echo "P4 SRC is not configured for $(hostname)"
     ;;
 esac
 if [ ! -f "$P4IGNORE" ]; then
@@ -74,11 +73,6 @@ for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
     fi
 done
 
-echo "ROUTER IP: $IP_ROUTER"
-echo "NVIDIA IP: $IP_NVIDIA"
-echo "ZERO-TIER: $IP_ZEROTIER"
-
-            
 function user-cancel() {
     echo ""
     popd > /dev/null
@@ -452,13 +446,16 @@ function install() {
             ;;
             
             mesa)
-                sudo apt update
-                sudo apt upgrade
-                sudo apt install wget apt-transport-https gnupg2 software-properties-common
-                sudo add-apt-repository ppa:ubuntu-x-swat/updates
-                sudo apt install mesa-utils
+                echo xxx
                 glxinfo | grep "OpenGL renderer"
                 break
+            ;;
+            
+            mainline)
+                sudo add-apt-repository ppa:cappelikan/ppa
+                sudo apt update
+                sudo apt install mainline
+                which mainline    
             ;;
     
             *)
@@ -473,6 +470,30 @@ function install() {
         esac
         shift
     done
+}
+
+function remove() {
+    if [ "$1" = "" ]; then
+        echo "Usage: zhujie remove [OPTIONS]"
+        echo "  e.g. zhujie remove mesa"
+        exit 1
+    fi
+    
+    case "$1" in
+        mesa)
+            echo xxx
+        ;;
+        
+        mainline)
+            sudo add-apt-repository --remove ppa:cappelikan/ppa
+            sudo apt remove mainline
+        ;;
+        
+        *)
+            echo "Error: can't remove $1" > /dev/stderr
+            exit 1
+        ;;
+    esac
 }
 
 function run-installer() {
@@ -587,25 +608,6 @@ function nvidia-version-installed() {
         echo "Error: Failed to parse NVIDIA version installed: $VERSION" > /dev/stderr
         return 1
     fi
-}
-
-function remove() {
-    if [ "$1" = "" ]; then
-        echo "Usage: zhujie remove [OPTIONS]"
-        echo "  e.g. zhujie remove mesa"
-        exit 1
-    fi
-    
-    case "$1" in
-        mesa)
-            sudo apt remove mesa-utils
-        ;;
-        
-        *)
-            echo "Error: can't remove $1" > /dev/stderr
-            exit 1
-        ;;
-    esac
 }
 
 function ddnet() {
@@ -1054,6 +1056,54 @@ function vpn() {
     echo "$CODE1,$CODE2" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
 }
 
+function use-kernel() {
+    echo "Found installed kernel:"
+    COUNT=0
+    for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
+        echo "[$COUNT]" ${K:14:$[${#K}-14]}
+        COUNT=$((COUNT+1))
+    done
+    
+    read -p "Set a kernel as default: " KNAME
+    
+    if [[ "$KNAME" =~ ^[0-9]+$ ]]; then
+        INDEX=0
+        for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
+            if [ "$INDEX" = "$KNAME" ]; then
+                KNAME="${K:14:$[${#K}-14]}"
+                break
+            else
+                INDEX=$((INDEX+1))
+            fi
+        done
+    fi
+    
+    INVALID=1
+    for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
+        if [ "${K:14:$[${#K}-14]}" = "$KNAME" ]; then
+            INVALID=0
+            break
+        fi
+    done
+    
+    if [ "$INVALID" = "1" ]; then
+        echo "Error: kernel name '$KNAME' is invalid" > /dev/stderr
+        exit 1
+    fi
+    
+    rm -rf "/tmp/grub.tmp"
+    while read -r LINE; do
+        if [[ "$LINE" == *"GRUB_DEFAULT"* ]]; then
+            echo "GRUB_DEFAULT=\"Advanced options for Ubuntu>Ubuntu, with Linux $KNAME\"" >> "/tmp/grub.tmp"
+        else
+            echo "$LINE" >> "/tmp/grub.tmp"
+        fi
+    done < "/etc/default/grub"
+    
+    sudo cp "/tmp/grub.tmp" "/etc/default/grub"
+    sudo update-grub
+}
+
 
 
 
@@ -1065,8 +1115,15 @@ function vpn() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "Usage: zhujie [pass] [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...]"
+            echo "Usage: zhujie [pass] [init [-a]] [pull] [push] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel]"
             exit 0
+        ;;
+        
+        show-ip)
+            echo "ROUTER IP: $IP_ROUTER"
+            echo "NVIDIA IP: $IP_NVIDIA"
+            echo "ZERO-TIER: $IP_ZEROTIER"
+            break
         ;;
         
         init)
@@ -1164,6 +1221,11 @@ while [ -n "$1" ]; do
             shift
             $PRIME_RUN
             exec "$@"
+            break
+        ;;
+        
+        use-kernel)
+            use-kernel
             break
         ;;
         
