@@ -1240,11 +1240,6 @@ function viewperf() {
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
     viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $SIZEx
     cd "$CWD_BAK"
-    
-    if [ "$TIMES" != "1" -a -f $OUT ]; then
-        echo "Mean: $(mean $OUT)"
-        echo "StdDev: $(stddev $OUT)"
-    fi
 }
 
 
