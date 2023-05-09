@@ -1160,7 +1160,7 @@ function fake-screen() {
         exit 1
     fi
     
-    /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000' &
+    /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000'
 }
 
 function nvtest() {
