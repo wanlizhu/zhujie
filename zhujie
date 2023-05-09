@@ -1210,7 +1210,7 @@ function nvtest() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "Usage: zhujie [pass] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev FILE]"
+            echo "Usage: zhujie [show-ip] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev FILE]"
             exit 0
         ;;
         
