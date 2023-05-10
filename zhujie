@@ -1,13 +1,6 @@
 #!/bin/bash
 # System
 export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
-export PRIME_RUN="export __NV_PRIME_RENDER_OFFLOAD=1; \
-export __GLX_VENDOR_LIBRARY_NAME=nvidia; \
-export __VK_LAYER_NV_optimus=NVIDIA_only; \
-export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json;\
-if [ ! -f '$VK_ICD_FILENAMES' ]; then \
-    export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json; \
-fi"
 
 # NVIDIA tools
 export P4V=$HOME/NVIDIA/P4V
@@ -619,8 +612,6 @@ function ddnet() {
     # Default
     # RaiNyMore2 -- GPU-intensive 
 
-    $PRIME_RUN
-    
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
@@ -639,8 +630,6 @@ function talos() {
         exit 1
     fi
 
-    $PRIME_RUN
-    
     CWD_BAK="$(pwd)"
     cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
     ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
@@ -1444,7 +1433,13 @@ while [ -n "$1" ]; do
         
         prime-run)
             shift
-            $PRIME_RUN
+            export __NV_PRIME_RENDER_OFFLOAD=1
+            export __GLX_VENDOR_LIBRARY_NAME=nvidia
+            export __VK_LAYER_NV_optimus=NVIDIA_only
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            if [ ! -f "$VK_ICD_FILENAMES" ]; then 
+                export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+            fi
             exec "$@"
             break
         ;;
