@@ -1,6 +1,8 @@
 #!/bin/bash
 # System
 export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
+export DISPLAY=:0
+export __GL_SYNC_TO_VBLANK=0
 
 # NVIDIA tools
 export P4V=$HOME/NVIDIA/P4V
@@ -634,7 +636,7 @@ function talos() {
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
     rm -rf $HOME/zhujie-talos.log
     echo "Info: ./Talos 2560x1440 is running..."
-    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua | tee $HOME/zhujie-talos.log
+    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua > $HOME/zhujie-talos.log
     cd "$CWD_BAK"
 }
 
