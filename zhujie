@@ -1230,14 +1230,15 @@ function vnc() {
         RESOLUTION=""
     fi
     
-    which vncserver || sudo apt install -y tigervnc-standalone-server 
-    which x0vncserver || sudo apt install -y tigervnc-scraping-server 
+    which vncserver > /dev/null || sudo apt install -y tigervnc-standalone-server 
+    which x0vncserver > /dev/null || sudo apt install -y tigervnc-scraping-server 
     
     if [ ! -d "$HOME/.vnc" ]; then
         mkdir -p "$HOME/.vnc"
     fi
     
     if [ ! -f "$HOME/.vnc/passwd" ]; then
+        echo "Creating ~/.vnc/passwd file..."
         vncpasswd
     fi
             
