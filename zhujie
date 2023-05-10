@@ -1386,12 +1386,12 @@ while [ -n "$1" ]; do
         ;;
         
         ddnet)
-            pts-ddnet    
+            ddnet    
             break
         ;;
         
         talos)
-            pts-talos
+            talos
             break
         ;;
         
