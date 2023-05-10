@@ -1187,7 +1187,7 @@ function vnc() {
     CMD="$1"
     ACTUAL_DISPLAY="$2"
     VNCCMD=""
-    RFBPORT="5900"
+    VNCPORT="5900"
     RESOLUTION=""
     
     if [ -z "$CMD" ]; then
