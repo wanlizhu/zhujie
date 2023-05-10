@@ -620,6 +620,7 @@ function ddnet() {
     # RaiNyMore2 -- GPU-intensive 
 
     $PRIME_RUN
+    
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
@@ -629,7 +630,7 @@ function talos() {
 
     # Launch steam if it's not currently running
     pgrep -x steam >/dev/null && echo "Info: steam is running..." || (
-        gnome-terminal -- bash -c "steam || echo $(date) >> $HOME/NVIDIA/OUT/FAILED-TO-START-STEAM"
+        steam &
         sleep 15
     )
 
@@ -640,14 +641,10 @@ function talos() {
 
     $PRIME_RUN
     
-    if [ -z "$1" ]; then
-        (echo 2; echo 7; echo n) | phoronix-test-suite benchmark pts/talos-principle
-    elif [ "$1" = "-d" -o "$1" = "--direct" ]; then
-        CWD_BAK=$(pwd)
-        cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
-        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-        cd "$CWD_BAK"
-    fi
+    CWD_BAK="$(pwd)"
+    cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
+    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+    cd "$CWD_BAK"
 }
 
 function driver() {
@@ -1211,7 +1208,7 @@ function vnc() {
         echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
         echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
         echo "" > /dev/stderr
-        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is 5900. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to." > /dev/stderr
+        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is 5900. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
         echo "" > /dev/stderr
         exit 1
     fi
@@ -1237,7 +1234,7 @@ function vnc() {
         mkdir -p "$HOME/.vnc"
     fi
     
-    if [ ! -f "$HOME/.vnc/passwd" ]; then
+    if [ ! -f "$HOME/.vnc/passwd" -a "$CMD" = "start" ]; then
         echo "Creating ~/.vnc/passwd file..."
         vncpasswd
     fi
