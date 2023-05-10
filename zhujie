@@ -632,7 +632,7 @@ function talos() {
 
     CWD_BAK="$(pwd)"
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
-    echo "Info: running Talos 2560x1440..."
+    echo "Info: ./Talos 2560x1440 is running..."
     ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
     cd "$CWD_BAK"
 }
@@ -1187,6 +1187,7 @@ function vnc() {
     CMD="$1"
     ACTUAL_DISPLAY="$2"
     VNCCMD=""
+    RFBPORT="5900"
     RESOLUTION=""
     
     if [ -z "$CMD" ]; then
@@ -1198,7 +1199,7 @@ function vnc() {
         echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
         echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
         echo "" > /dev/stderr
-        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is 5900. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
+        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is $RFBPORT. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
         echo "" > /dev/stderr
         exit 1
     fi
@@ -1228,10 +1229,14 @@ function vnc() {
         echo "Creating ~/.vnc/passwd file..."
         vncpasswd
     fi
+    
+    if [ ! -z "$VNCPORT" ]; then
+        RFBPORT="-rfbport $VNCPORT"
+    fi
             
     case "$CMD" in
         start)
-            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RESOLUTION $ACTUAL_DISPLAY
+            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RFBPORT $RESOLUTION $ACTUAL_DISPLAY
         ;;
         
         stop)
