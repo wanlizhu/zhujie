@@ -631,8 +631,8 @@ function talos() {
     fi
 
     CWD_BAK="$(pwd)"
-    cd ~/.steam/steam/steamapps/common/The\ Talos\ Principle/Bin/x64
-    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec ~/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+    cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
+    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
     cd "$CWD_BAK"
 }
 
