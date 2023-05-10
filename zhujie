@@ -122,7 +122,8 @@ function monitor-name() {
 }
 
 function monitor-resolution() {
-    echo ""
+    LINE=$(xdpyinfo | grep dimensions)
+    echo "${LINE#  dimensions:    }"
 }
 
 function monitor-color-depth() {
@@ -132,39 +133,39 @@ function monitor-color-depth() {
 function sysinfo() {
     echo "         System"
     echo "==============="
-    echo "       OS Name: $(system-name)"
-    echo "        Kernel: $(uname -r)"
-    echo "      X Server: $(xserver-info)"
-    echo "      X Window: $(xwindow-info)"
-    echo "           CPU: $(cpu-name)"
-    echo "           GPU: $(gpu-name)"
-    echo "           RAM: $(ram-size)"
+    echo "    OS Name: $(system-name)"
+    echo "    Kernel: $(uname -r)"
+    echo "    X Server: $(xserver-info)"
+    echo "    X Window: $(xwindow-info)"
+    echo "    CPU: $(cpu-name)"
+    echo "    GPU: $(gpu-name)"
+    echo "    RAM: $(ram-size)"
     echo ""
     
     echo "            CPU"
     echo "==============="
-    echo "          Name: $(cpu-name)"
-    echo "Physical Cores: $(cpu-physical-cores)"
-    echo " Logical Cores: $(cpu-logical-cores)"
-    echo "      Prefetch: $(cpu-prefetch)"
+    echo "    Name: $(cpu-name)"
+    echo "    Physical Cores: $(cpu-physical-cores)"
+    echo "    Logical Cores: $(cpu-logical-cores)"
+    echo "    Prefetch: $(cpu-prefetch)"
     echo ""
     
     echo "            GPU"
     echo "==============="
-    echo "          Name: $(gpu-name)"
-    echo "          VRAM: $(gpu-vram-size)"
-    echo "        Driver: $(gpu-driver)"
+    echo "    Name: $(gpu-name)"
+    echo "    VRAM: $(gpu-vram-size)"
+    echo "    Driver: $(gpu-driver)"
     echo "    OpenGL API: $(opengl-version)"
     echo "    Vulkan API: $(vulkan-version)"
-    echo "       Monitor: $(monitor-name)"
+    echo "    Monitor: $(monitor-name)"
     echo "    Resolution: $(monitor-resolution)"
-    echo "   Color Depth: $(monitor-color-depth)"
+    echo "    Color Depth: $(monitor-color-depth)"
     echo ""
 }
 
 function init() { 
     # Basic tools
-    sudo apt install -y openssh-server build-essential cmake sshfs vim net-tools pkg-config libglvnd-dev python3 openconnect steam libncurses-dev bison flex libssl-dev libelf-dev libxkbcommon-x11-dev screen mailutils xdotool p7zip-full
+    sudo apt install -y openssh-server build-essential cmake sshfs vim net-tools pkg-config libglvnd-dev python3 openconnect steam libncurses-dev bison flex libssl-dev libelf-dev libxkbcommon-x11-dev screen mailutils xdotool p7zip-full wmctrl
     
     # Basic python tools
     python3 -m pip install steamctl
@@ -211,7 +212,7 @@ function init() {
 
 function pull() {
     if [ ! -d "$HOME/NVIDIA/zhujie" ]; then
-        echo "Error: $HOME/NVIDIA/zhujie is missing"
+        echo "Error: folder '$HOME/NVIDIA/zhujie' is missing, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -224,7 +225,7 @@ function pull() {
 
 function push() {
     if [ ! -d "$HOME/NVIDIA/zhujie" ]; then
-        echo "Error: $HOME/NVIDIA/zhujie is missing"
+        echo "Error: folder '$HOME/NVIDIA/zhujie' is missing, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -249,12 +250,12 @@ function nvmake() {
     NVBRANCH="sw/dev/gpu_drv/dev_a"
     
     if [ -z "$P4ROOT" ]; then
-        echo "Error: P4ROOT is missing" > /dev/stderr
+        echo "Error: ENVVAR P4ROOT is missing or incorrect, aborting..." > /dev/stderr
         exit 1
     fi
 
     if [ -z "$NVBRANCH" ]; then
-        echo "Error: NVBRANCH is missing" > /dev/stderr
+        echo "Error: ENVVAR NVBRANCH is missing or incorrect, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -292,11 +293,10 @@ function nvmake() {
         ;;
         
         *)
-            echo "Error: module $MODULE is not supported" > /dev/stderr
+            echo "Error: NVIDIA module '$MODULE' is not supported, aborting..." > /dev/stderr
             exit 1
         ;;
     esac
-        
     
     echo "NVMake: linux $MODULE $ARCH $BUILD_TYPE"
     mkdir -p "$HOME/NVIDIA/OUT/"
@@ -329,7 +329,7 @@ function nvmake() {
         ERRORCODE=1 
     )
 
-    echo "NVMake: Time cost: [$(expr $SECONDS / 60) mins]"
+    echo "NVMake: time cost: $(expr $SECONDS / 60) mins"
     echo ""
 
     cd "$CWD_BAK"
@@ -338,7 +338,7 @@ function nvmake() {
 
 function build() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie build [dev_a|opengl|sweep|ppp] <ARCHS...> <TYPES...>"
+        echo "Usage: zhujie build <dev_a|opengl|sweep|ppp> [ARCHS...] [TYPES...]" > /dev/stderr
         exit 1
     fi
     
@@ -387,8 +387,8 @@ function build() {
             ;;
     
             *)
-                echo "Error: Unknown argument: $1" > /dev/stderr
-                zhujie build
+                echo "Error: unknown argument '$1', aborting..." > /dev/stderr
+                build
                 exit 1
             ;;
         esac
@@ -414,11 +414,11 @@ function build() {
 
 function install() {
     if [ "$1" = "" ]; then
-        echo "Usage: zhujie install [OPTIONS]"
-        echo "  e.g. zhujie install <INSTALLER_PATH>"
-        echo "  e.g. zhujie install <MODULE> <ARCH> <BUILD_TYPE>"
-        echo "  e.g. zhujie install <-r|--revert> <ARCH>"
-        echo "  e.g. zhujie install mesa [version]"
+        echo "Usage: zhujie install [OPTIONS]" > /dev/stderr
+        echo "    e.g. zhujie install <INSTALLER_PATH>" > /dev/stderr
+        echo "    e.g. zhujie install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
+        echo "    e.g. zhujie install <-r|--revert> <ARCH>" > /dev/stderr
+        echo "    e.g. zhujie install mesa [version]" > /dev/stderr
         exit 1
     fi
     
@@ -460,7 +460,7 @@ function install() {
                     run-installer "$1"
                     break
                 else
-                    echo "Error: NVIDIA installer is missing: $1" > /dev/stderr
+                    echo "Error: NVIDIA installer '$1' is missing, aborting..." > /dev/stderr
                     exit 1
                 fi
             ;;
@@ -471,8 +471,8 @@ function install() {
 
 function remove() {
     if [ "$1" = "" ]; then
-        echo "Usage: zhujie remove [OPTIONS]"
-        echo "  e.g. zhujie remove mesa"
+        echo "Usage: zhujie remove [OPTIONS]" > /dev/stderr
+        echo "    e.g. zhujie remove mesa" > /dev/stderr
         exit 1
     fi
     
@@ -492,7 +492,7 @@ function remove() {
         ;;
         
         *)
-            echo "Error: can't remove $1" > /dev/stderr
+            echo "Error: can't remove '$1', aborting..." > /dev/stderr
             exit 1
         ;;
     esac
@@ -506,19 +506,19 @@ function run-installer() {
     
     INSTALLER="$1"
     if [ ! -f "$INSTALLER" ]; then
-        echo "Error: Installer is missing: $INSTALLER" > /dev/stderr
+        echo "Error: NVIDIA installer '$INSTALLER' is missing, aborting..." > /dev/stderr
         exit 1
     fi
 
     sudo chmod +x "$INSTALLER"
 
-    echo "Install NVIDIA Drivers: $INSTALLER"
+    echo "Info: install NVIDIA driver '$INSTALLER'"
     who am i > /dev/null && (
         sudo systemctl isolate multi-user
         sudo "$INSTALLER" -sb
         sudo systemctl isolate graphical
     ) || (
-    	echo "Error: You can only run NVIDIA installer remotely through SSH" > /dev/stderr
+    	echo "Error: can't run NVIDIA installer locally, aborting..." > /dev/stderr
         exit 1
     )	
 }
@@ -551,11 +551,11 @@ function update-libs() {
     FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
 
     if [ "$(nvidia-source-version)" != "$(nvidia-version-installed $ARCH)" ]; then  
-        echo "Error: \"Source Version [$(nvidia-source-version)]\" != \"Installed Version [$(nvidia-version-installed $ARCH)]\"" > /dev/stderr
+        echo "Error: NVIDIA modules are version locked, can't overwrite *.so.$(nvidia-version-installed $ARCH) with *.so.$(nvidia-source-version), aborting..." > /dev/stderr
         exit 1
     fi
 
-    echo "Install NVIDIA Module: $MODULE $ARCH $BUILD_TYPE"
+    echo "Info: install NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
     case "$MODULE" in
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
@@ -572,7 +572,7 @@ function update-libs() {
                     fi
                     sudo cp -f "$OUTDIR/$BASENAME" "$TARGETNAME"
                 else
-                    echo "Error: $TARGETNAME is missing" > /dev/stderr
+                    echo "Error: '$TARGETNAME' is missing, aborting..." > /dev/stderr
                     exit 1
                 fi
 
@@ -581,8 +581,8 @@ function update-libs() {
         ;;
 
         *)
-            echo "Error: Module \"$MODULE\" is not supported" > /dev/stderr
-            return 1
+            echo "Error: NVIDIA module '$MODULE' is not supported, aborting..." > /dev/stderr
+            exit 1
         ;;
     esac 
 }
@@ -594,7 +594,7 @@ function nvidia-source-version() {
 function nvidia-version-installed() {
     if [ "$1" = "" ]; then
         echo "Usage: nvidia-version-installed <ARCH>" > /dev/stderr
-        return 1
+        exit 1
     fi
 
     ARCH="$1"
@@ -607,8 +607,8 @@ function nvidia-version-installed() {
     if [ -f "/usr/lib/$ARCHNAME-linux-gnu/libnvidia-glvkspirv.so.$VERSION" ]; then
         echo "$VERSION"
     else
-        echo "Error: Failed to parse NVIDIA version installed: $VERSION" > /dev/stderr
-        return 1
+        echo "Error: can't parse NVIDIA version installed, aborting..." > /dev/stderr
+        exit 1
     fi
 }
 
@@ -628,13 +628,13 @@ function talos() {
     # 2560x1440
 
     # Launch steam if it's not currently running
-    pgrep -x steam >/dev/null && echo "Steam is running..." || (
-        gnome-terminal -- bash -c "steam || echo \"$(date)\" >> $HOME/NVIDIA-OUT/FAILED-TO-START-STEAM"
+    pgrep -x steam >/dev/null && echo "Info: steam is running..." || (
+        gnome-terminal -- bash -c "steam || echo $(date) >> $HOME/NVIDIA/OUT/FAILED-TO-START-STEAM"
         sleep 15
     )
 
     if [ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]; then
-        echo "Install \"Talos Principle\" in Steam's window and try again"
+        echo "Error: install 'Talos Principle' in steam's window and try again, aborting..." > /dev/stderr
         exit 1
     fi
 
@@ -652,11 +652,11 @@ function talos() {
 
 function driver() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie driver [dev_a [CL|current]] [public [release_id|current][:dev]] [-i]"
-        echo "  e.g. zhujie driver dev_a CL"
-        echo "  e.g. zhujie driver dev_a current"
-        echo "  e.g. zhujie driver public RELEASE_ID"
-        echo "  e.g. zhujie driver public RELEASE_ID:dev"
+        echo "Usage: zhujie driver [dev_a [CL|current]] [public [release_id|current][:dev]] [-i]" > /dev/stderr
+        echo "    e.g. zhujie driver dev_a CL" > /dev/stderr
+        echo "    e.g. zhujie driver dev_a current" > /dev/stderr
+        echo "    e.g. zhujie driver public RELEASE_ID" > /dev/stderr
+        echo "    e.g. zhujie driver public RELEASE_ID:dev" > /dev/stderr
         exit 1
     fi
 
@@ -740,9 +740,9 @@ function driver() {
 
 function flamegraph() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie flamegraph [--pid PID] [--sleep SEC]"
-        echo "    --pid PID: record callstacks of PID only (default is system-wide recording)"
-        echo "    --sleep SEC: record for SEC seconds"
+        echo "Usage: zhujie flamegraph [--pid PID] [--sleep SEC]" > /dev/stderr
+        echo "    --pid PID: record callstacks of PID only (default is system-wide recording)" > /dev/stderr
+        echo "    --sleep SEC: record for SEC seconds" > /dev/stderr
         exit 1
     fi
     
@@ -779,15 +779,15 @@ function flamegraph() {
     done
     
     if [ ! -d "$FLAMEGRAPH" ]; then
-        echo "Error: Flamegraph path is missing" > /dev/stderr
+        echo "Error: ENVVAR FLAMEPATH is missing or incorrect, aborting..." > /dev/stderr
         exit 1
     fi
     
     if [ ! -f "$PERF_DATA" ]; then
         echo "Run perf record:"
-        echo "   Output: $PERF_DATA"
+        echo "    Output: $PERF_DATA"
         echo "    Sleep: $PERF_RECORD_SECONDS SECONDS"
-        echo "      PID: $([[ $PERF_RECORD_SYSTEM_WIDE -ne 0 ]] && echo \"[SYSTEM WIDE]\" || echo \"$PERF_RECORD_PID\")"
+        echo "    PID: $([[ $PERF_RECORD_SYSTEM_WIDE -ne 0 ]] && echo \"[SYSTEM WIDE]\" || echo \"$PERF_RECORD_PID\")"
         echo "    Other: $PERF_RECORD_ARGS"
         echo ""
 
@@ -800,13 +800,13 @@ function flamegraph() {
     fi
     
     if [ ! -f "$PERF_DATA" ]; then
-        echo "Error: Perf data file is missing: $PERF_DATA" > /dev/stderr
+        echo "Error: perf data file '$PERF_DATA' is missing, aborting..." > /dev/stderr
         exit 1
     fi
     
     echo "Generate flamegraph SVG (Zoom and Search):"
-    echo "Perf data: $PERF_DATA"
-    echo " SVG file: $SVG_FILE"
+    echo "    Perf data: $PERF_DATA"
+    echo "    SVG file: $SVG_FILE"
     echo ""
     BASENAME=$(basename -- "$PERF_DATA")
     
@@ -843,7 +843,8 @@ function flamegraph() {
     "$FLAMEGRAPH/flamegraph.pl" \
        "/tmp/$BASENAME.perf.folded.recursive" \
        > "$SVG_FILE" || (
-           echo "Error: Failed to generate SVG file" > /dev/stderr
+           echo "Error: can't generate SVG file, aborting..." > /dev/stderr
+           exit 1
        )
 }
 
@@ -863,7 +864,7 @@ function fuji() {
             ;;
 
             *)
-                echo "Usage: zhujie fuji [rename ...] [sync]"
+                echo "Usage: zhujie fuji [rename ...] [sync]" > /dev/stderr
 	            exit 1
             ;;
         esac
@@ -876,11 +877,11 @@ function fuji-rename() {
     OLDSTR="$2"
     NEWSTR="$3"
 
-    IFS=$'\n'
+    IFS=$'\n' 
     for FILE in `find "$FOLDER" -type f -name "$OLDSTR*" -printf '%p\n'`; do
         NEWFILE=`echo "$FILE" | sed "s/\(.\{4\}\)\([0-9]\{4\}\)\.\(.*\)/$NEWSTR\2.\3/g"`
         if [ -f "$NEWFILE" ]; then
-            echo "Error: file exist: $NEWFILE" > /dev/stderr
+            echo "Error: dest file '$NEWFILE' exists, aborting..." > /dev/stderr
             exit 1
         fi
         
@@ -896,7 +897,7 @@ function fuji-sync() {
 
 function nvlibs() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie nvlibs [opengl] [-f|--filter]"
+        echo "Usage: zhujie nvlibs [opengl] [-f|--filter]" > /dev/stderr
         exit 1
     fi
     
@@ -939,14 +940,14 @@ function nvlibs() {
             fi
         done < "/tmp/nvinfo.libs"
     ) || (
-        echo "Error: Failed to find NVIDIA libs in $FOLDER"
-        return 1
+        echo "Error: can't find NVIDIA libs in folder '$FOLDER'" > /dev/stderr
+        exit 1
     )
 }
 
 function p4bisect() {
     if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>"
+        echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>" > /dev/stderr
         exit 1
     fi
     
@@ -964,7 +965,7 @@ function p4bisect() {
             FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
         ;;
         *)
-            echo "Error: Module \"$1\" is not supported" > /dev/stderr
+            echo "Error: NVIDIA module '$1' is not supported, aborting..." > /dev/stderr
             exit 1
         ;;
     esac 
@@ -1023,12 +1024,12 @@ function p4bisect() {
 
 function pic-v() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie pic-v [APP]"
+        echo "Usage: zhujie pic-v [APP]" > /dev/stderr
         exit 1
     fi
 
     if [ ! -d "$PIC_V" ]; then
-        echo "Error: PIC_V is missing" > /dev/stderr
+        echo "Error: ENVVAR PIC_V is missing or incorrect, aborting..." > /dev/stderr
         exit 1
     fi
 
@@ -1100,7 +1101,7 @@ function use-kernel() {
     done
     
     if [ "$INVALID" = "1" ]; then
-        echo "Error: kernel name '$KNAME' is invalid" > /dev/stderr
+        echo "Error: kernel name '$KNAME' is invalid, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -1120,7 +1121,7 @@ function use-kernel() {
 function stddev() {
     FILE="$1"
     if [ ! -f "$FILE" ]; then
-        echo "Error: input file '$FILE' doesn't exist" > /dev/stderr
+        echo "Error: input file '$FILE' doesn't exist, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -1137,7 +1138,7 @@ print(stat.stdev(data))")
 function mean() {
     FILE="$1"
     if [ ! -f "$FILE" ]; then
-        echo "Error: input file '$FILE' doesn't exist" > /dev/stderr
+        echo "Error: input file '$FILE' doesn't exist, aborting..." > /dev/stderr
         exit 1
     fi
     
@@ -1160,44 +1161,130 @@ function is-nvidia-gpu() {
     fi
 }
 
-function fake-screen() {
-    SIZE="$1"
+function fake-display() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: please run as root, aborting" > /dev/stderr
+        exit 1
+    fi
+
+    RESOLUTION="$1"
     if [ "$(is-nvidia-gpu)" = "1" ]; then
-        if [ "$SIZE" = "" ]; then
-            echo "Usage: zhujie fake-screen [SIZE]"
-            echo "    SIZE: e.g. 3840x2160 (only required for NVIDIA GPU to fake a display, size is not required for AMD GPU as there is always a physical monitor connected for AMD GPU)"
-            exit 1
+        if [ "$RESOLUTION" = "" ]; then
+            echo "Usage: zhujie fake-display [RESOLUTION]" > /dev/stderr
+            echo "    RESOLUTION: the format is like 3840x2160, only required for NVIDIA GPU to fake a display, and is not required for AMD GPU as there is always a physical monitor connected for AMD GPU" > /dev/stderr
+            echo ""
+            read -p "Use the default resolution, 3840x2160? (Y/n): " ANS
+            case "$ANS" in
+                ""|y|Y|1)
+                    RESOLUTION="3840x2160"
+                ;;
+                *)
+                    echo "Error: input is illegal, aborting..." > /dev/stderr
+                    exit 1
+                ;;
+            esac
         fi
     else
-        SIZE=""
+        RESOLUTION=""
         unset NVTEST_DRIVER_DIR
     fi
     
     if [ "$(is-nvidia-gpu)" = "1" ]; then
-        /mnt/linuxqa/nvt.sh ${SIZE}__runcmd --cmd 'sleep 100000000'
+        /mnt/linuxqa/nvt.sh ${RESOLUTION}__runcmd --cmd 'sleep 100000000'
     else
         /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
     fi
 }
 
+function vnc() {
+    CMD="$1"
+    ACTUAL_DISPLAY="$2"
+    VNCCMD=""
+    RESOLUTION=""
+    
+    if [ -z "$CMD" ]; then
+        echo "Usage: zhujie vnc <start|stop|restart|status> [ACTUAL_DISPLAY] [RESOLUTION]" > /dev/stderr
+        echo "    start: start VNC server on ACTUAL_DISPLAY, or a new virtual display" > /dev/stderr 
+        echo "    stop: stop VNC server on ACTUAL_DISPLAY, or all VNC servers" > /dev/stderr
+        echo "    restart: restart VNC server on ACTUAL_DISPLAY, fallback to 'start' if it doesn't exist" > /dev/stderr
+        echo "    status: show status of the VNC server on ACTUAL_DISPLAY, or all VNC servers" > /dev/stderr
+        echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
+        echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
+        echo "" > /dev/stderr
+        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is 5900. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to." > /dev/stderr
+        echo "" > /dev/stderr
+        exit 1
+    fi
+    
+    if [ -z "$ACTUAL_DISPLAY" ]; then
+        VNCCMD=vncserver
+        if [ -z "$RESOLUTION" -a "$CMD" = "start" ]; then
+            read -p "Virtual display resolution: (empty for 3840x2160) " ANS
+            case "$ANS" in 
+                "") RESOLUTION="-geometry 3840x2160" ;;
+                 *) RESOLUTION="-geometry $ANS" ;;
+            esac
+        fi
+    else
+        VNCCMD=x0vncserver
+        RESOLUTION=""
+    fi
+    
+    which vncserver || sudo apt install -y tigervnc-standalone-server 
+    which x0vncserver || sudo apt install -y tigervnc-scraping-server 
+    
+    if [ ! -d "$HOME/.vnc" ]; then
+        mkdir -p "$HOME/.vnc"
+    fi
+    
+    if [ ! -f "$HOME/.vnc/passwd" ]; then
+        vncpasswd
+    fi
+            
+    case "$CMD" in
+        start)
+            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RESOLUTION $ACTUAL_DISPLAY
+        ;;
+        
+        stop)
+            $VNCCMD -kill $ACTUAL_DISPLAY
+        ;;
+        
+        restart)
+            vnc stop  $ACTUAL_DISPLAY
+            vnc start $ACTUAL_DISPLAY
+        ;;
+        
+        status)
+            $VNCCMD -list $ACTUAL_DISPLAY
+        ;;
+        
+        *)
+            vnc
+            exit 1
+        ;;
+    esac
+}
+
 function nvtest() {
-    TIMES="$1"
+    ROUNDS="$1"
     KEYWORD="$2"
     INDEX="$3"
     CMD="$4"
-    if [ "$TIMES" = "" -o "$KEYWORD" = "" -o "$INDEX" = "" -o "$CMD" = "" ]; then
-        echo "Usage: zhujie nvtest <TIMES> <KEYWORD> <INDEX> <CMD>" > /dev/stderr
-        echo "    TIMES: Number of times to run CMD"
-        echo "  KEYWORD: filter output lines of CMD by KEYWORD"
-        echo "    INDEX: index of words (split output line by space)"
-        echo "      CMD: actual nvtest command to execute, quoted string"
+    
+    if [ "$ROUNDS" = "" -o "$KEYWORD" = "" -o "$INDEX" = "" -o "$CMD" = "" ]; then
+        echo "Usage: zhujie nvtest <ROUNDS> <KEYWORD> <INDEX> <CMD>" > /dev/stderr
+        echo "    ROUNDS: Number of sounds to run CMD" > /dev/stderr
+        echo "    KEYWORD: filter output lines of CMD by KEYWORD" > /dev/stderr
+        echo "    INDEX: index of words (split output line by space)" > /dev/stderr
+        echo "    CMD: actual nvtest command to execute, quoted string" > /dev/stderr
         exit 1
     fi
     
     FAILED=0
     OUT="nvtest-results.txt"
     rm -rf $OUT
-    for i in `seq 1 $TIMES`; do 
+    for i in `seq 1 $ROUNDS`; do 
         $CMD 1> nvtest-cmd.log || FAILED=1
         if [ "$FAILED" = "1" ]; then
             cat nvtest-cmd.log
@@ -1212,33 +1299,34 @@ function nvtest() {
         fi
     done
     
-    if [ "$TIMES" != "1" -a -f $OUT ]; then
+    if [ "$ROUNDS" != "1" -a -f $OUT ]; then
         echo "Mean: $(mean $OUT)"
         echo "StdDev: $(stddev $OUT)"
     fi
 }
 
 function viewperf() {
-    TIMES="$1"
+    ROUNDS="$1"
     CASE="$2"
-    SIZE="$3"
-    if [ "$TIMES" = "" -o "$CASE" = "" -o "$SIZE" = "" ]; then
-        echo "Usage: zhujie viewperf <TIMES> <CASE> <SIZE>" > /dev/stderr
-        echo "    TIMES: Number of times to run CMD"
-        echo "     CASE: test case name to run"
-        echo "     SIZE: display resolution to run on"
+    RESOLUTION="$3"
+    
+    if [ "$ROUNDS" = "" -o "$CASE" = "" -o "$RESOLUTION" = "" ]; then
+        echo "Usage: zhujie viewperf <ROUNDS> <CASE> <RESOLUTION>" > /dev/stderr
+        echo "    ROUNDS: Number of rounds to run CMD" > /dev/stderr
+        echo "    CASE: test case name to run" > /dev/stderr
+        echo "    RESOLUTION: display resolution to run on" > /dev/stderr
         exit 1
     fi
     
-    if [ "$TIMES" != "1" ]; then
-        echo "For now, you can only run viewperf once at a time"
+    if [ "$ROUNDS" != "1" ]; then
+        echo "Error: for now, you can only run viewperf once at a time" > /dev/stderr
         echo xxx
         exit 1
     fi
    
     CWD_BAK=`pwd` 
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-    viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $SIZEx
+    viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $RESOLUTION
     cd "$CWD_BAK"
 }
 
@@ -1252,8 +1340,8 @@ function viewperf() {
 while [ -n "$1" ]; do
     case "$1" in
         help)
-            echo "Usage: zhujie [show-ip] [init [-a]] [pull [--gtl]] [push [--gtl]] [ddnet/talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev FILE]"
-            exit 0
+            echo "Usage: zhujie [help] [show-ip] [init] [pull] [push [ddnet] [talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev ...] [mean ...] [fake-display ...] [vncserver ...] [nvtest ...] [viewperf ...]" > /dev/stderr
+            exit 1
         ;;
         
         show-ip)
@@ -1380,9 +1468,15 @@ while [ -n "$1" ]; do
             break
         ;;
         
-        fake-screen)
+        fake-display)
             shift
-            fake-screen "$@"
+            fake-display "$@"
+            break
+        ;;
+        
+        vnc)
+            shift
+            vnc "$@"
             break
         ;;
         
