@@ -1311,7 +1311,7 @@ function catia() {
   
     echo "Info: catia @3840x2160 is running..."
     
-    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' || (
+    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
         cat $HOME/catia_3840x2160.log
     )
     
