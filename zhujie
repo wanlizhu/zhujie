@@ -1329,6 +1329,9 @@ function viewperf() {
     cd "$CWD_BAK"
 }
 
+function disable-e-cores() {
+    echo 
+}
 
 
 
@@ -1336,172 +1339,149 @@ function viewperf() {
 
 
 
-while [ -n "$1" ]; do
-    case "$1" in
-        help)
-            echo "Usage: zhujie [help] [show-ip] [init] [pull] [push [ddnet] [talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev ...] [mean ...] [fake-display ...] [vncserver ...] [nvtest ...] [viewperf ...]" > /dev/stderr
-            exit 1
-        ;;
-        
-        show-ip)
-            echo "ROUTER IP: $IP_ROUTER"
-            echo "NVIDIA IP: $IP_NVIDIA"
-            echo "ZERO-TIER: $IP_ZEROTIER"
-            break
-        ;;
-        
-        init)
-            shift
-            init "$@"
-            break
-        ;;
-        
-        pull)
-            shift
-            pull "$@"
-            break
-        ;;
-        
-        push)
-            shift
-            push "$@"
-            break
-        ;;
-        
-        build)
-            shift
-            build "$@"
-            break
-        ;;
-        
-        install)
-            shift
-            install "$@"  
-            break
-        ;;
-        
-        remove)
-            shift
-            remove "$@"
-            break
-        ;;
-        
-        ddnet)
-            ddnet    
-            break
-        ;;
-        
-        talos)
-            talos
-            break
-        ;;
-        
-        driver)
-            shift
-            driver "$@"
-            break
-        ;;
-        
-        framegraph)
-            shift
-            flamegraph "$@"
-            break
-        ;;
-        
-        fuji)
-            shift
-            fuji "$@"
-            break
-        ;;
-        
-        sysinfo)
-            sysinfo
-            break
-        ;;
-        
-        nvlibs)
-            shift
-            nvlibs "$@"
-            break
-        ;;
-        
-        p4bisect)
-            shift
-            p4bisect "$@"
-            break
-        ;;
-        
-        pic-v)
-            shift
-            pic-v "$@"
-            break
-        ;;
-        
-        vpn)
-            shift
-            vpn "$@"
-            break
-        ;;
-        
-        prime-run)
-            shift
-            export __NV_PRIME_RENDER_OFFLOAD=1
-            export __GLX_VENDOR_LIBRARY_NAME=nvidia
-            export __VK_LAYER_NV_optimus=NVIDIA_only
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-            if [ ! -f "$VK_ICD_FILENAMES" ]; then 
-                export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
-            fi
-            exec "$@"
-            break
-        ;;
-        
-        use-kernel)
-            use-kernel
-            break
-        ;;
-        
-        stddev)
-            shift
-            stddev "$@"
-            break
-        ;;
-        
-        mean)
-            shift
-            mean "$@"
-            break
-        ;;
-        
-        fake-display)
-            shift
-            fake-display "$@"
-            break
-        ;;
-        
-        vnc)
-            shift
-            vnc "$@"
-            break
-        ;;
-        
-        nvtest)
-            shift
-            nvtest "$@"
-            break
-        ;;
-        
-        viewperf)
-            shift
-            viewperf "$@"
-            break
-        ;;
-        
-        *)
-	        zhujie help
-	        exit 1
-        ;;
-    esac
-    shift
-done
+
+case "$1" in
+    help)
+        echo "Usage: zhujie [help] [show-ip] [init] [pull] [push [ddnet] [talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev ...] [mean ...] [fake-display ...] [vncserver ...] [nvtest ...] [viewperf ...]" > /dev/stderr
+        exit 1
+    ;;
+    
+    show-ip)
+        echo "ROUTER IP: $IP_ROUTER"
+        echo "NVIDIA IP: $IP_NVIDIA"
+        echo "ZERO-TIER: $IP_ZEROTIER"
+    ;;
+    
+    init)
+        shift
+        init "$@"
+    ;;
+    
+    pull)
+        shift
+        pull "$@"
+    ;;
+    
+    push)
+        shift
+        push "$@"
+    ;;
+    
+    build)
+        shift
+        build "$@"
+    ;;
+    
+    install)
+        shift
+        install "$@"  
+    ;;
+    
+    remove)
+        shift
+        remove "$@"
+    ;;
+    
+    ddnet)
+        ddnet    
+    ;;
+    
+    talos)
+        talos
+    ;;
+    
+    driver)
+        shift
+        driver "$@"
+    ;;
+    
+    framegraph)
+        shift
+        flamegraph "$@"
+    ;;
+    
+    fuji)
+        shift
+        fuji "$@"
+    ;;
+    
+    sysinfo)
+        sysinfo
+    ;;
+    
+    nvlibs)
+        shift
+        nvlibs "$@"
+    ;;
+    
+    p4bisect)
+        shift
+        p4bisect "$@"
+    ;;
+    
+    pic-v)
+        shift
+        pic-v "$@"
+    ;;
+    
+    vpn)
+        shift
+        vpn "$@"
+    ;;
+    
+    prime-run)
+        shift
+        export __NV_PRIME_RENDER_OFFLOAD=1
+        export __GLX_VENDOR_LIBRARY_NAME=nvidia
+        export __VK_LAYER_NV_optimus=NVIDIA_only
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+        if [ ! -f "$VK_ICD_FILENAMES" ]; then 
+            export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+        fi
+        exec "$@"
+    ;;
+    
+    use-kernel)
+        use-kernel
+    ;;
+    
+    stddev)
+        shift
+        stddev "$@"
+    ;;
+    
+    mean)
+        shift
+        mean "$@"
+    ;;
+    
+    fake-display)
+        shift
+        fake-display "$@"
+    ;;
+    
+    vnc)
+        shift
+        vnc "$@"
+    ;;
+    
+    nvtest)
+        shift
+        nvtest "$@"
+    ;;
+    
+    viewperf)
+        shift
+        viewperf "$@"
+    ;;
+    
+    disable-e-cores)
+        disable-e-cores
+    ;;
+    
+    *)
+	    zhujie help
+	    exit 1
+    ;;
+esac
     
