@@ -1291,6 +1291,8 @@ function apexlegends() {
         unset NVTEST_DRIVER_DIR
     fi
     
+    echo "Info: Apex_Legends_Ultra_3840x2160_1xAA_16xAF is running..."
+    
     /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
         cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
     )
@@ -1306,9 +1308,13 @@ function catia() {
     
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
+  
+    echo "Info: catia @3840x2160 is running..."
+    
     viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' || (
         cat $HOME/catia_3840x2160.log
     )
+    
     cd "$CWD_BAK"
 }
 
