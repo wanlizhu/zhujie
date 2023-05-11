@@ -1304,7 +1304,7 @@ function catia() {
     
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log || (
+    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' || (
         cat $HOME/catia_3840x2160.log
     )
     cd "$CWD_BAK"
