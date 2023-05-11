@@ -1266,20 +1266,30 @@ function vnc() {
 }
 
 function apexlegends() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: please run as root, aborting" > /dev/stderr
+        exit 1
+    fi
+    
     if [ "$(is-nvidia-gpu)" = "0" ]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
-    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" || (
+    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
         cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
     )
 }
 
 function catia() {
-    CWD_BAK=`pwd` 
+    if [ "$EUID" -ne 0 ]; then
+        echo "Error: please run as root, aborting" > /dev/stderr
+        exit 1
+    fi
+    
+    CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION
+    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160
     cd "$CWD_BAK"
 }
 
