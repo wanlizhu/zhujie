@@ -1265,67 +1265,14 @@ function vnc() {
     esac
 }
 
-function nvtest() {
-    ROUNDS="$1"
-    KEYWORD="$2"
-    INDEX="$3"
-    CMD="$4"
-    
-    if [ "$ROUNDS" = "" -o "$KEYWORD" = "" -o "$INDEX" = "" -o "$CMD" = "" ]; then
-        echo "Usage: zhujie nvtest <ROUNDS> <KEYWORD> <INDEX> <CMD>" > /dev/stderr
-        echo "    ROUNDS: Number of sounds to run CMD" > /dev/stderr
-        echo "    KEYWORD: filter output lines of CMD by KEYWORD" > /dev/stderr
-        echo "    INDEX: index of words (split output line by space)" > /dev/stderr
-        echo "    CMD: actual nvtest command to execute, quoted string" > /dev/stderr
-        exit 1
-    fi
-    
-    FAILED=0
-    OUT="nvtest-results.txt"
-    rm -rf $OUT
-    for i in `seq 1 $ROUNDS`; do 
-        $CMD 1> nvtest-cmd.log || FAILED=1
-        if [ "$FAILED" = "1" ]; then
-            cat nvtest-cmd.log
-            break
-        fi
-        LINE=$(cat nvtest-cmd.log | grep "$KEYWORD")
-        IFS=" " read -r -a WORDS <<< "$LINE"
-        NUM="${WORDS[$INDEX]}"
-        if [[ $NUM =~ ^[+-]?([0-9]+)?([.][0-9]+)?$ ]]; then
-            echo $NUM
-            echo $NUM >> $OUT 
-        fi
-    done
-    
-    if [ "$ROUNDS" != "1" -a -f $OUT ]; then
-        echo "Mean: $(mean $OUT)"
-        echo "StdDev: $(stddev $OUT)"
-    fi
+function apexlegends() {
+    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
 }
 
-function viewperf() {
-    ROUNDS="$1"
-    CASE="$2"
-    RESOLUTION="$3"
-    
-    if [ "$ROUNDS" = "" -o "$CASE" = "" -o "$RESOLUTION" = "" ]; then
-        echo "Usage: zhujie viewperf <ROUNDS> <CASE> <RESOLUTION>" > /dev/stderr
-        echo "    ROUNDS: Number of rounds to run CMD" > /dev/stderr
-        echo "    CASE: test case name to run" > /dev/stderr
-        echo "    RESOLUTION: display resolution to run on" > /dev/stderr
-        exit 1
-    fi
-    
-    if [ "$ROUNDS" != "1" ]; then
-        echo "Error: for now, you can only run viewperf once at a time" > /dev/stderr
-        echo xxx
-        exit 1
-    fi
-   
+function catia() {
     CWD_BAK=`pwd` 
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-    viewperf/bin/viewperf viewsets/$CASE/config/$CASE.xml -resolution $RESOLUTION
+    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION
     cd "$CWD_BAK"
 }
 
@@ -1464,14 +1411,14 @@ case "$1" in
         vnc "$@"
     ;;
     
-    nvtest)
+    apexlegends)
         shift
-        nvtest "$@"
+        apexlegends "$@"
     ;;
     
-    viewperf)
+    catia)
         shift
-        viewperf "$@"
+        catia "$@"
     ;;
     
     disable-e-cores)
