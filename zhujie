@@ -1329,10 +1329,6 @@ function viewperf() {
     cd "$CWD_BAK"
 }
 
-function disable-e-cores() {
-    echo 
-}
-
 
 
 
@@ -1343,7 +1339,6 @@ function disable-e-cores() {
 case "$1" in
     help)
         echo "Usage: zhujie [help] [show-ip] [init] [pull] [push [ddnet] [talos] [build ...] [install ...] [remove ...] [driver ...] [flamegraph ...] [fuji ...] [sysinfo] [nvlibs ...] [p4bisect ...] [pic-v ...] [vpn] [prime-run ...] [use-kernel] [stddev ...] [mean ...] [fake-display ...] [vncserver ...] [nvtest ...] [viewperf ...]" > /dev/stderr
-        exit 1
     ;;
     
     show-ip)
@@ -1383,11 +1378,13 @@ case "$1" in
     ;;
     
     ddnet)
-        ddnet    
+        shift
+        ddnet "$@"
     ;;
     
     talos)
-        talos
+        shift
+        talos "$@"
     ;;
     
     driver)
@@ -1406,7 +1403,8 @@ case "$1" in
     ;;
     
     sysinfo)
-        sysinfo
+        shift
+        sysinfo "$@"
     ;;
     
     nvlibs)
@@ -1442,7 +1440,8 @@ case "$1" in
     ;;
     
     use-kernel)
-        use-kernel
+        shift
+        use-kernel "$@"
     ;;
     
     stddev)
@@ -1476,12 +1475,8 @@ case "$1" in
     ;;
     
     disable-e-cores)
-        disable-e-cores
-    ;;
-    
-    *)
-	    zhujie help
-	    exit 1
+        shift
+        disable-e-cores "$@"
     ;;
 esac
     
