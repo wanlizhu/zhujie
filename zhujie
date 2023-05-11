@@ -1266,7 +1266,14 @@ function vnc() {
 }
 
 function apexlegends() {
-    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps"
+    if [ "$(is-nvidia-gpu)" = "0" ]; then
+        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        unset NVTEST_DRIVER_DIR
+    fi
+    
+    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" || (
+        cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
+    )
 }
 
 function catia() {
