@@ -60,6 +60,13 @@ function user-cancel() {
     exit 0
 }
 
+function check-display() {
+    if [ -z "$DISPLAY" ]; then
+        echo "Error: DISPLAY is not set" > /dev/stderr
+        exit 1
+    fi
+}
+
 function ram-size() {
     echo ""
 }
@@ -1305,32 +1312,33 @@ function catia() {
 case "$1" in
     help)
         echo "Usage: zhujie <CMD>" > /dev/stderr
-        echo "    help: show this message" > dev/stderr
-        echo "    show-ip: show important IPs" > dev/stderr
-        echo "    init: install packages for develop environment" > dev/stderr
-        echo "    pull: pull the latest code from github" > dev/stderr
-        echo "    push: push local changes to github" > dev/stderr
-        echo "    ddnet: run phoronix test - ddnet" > dev/stderr
-        echo "    talos: run phoronix test - talos principle" > dev/stderr
-        echo "    build: build NVIDIA drivers" > dev/stderr
-        echo "    install: install NVIDIA drivers or packages" > dev/stderr
-        echo "    remove: remove packages" > dev/stderr
-        echo "    driver: download driver from DVS build" > dev/stderr
-        echo "    flamegraph: generate flamegraph SVG" > dev/stderr
-        echo "    fuji: fuji film tools" > dev/stderr
-        echo "    sysinfo: show system info" > dev/stderr
-        echo "    nvlibs: show NVIDIA libs in specified folder" > dev/stderr
-        echo "    prbisect: bisect P4 changes" > dev/stderr
-        echo "    pic-v: create PIC-V capture" > dev/stderr
-        echo "    vpn: connect to NVIDIA VPN" > dev/stderr
-        echo "    prime-run: force application to use NVIDIA GPU on laptop" > dev/stderr
-        echo "    use-kernel: set the default Linux kernel to boot into" > dev/stderr
-        echo "    stddev: calculate standard deviation" > dev/stderr
-        echo "    mean: calculate mean" > dev/stderr
-        echo "    fake-display: fake a display if there is no monitor connected" > dev/stderr
-        echo "    vnc: start/stop/status a VNC server" > dev/stderr
-        echo "    apexlegends: run nvtest DxvkApexLegends" > dev/stderr
-        echo "    catia: run viewperf test catia" > dev/stderr
+        echo "    help: show this message" > /dev/stderr
+        echo "    show-ip: show important IPs" > /dev/stderr
+        echo "    init: install packages for develop environment" > /dev/stderr
+        echo "    pull: pull the latest code from github" > /dev/stderr
+        echo "    push: push local changes to github" > /dev/stderr
+        echo "    ddnet: run phoronix test - ddnet" > /dev/stderr
+        echo "    talos: run phoronix test - talos principle" > /dev/stderr
+        echo "    build: build NVIDIA drivers" > /dev/stderr
+        echo "    install: install NVIDIA drivers or packages" > /dev/stderr
+        echo "    remove: remove packages" > /dev/stderr
+        echo "    driver: download driver from DVS build" > /dev/stderr
+        echo "    flamegraph: generate flamegraph SVG" > /dev/stderr
+        echo "    fuji: fuji film tools" > /dev/stderr
+        echo "    sysinfo: show system info" > /dev/stderr
+        echo "    nvlibs: show NVIDIA libs in specified folder" > /dev/stderr
+        echo "    prbisect: bisect P4 changes" > /dev/stderr
+        echo "    pic-v: create PIC-V capture" > /dev/stderr
+        echo "    vpn: connect to NVIDIA VPN" > /dev/stderr
+        echo "    prime-run: force application to use NVIDIA GPU on laptop" > /dev/stderr
+        echo "    use-kernel: set the default Linux kernel to boot into" > /dev/stderr
+        echo "    stddev: calculate standard deviation" > /dev/stderr
+        echo "    mean: calculate mean" > /dev/stderr
+        echo "    fake-display: fake a display if there is no monitor connected" > /dev/stderr
+        echo "    vnc: start/stop/status a VNC server" > /dev/stderr
+        echo "    apexlegends: run nvtest DxvkApexLegends" > /dev/stderr
+        echo "    catia: run viewperf test catia" > /dev/stderr
+        echo "    display: show all open displays on this machine, and set DISPLAY to $$1" > /dev/stderr
     ;;
     
     show-ip)
@@ -1469,6 +1477,20 @@ case "$1" in
     disable-e-cores)
         shift
         disable-e-cores "$@"
+    ;;
+    
+    display)
+        shift
+        
+        echo -ne "Local displays: " && (cd /tmp/.X11-unix && for x in X*; do echo -ne ":${x#X} "; done; echo)
+        echo -ne "Remote displays: " && (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
+            printf ($1 == "tcp6" ? "ip6-localhost:" : "localhost:") ($4 - 6000) " "
+        }'; echo)
+        
+        if [ ! -z "$1" ]; then
+            echo "Info: export DISPLAY=$1"
+            export DISPLAY=$1
+        fi
     ;;
 esac
     
