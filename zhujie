@@ -1307,7 +1307,7 @@ function apex() {
     if [ "$1" = "-v" ]; then
         /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
     else
-        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps [0-9]*.[0-9]*' | awk '{print $4}' || (
             cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
         )
     fi
