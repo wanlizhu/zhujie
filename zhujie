@@ -59,6 +59,12 @@ function user-cancel() {
     exit 0
 }
 
+function combine-lines() {
+    INFILE="$1"
+    tr -d '\r' < "$INFILE" > /tmp/combine-lines
+    sed ':a;N;$!ba;s/\n/, /g' /tmp/combine-lines | sed 's/\n$//g'
+}
+
 function check-display() {
     if [ -z "$DISPLAY" ]; then
         echo "Error: DISPLAY is not set" > /dev/stderr
@@ -80,61 +86,29 @@ function is-nvidia-gpu() {
     fi
 }
 
-function ram-size() {
-    echo ""
-}
-
-function system-name() {
-    echo ""
-}
-
 function xserver-info() {
-    echo ""
+    echo "" #TODO
 }
 
 function xwindow-info() {
-    echo ""
+    echo "" #TODO
 }
 
 function cpu-name() {
-    echo ""
+     lscpu | sed -nr '/Model name/ s/.*:\s*(.*) @ .*/\1/p'
 }
 
-function cpu-cores() {
-    echo ""
+function cpu-ram-size() {
+    echo "" #TODO
 }
 
-function cpu-prefetch() {
-    echo ""
-}
-
-function gpu-name() {
-    echo ""
-}
-
-function gpu-vram-size() {
-    echo ""
-}
-
-function gpu-driver() {
-    if [ "$(is-nvidia-gpu)" = "1" ]; then
-        cat /proc/driver/nvidia/version
-    else
-        echo
-    fi
-}
-
-function opengl-version() {
-    echo ""
-}
-
-function vulkan-version() {
-    echo ""
+function gpu-count() {
+    sudo lshw -C video | grep product: | wc -l
 }
 
 function monitor-name() {
     check-display
-    echo ""
+    echo "" #TODO
 }
 
 function monitor-resolution() {
@@ -145,35 +119,36 @@ function monitor-resolution() {
 
 function monitor-color-depth() {
     check-display
-    echo ""
+    echo "" #TODO
+}
+
+function gpu-names() {
+    sudo lshw -C video | awk -F'product: ' '/product/{print $2}' > /tmp/gpu-names
+    combine-lines /tmp/gpu-names
+}
+
+function gpu-driver() {
+    if [ "$(is-nvidia-gpu)" = "1" ]; then
+        cat /proc/driver/nvidia/version
+    else
+        echo
+    fi
 }
 
 function sysinfo() {
-    echo ">>> OS"
-    echo "    Name: $(system-name)"
-    echo "    Kernel: $(uname -r)"
-    echo "    X Server: $(xserver-info)"
-    echo "    X Window: $(xwindow-info)"
-    echo "    CPU: $(cpu-name)"
-    echo "    GPU: $(gpu-name)"
-    echo "    RAM: $(ram-size)"
-    echo ""
-    
-    echo ">>> CPU"
-    echo "    Name: $(cpu-name)"
-    echo "    Cores: $(cpu-cores)"
-    echo "    Prefetch: $(cpu-prefetch)"
-    echo ""
-    
-    echo ">>> GPU"
-    echo "    Name: $(gpu-name)"
-    echo "    VRAM: $(gpu-vram-size)"
-    echo "    Driver: $(gpu-driver)"
-    echo "    Graphics API: OpenGL $(opengl-version), Vulkan $(vulkan-version)"
-    echo "    $(display)"
-    echo "    Monitor: $(monitor-name)"
-    echo "    Resolution: $(monitor-resolution)"
-    echo "    Color Depth: $(monitor-color-depth)"
+    echo "Kernel: $(uname -r)"
+    echo "X Server: $(xserver-info)"
+    echo "X Window: $(xwindow-info)"
+    echo "CPU: $(cpu-name)"
+    echo "CPU RAM: $(cpu-ram-size)"
+    echo "GPU (Usable): $(gpu-names)"
+    echo "GPU (Active): "
+    echo "GPU Driver: $(gpu-driver)"
+    echo "GPU Memory: $(glxinfo | grep -E -i 'Video memory' | awk '{print $3}')"
+    echo "Monitor: $(monitor-name)"
+    echo "Resolution: $(monitor-resolution)"
+    echo "Color Depth: $(monitor-color-depth)"
+    display
     echo ""
 }
 
