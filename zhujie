@@ -739,6 +739,7 @@ function drivers() {
 }
 
 function flamegraph() {    
+    SUDO="sudo"
     NAME=$(date +%s)
     OUT="$HOME"
     SVG_FILE="$OUT/perf-$NAME.svg"
@@ -761,6 +762,7 @@ function flamegraph() {
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
                 PERF_RECORD_PID=" --pid=$1 "
+                SUDO=""
             ;;
 
             --sleep)
@@ -770,6 +772,7 @@ function flamegraph() {
 
             *)
 	            if [ ! -z "$(pidof $1)" ]; then
+	                SUDO=""
 	                NAME=$1
 	                SVG_FILE="$OUT/perf-$NAME.svg"
                     PERF_DATA="$OUT/perf-$NAME.data"
@@ -802,7 +805,7 @@ function flamegraph() {
     
     if [ ! -f "$PERF_DATA" ]; then
         echo "Info: perf record is running..."
-        sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
+        $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
 
         if [ ! -z "$SUDO" ]; then
             sudo  chmod 777 "$PERF_DATA"
