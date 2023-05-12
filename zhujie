@@ -808,7 +808,7 @@ function flamegraph() {
     fi
     
     echo -ne "Info: perf record for $PERF_RECORD_SECONDS seconds\t"
-    sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS 2> /tmp/$PERF_DATA.error && echo "[OK]" || (echo "[FAILED]"; cat /tmp/$PERF_DATA.error; exit 1)
+    sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS 2> /tmp/$(basename $PERF_DATA).error && echo "[OK]" || (echo "[FAILED]"; cat /tmp/$PERF_DATA.error; exit 1)
 
     if [ ! -z "$SUDO" ]; then
         sudo  chmod 777 "$PERF_DATA"
