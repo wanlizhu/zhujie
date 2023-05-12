@@ -1287,7 +1287,7 @@ function vnc() {
     esac
 }
 
-function apexlegends() {
+function apex() {
     if [ "$EUID" -ne 0 ]; then
         echo "Error: please run as root, aborting" > /dev/stderr
         exit 1
@@ -1496,19 +1496,14 @@ case "$1" in
         vnc "$@"
     ;;
     
-    apexlegends)
+    apex)
         shift
-        apexlegends "$@"
+        apex "$@"
     ;;
     
     catia)
         shift
         catia "$@"
-    ;;
-    
-    disable-e-cores)
-        shift
-        disable-e-cores "$@"
     ;;
     
     display)
