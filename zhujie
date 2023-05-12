@@ -649,7 +649,7 @@ function talos() {
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
     rm -rf $HOME/zhujie-talos.log
     echo "Info: ./Talos 2560x1440 is running..."
-    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua > $HOME/zhujie-talos.log
+    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>&1 | tee $HOME/zhujie-talos.log
     cd "$CWD_BAK"
 }
 
@@ -1293,7 +1293,7 @@ function apexlegends() {
     
     echo "Info: Apex_Legends_Ultra_3840x2160_1xAA_16xAF is running..."
     
-    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
+    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
         cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
     )
 }
@@ -1311,7 +1311,7 @@ function catia() {
   
     echo "Info: catia @3840x2160 is running..."
     
-    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
+    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 2>&1 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
         cat $HOME/catia_3840x2160.log
     )
     
