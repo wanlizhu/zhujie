@@ -113,7 +113,7 @@ function monitor-name() {
 
 function monitor-resolution() {
     check-display
-    LINE=$(xdpyinfo | grep dimensions)
+    LINE=$(xdpyinfo 2> /dev/null | grep dimensions)
     echo "${LINE#  dimensions:    }"
 }
 
@@ -1315,8 +1315,6 @@ function catia() {
 }
 
 function display() {
-    which netstat > /dev/null || sudo apt install netstat
-    
     if [ ! -z "ls -A /tmp/.X11-unix" ]; then
         echo -ne "Displays: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
     else
