@@ -1526,13 +1526,14 @@ case "$1" in
             exit 1
         fi
         
+        rm -rf $HOME/zhujie-loop.records
         for i in `seq 1 $1`; do
-            $2 | tee $HOME/zhujie-loop.records
+            $2 | tee -a $HOME/zhujie-loop.records
         done
         
         echo ""
-        mean $HOME/zhujie-loop.records
-        stddev $HOME/zhujie-loop.records
+        echo -ne "Mean: " && mean $HOME/zhujie-loop.records
+        echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
     ;;
 esac
     
