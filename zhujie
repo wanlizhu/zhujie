@@ -657,9 +657,13 @@ function talos() {
 
     CWD_BAK="$(pwd)"
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
-    rm -rf $HOME/zhujie-talos.log
-    echo "Info: ./Talos 2560x1440 is running..."
-    ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>&1 | tee $HOME/zhujie-talos.log
+    
+    if [ "$1" = "-v" ]; then
+        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+    else
+        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>&1 | tee $HOME/zhujie-talos.log
+    fi
+    
     cd "$CWD_BAK"
 }
 
@@ -1300,9 +1304,13 @@ function apex() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
-        cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
-    )
+    if [ "$1" = "-v" ]; then
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
+    else
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
+            cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
+        )
+    fi
 }
 
 function catia() {
@@ -1316,9 +1324,13 @@ function catia() {
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
   
-    viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 2>&1 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
-        cat $HOME/catia_3840x2160.log
-    )
+    if [ "$1" = "-v" ]; then
+        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160
+    else
+        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 2>&1 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
+            cat $HOME/catia_3840x2160.log
+        )
+    fi
     
     cd "$CWD_BAK"
 }
@@ -1367,7 +1379,7 @@ case "$1" in
         echo "    mean: calculate mean" > /dev/stderr
         echo "    fake-display: fake a display if there is no monitor connected" > /dev/stderr
         echo "    vnc: start/stop/status a VNC server" > /dev/stderr
-        echo "    apexlegends: run nvtest DxvkApexLegends" > /dev/stderr
+        echo "    apex: run nvtest DxvkApexLegends" > /dev/stderr
         echo "    catia: run viewperf test catia" > /dev/stderr
         echo "    display: show local and remote displays on this machine" > /dev/stderr
         echo "    loop: run tests multiple times and show stats" > /dev/stderr
