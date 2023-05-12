@@ -1078,15 +1078,17 @@ function vpn() {
     echo "$CODE1,$CODE2" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
 }
 
-function use-kernel() {
+function choose-kernel() {
     echo "Found installed kernel:"
-    COUNT=0
+    INDEX=-1
     for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
-        echo "[$COUNT]" ${K:14:$[${#K}-14]}
-        COUNT=$((COUNT+1))
+        THISNAME=${K:14:$[${#K}-14]}
+        MARK=$([ "$THISNAME" = "$(uname -r)" ] && echo "*" || echo " ")
+        INDEX=$((INDEX+1))
+        echo "$MARK [$INDEX]" $THISNAME
     done
     
-    read -p "Set a kernel as default: " KNAME
+    read -p "Choose a kernel to be default: " KNAME
     
     if [[ "$KNAME" =~ ^[0-9]+$ ]]; then
         INDEX=0
@@ -1353,7 +1355,7 @@ case "$1" in
         echo "    pic-v: create PIC-V capture" > /dev/stderr
         echo "    vpn: connect to NVIDIA VPN" > /dev/stderr
         echo "    prime-run: force application to use NVIDIA GPU on laptop" > /dev/stderr
-        echo "    use-kernel: set the default Linux kernel to boot into" > /dev/stderr
+        echo "    choose-kernel: set the default Linux kernel to boot into" > /dev/stderr
         echo "    stddev: calculate standard deviation" > /dev/stderr
         echo "    mean: calculate mean" > /dev/stderr
         echo "    fake-display: fake a display if there is no monitor connected" > /dev/stderr
@@ -1461,9 +1463,9 @@ case "$1" in
         exec "$@"
     ;;
     
-    use-kernel)
+    choose-kernel)
         shift
-        use-kernel "$@"
+        choose-kernel "$@"
     ;;
     
     stddev)
