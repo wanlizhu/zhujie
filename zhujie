@@ -1333,7 +1333,7 @@ case "$1" in
         echo "    install: install NVIDIA drivers or packages" > /dev/stderr
         echo "    remove: remove packages" > /dev/stderr
         echo "    drivers: download driver from DVS build" > /dev/stderr
-        echo "    flamegraph: generate flamegraph SVG" > /dev/stderr
+        echo "    fg|flamegraph: generate flamegraph SVG" > /dev/stderr
         echo "    fuji: fuji film tools" > /dev/stderr
         echo "    sysinfo: show system info" > /dev/stderr
         echo "    nvlibs: show NVIDIA libs in specified folder" > /dev/stderr
@@ -1403,7 +1403,7 @@ case "$1" in
         drivers "$@"
     ;;
     
-    flamegraph)
+    fg|flamegraph)
         shift
         flamegraph "$@"
     ;;
