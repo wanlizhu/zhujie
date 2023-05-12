@@ -67,13 +67,13 @@ function combine-lines() {
 
 function check-display() {
     if [ -z "$DISPLAY" ]; then
-        echo "Error: DISPLAY is not set" > /dev/stderr
-        exit 1
+        echo "[Error: DISPLAY is not set]"
+        return
     fi
     
     glxinfo 1> /dev/null 2> /dev/null || (
-        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
-        exit 1
+        echo "[Error: Unable to open display $DISPLAY]"
+        return
     )
 }
 
@@ -1315,13 +1315,13 @@ function catia() {
 }
 
 function display() {
-    echo -ne "Displays: "
-    echo -ne "Local [" && (cd /tmp/.X11-unix && 
-        for x in X*; do echo -ne ":${x#X} "; done; 
-        echo -ne "], ")
-    echo -ne "Remote [" && (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
-        printf ($1 == "tcp6" ? "ip6-localhost:" : "localhost:") ($4 - 6000) " "
-    }'; echo "]")
+    which netstat > /dev/null || sudo apt install netstat
+    
+    if [ ! -z "ls -A /tmp/.X11-unix" ]; then
+        echo -ne "Displays: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
+    else
+        echo "Displays: N/A"
+    fi
 }
 
 
