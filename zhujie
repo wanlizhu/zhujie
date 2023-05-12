@@ -739,7 +739,6 @@ function drivers() {
 }
 
 function flamegraph() {    
-    SUDO="sudo"
     NAME=$(date +%s)
     OUT="$HOME"
     SVG_FILE="$OUT/perf-$NAME.svg"
@@ -762,7 +761,6 @@ function flamegraph() {
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
                 PERF_RECORD_PID=" --pid=$1 "
-                SUDO=""
             ;;
 
             --sleep)
@@ -772,7 +770,6 @@ function flamegraph() {
 
             *)
 	            if [ ! -z "$(pidof $1)" ]; then
-	                SUDO=""
 	                NAME=$1
 	                SVG_FILE="$OUT/perf-$NAME.svg"
                     PERF_DATA="$OUT/perf-$NAME.data"
@@ -809,10 +806,7 @@ function flamegraph() {
     
     echo -ne "Info: perf record for $PERF_RECORD_SECONDS seconds\t"
     sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS 2> /tmp/$(basename $PERF_DATA).error && echo "[OK]" || (echo "[FAILED]"; cat /tmp/$PERF_DATA.error; exit 1)
-
-    if [ ! -z "$SUDO" ]; then
-        sudo  chmod 777 "$PERF_DATA"
-    fi
+    sudo chmod 777 "$PERF_DATA"
     
     if [ ! -f "$PERF_DATA" ]; then
         echo "Error: perf data file '$PERF_DATA' is missing, aborting..." > /dev/stderr
