@@ -803,13 +803,15 @@ function flamegraph() {
         exit 1
     fi
     
-    if [ ! -f "$PERF_DATA" ]; then
-        echo "Info: perf record is running..."
-        $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
+    if [ -f "$PERF_DATA" ]; then
+        rm -rf "$PERF_DATA"
+    fi
+    
+    echo -ne "Info: perf record for $PERF_RECORD_SECONDS seconds\t"
+    sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS 2> /tmp/$PERF_DATA.error && echo "[OK]" || (echo "[FAILED]"; cat /tmp/$PERF_DATA.error; exit 1)
 
-        if [ ! -z "$SUDO" ]; then
-            sudo  chmod 777 "$PERF_DATA"
-        fi
+    if [ ! -z "$SUDO" ]; then
+        sudo  chmod 777 "$PERF_DATA"
     fi
     
     if [ ! -f "$PERF_DATA" ]; then
@@ -819,44 +821,17 @@ function flamegraph() {
     
     BASENAME=$(basename -- "$PERF_DATA")
     
-    perf script \
-        --input="$PERF_DATA" \
-        1> "/tmp/$BASENAME.perf" \
-        2> "/tmp/$BASENAME.perf.error"
+    echo -ne "Info: perf script\t"
+    sudo perf script --input="$PERF_DATA" 1> "/tmp/$BASENAME.perf" 2> "/tmp/$BASENAME.perf.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.error"; exit 1) 
     
-    if [ ! -f "/tmp/$BASENAME.perf" ]; then
-        cat "/tmp/$BASENAME.perf.error"
-        exit 1
-    fi
+    echo -ne "Info: stackcollapse-perf.pl\t"
+    sudo "$FLAMEGRAPH/stackcollapse-perf.pl" "/tmp/$BASENAME.perf" 1> "/tmp/$BASENAME.perf.folded" 2> "/tmp/$BASENAME.perf.folded.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.error"; exit 1)
     
-    "$FLAMEGRAPH/stackcollapse-perf.pl" \
-        "/tmp/$BASENAME.perf" \
-        1> "/tmp/$BASENAME.perf.folded" \
-        2> "/tmp/$BASENAME.perf.folded.error"
+    echo -ne "Info: stackcollapse-recursive.pl\t"
+    sudo "$FLAMEGRAPH/stackcollapse-recursive.pl" "/tmp/$BASENAME.perf.folded" 1> "/tmp/$BASENAME.perf.folded.recursive" 2> "/tmp/$BASENAME.perf.folded.recursive.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.recursive.error"; exit 1)
     
-    if [ ! -f "/tmp/$BASENAME.perf.folded" ]; then
-        cat "/tmp/$BASENAME.perf.folded.error"
-        exit 1
-    fi
-    
-    "$FLAMEGRAPH/stackcollapse-recursive.pl" \
-       "/tmp/$BASENAME.perf.folded" \
-       1> "/tmp/$BASENAME.perf.folded.recursive" \
-       2> "/tmp/$BASENAME.perf.folded.recursive.error"
-    
-    if [ ! -f "/tmp/$BASENAME.perf.folded.recursive" ]; then
-        cat "/tmp/$BASENAME.perf.folded.recursive.error"
-        exit 1
-    fi
-    
-    "$FLAMEGRAPH/flamegraph.pl" \
-    "/tmp/$BASENAME.perf.folded.recursive" \
-    > "$SVG_FILE" && (
-        echo "Info: Flamegraph SVG saved as $SVG_FILE"       
-    ) || (
-        echo "Error: can't generate SVG file, aborting..." > /dev/stderr
-        exit 1
-    )
+    echo -ne "Info: flamegraph.pl\t"
+    sudo "$FLAMEGRAPH/flamegraph.pl" "/tmp/$BASENAME.perf.folded.recursive" 1> "$SVG_FILE" 2> "/tmp/$BASENAME.perf.folded.recursive.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.recursive.error"; exit 1)
 }
 
 function fuji() {
