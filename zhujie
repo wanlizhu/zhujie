@@ -67,6 +67,11 @@ function check-display() {
         echo "Error: DISPLAY is not set" > /dev/stderr
         exit 1
     fi
+    
+    glxinfo 1> /dev/null 2> /dev/null || (
+        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
+        exit 1
+    )
 }
 
 function is-nvidia-gpu() {
@@ -131,15 +136,18 @@ function vulkan-version() {
 }
 
 function monitor-name() {
+    check-display
     echo ""
 }
 
 function monitor-resolution() {
+    check-display
     LINE=$(xdpyinfo | grep dimensions)
     echo "${LINE#  dimensions:    }"
 }
 
 function monitor-color-depth() {
+    check-display
     echo ""
 }
 
@@ -1289,8 +1297,6 @@ function apexlegends() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    echo "Info: Apex_Legends_Ultra_3840x2160_1xAA_16xAF is running..."
-    
     /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep "UNKN NUMB: dxvk-v[0-9]*.[0-9]*.[0-9]*-fps" | awk "{print $5}" || (
         cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
     )
@@ -1307,8 +1313,6 @@ function catia() {
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
   
-    echo "Info: catia @3840x2160 is running..."
-    
     viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 2>&1 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
         cat $HOME/catia_3840x2160.log
     )
@@ -1317,7 +1321,7 @@ function catia() {
 }
 
 function display() {
-    echo -ne "Opened Displays: "
+    echo -ne "Displays: "
     echo -ne "Local [" && (cd /tmp/.X11-unix && 
         for x in X*; do echo -ne ":${x#X} "; done; 
         echo -ne "], ")
