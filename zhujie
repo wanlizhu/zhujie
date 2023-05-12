@@ -1316,10 +1316,12 @@ function catia() {
 
 function display() {
     echo -ne "Opened Displays: "
-    (cd /tmp/.X11-unix && for x in X*; do echo -ne ":${x#X} "; done; echo -ne ", ")
-    (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
+    echo -ne "Local [" && (cd /tmp/.X11-unix && 
+        for x in X*; do echo -ne ":${x#X} "; done; 
+        echo -ne "], ")
+    echo -ne "Remote [" && (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
         printf ($1 == "tcp6" ? "ip6-localhost:" : "localhost:") ($4 - 6000) " "
-    }'; echo)
+    }'; echo "]")
         
     if [ ! -z "$1" ]; then
         echo "Info: export DISPLAY=$1"
