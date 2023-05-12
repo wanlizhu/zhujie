@@ -738,17 +738,7 @@ function drivers() {
     fi
 }
 
-function flamegraph() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie flamegraph [--name NAME] [--pid PID] [--sleep SEC]" > /dev/stderr
-        echo "    --name NAME: set a name for generated report" > /dev/stderr
-        echo "    --pid PID: record callstacks of PID only (default is system-wide recording)" > /dev/stderr
-        echo "    --sleep SEC: record for SEC seconds" > /dev/stderr
-        echo ""
-        echo "e.g. <call with no arguments>: record system-wide for 10 seconds" > /dev/stderr
-        exit 1
-    fi
-    
+function flamegraph() {    
     NAME=$(date +%s)
     OUT="$HOME"
     SVG_FILE="$OUT/perf-$NAME.svg"
@@ -779,8 +769,16 @@ function flamegraph() {
             ;;
 
             *)
-	            flamegraph
-	            exit 1
+	            if [ ! -z "$(pidof $1)" ]; then
+	                NAME=$1
+	                SVG_FILE="$OUT/perf-$NAME.svg"
+                    PERF_DATA="$OUT/perf-$NAME.data"
+                    PERF_RECORD_SYSTEM_WIDE=0
+                    PERF_RECORD_PID=" --pid=$(pidof $NAME) "
+	            else
+	                echo "Error: process '$1' doesn't exist, aborting" > /dev/stderr
+	                exit 1
+	            fi
             ;;
         esac
         shift
