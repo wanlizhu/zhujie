@@ -736,16 +736,19 @@ function drivers() {
 
 function flamegraph() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie flamegraph [--pid PID] [--sleep SEC]" > /dev/stderr
+        echo "Usage: zhujie flamegraph [--name NAME] [--pid PID] [--sleep SEC]" > /dev/stderr
+        echo "    --name NAME: set a name for generated report" > /dev/stderr
         echo "    --pid PID: record callstacks of PID only (default is system-wide recording)" > /dev/stderr
         echo "    --sleep SEC: record for SEC seconds" > /dev/stderr
+        echo ""
+        echo "e.g. <call with no arguments>: record system-wide for 10 seconds" > /dev/stderr
         exit 1
     fi
     
-    TIMESTAMP=$(date +%s)
-    OUT="$HOME/NVIDIA/OUT/flamegraph"
-    SVG_FILE="$OUT/perf-$TIMESTAMP.svg"
-    PERF_DATA="$OUT/perf-$TIMESTAMP.data"
+    NAME=$(date +%s)
+    OUT="$HOME"
+    SVG_FILE="$OUT/perf-$NAME.svg"
+    PERF_DATA="$OUT/perf-$NAME.data"
     PERF_RECORD_SYSTEM_WIDE=1
     PERF_RECORD_PID=" -a "
     PERF_RECORD_SECONDS=10
@@ -754,6 +757,11 @@ function flamegraph() {
     
     while [ -n "$1" ]; do
         case "$1" in
+            --name)
+                shift
+                NAME="$1"
+            ;;
+            
             --pid)
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
@@ -774,6 +782,17 @@ function flamegraph() {
         shift
     done
     
+    perf --help 1> /dev/null 2> /dev/null || (
+        sudo apt install -y linux-tools-`uname -r`
+        sudo apt install -y linux-cloud-tools-`uname -r`
+        sudo apt install -y linux-tools-generic
+        sudo apt install -y linux-cloud-tools-generic
+    )
+    
+    if [ ! -d "$OUT" ]; then
+        mkdir -p "$OUT"
+    fi
+    
     if [ ! -d "$FLAMEGRAPH" ]; then
         echo "Error: ENVVAR FLAMEPATH is missing or incorrect, aborting..." > /dev/stderr
         exit 1
@@ -781,8 +800,6 @@ function flamegraph() {
     
     if [ ! -f "$PERF_DATA" ]; then
         echo "Info: perf record is running..."
-
-        mkdir -p "$OUT"
         $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
 
         if [ ! -z "$SUDO" ]; then
