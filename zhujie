@@ -705,7 +705,7 @@ function install-dvs-driver() {
     if [ -f "$OUT" ]; then
         read -p "Do you want to install now? (Y/n) " ANS
         case "$ANS" in
-            " "|y|Y|1)
+            ""|y|Y|1)
                 echo "Installing $OUT"
                 install "$OUT"
             ;;
