@@ -757,7 +757,6 @@ function flamegraph() {
     PERF_RECORD_PID=" -a "
     PERF_RECORD_SECONDS=10
     PERF_RECORD_ARGS=" -F 100 -g --call-graph dwarf "
-    SUDO="sudo"
     
     while [ -n "$1" ]; do
         case "$1" in
@@ -772,7 +771,6 @@ function flamegraph() {
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
                 PERF_RECORD_PID=" --pid=$1 "
-                SUDO=""
             ;;
 
             --sleep)
@@ -806,7 +804,7 @@ function flamegraph() {
     
     if [ ! -f "$PERF_DATA" ]; then
         echo "Info: perf record is running..."
-        $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
+        sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
 
         if [ ! -z "$SUDO" ]; then
             sudo  chmod 777 "$PERF_DATA"
