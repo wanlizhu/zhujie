@@ -780,12 +780,7 @@ function flamegraph() {
     fi
     
     if [ ! -f "$PERF_DATA" ]; then
-        echo "Run perf record:"
-        echo "    Output: $PERF_DATA"
-        echo "    Sleep: $PERF_RECORD_SECONDS SECONDS"
-        echo "    PID: $([[ $PERF_RECORD_SYSTEM_WIDE -ne 0 ]] && echo \"[SYSTEM WIDE]\" || echo \"$PERF_RECORD_PID\")"
-        echo "    Other: $PERF_RECORD_ARGS"
-        echo ""
+        echo "Info: perf record is running..."
 
         mkdir -p "$OUT"
         $SUDO perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS
@@ -800,10 +795,6 @@ function flamegraph() {
         exit 1
     fi
     
-    echo "Generate flamegraph SVG (Zoom and Search):"
-    echo "    Perf data: $PERF_DATA"
-    echo "    SVG file: $SVG_FILE"
-    echo ""
     BASENAME=$(basename -- "$PERF_DATA")
     
     perf script \
@@ -837,11 +828,13 @@ function flamegraph() {
     fi
     
     "$FLAMEGRAPH/flamegraph.pl" \
-       "/tmp/$BASENAME.perf.folded.recursive" \
-       > "$SVG_FILE" || (
-           echo "Error: can't generate SVG file, aborting..." > /dev/stderr
-           exit 1
-       )
+    "/tmp/$BASENAME.perf.folded.recursive" \
+    > "$SVG_FILE" && (
+        echo "Info: Flamegraph SVG saved as $SVG_FILE"       
+    ) || (
+        echo "Error: can't generate SVG file, aborting..." > /dev/stderr
+        exit 1
+    )
 }
 
 function fuji() {
@@ -1413,7 +1406,7 @@ case "$1" in
         drivers "$@"
     ;;
     
-    framegraph)
+    flamegraph)
         shift
         flamegraph "$@"
     ;;
