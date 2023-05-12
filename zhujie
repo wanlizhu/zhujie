@@ -164,8 +164,8 @@ function sysinfo() {
     echo "    Name: $(gpu-name)"
     echo "    VRAM: $(gpu-vram-size)"
     echo "    Driver: $(gpu-driver)"
-    echo "    OpenGL: $(opengl-version)"
-    echo "    Vulkan: $(vulkan-version)"
+    echo "    Graphics API: OpenGL $(opengl-version), Vulkan $(vulkan-version)"
+    echo "    $(display)"
     echo "    Monitor: $(monitor-name)"
     echo "    Resolution: $(monitor-resolution)"
     echo "    Color Depth: $(monitor-color-depth)"
@@ -1314,6 +1314,19 @@ function catia() {
     cd "$CWD_BAK"
 }
 
+function display() {
+    echo -ne "Opened Displays: "
+    (cd /tmp/.X11-unix && for x in X*; do echo -ne ":${x#X} "; done; echo -ne ", ")
+    (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
+        printf ($1 == "tcp6" ? "ip6-localhost:" : "localhost:") ($4 - 6000) " "
+    }'; echo)
+        
+    if [ ! -z "$1" ]; then
+        echo "Info: export DISPLAY=$1"
+        export DISPLAY=:$1
+    fi
+}
+
 
 
 
@@ -1493,15 +1506,7 @@ case "$1" in
     
     display)
         shift
-        echo -ne "Local displays: " && (cd /tmp/.X11-unix && for x in X*; do echo -ne ":${x#X} "; done; echo)
-        echo -ne "Remote displays: " && (netstat -lnt | awk 'sub(/.*:/,"",$4) && $4 >= 6000 && $4 < 6100 {
-            printf ($1 == "tcp6" ? "ip6-localhost:" : "localhost:") ($4 - 6000) " "
-        }'; echo)
-        
-        if [ ! -z "$1" ]; then
-            echo "Info: export DISPLAY=$1"
-            export DISPLAY=:$1
-        fi
+        display "$@"
     ;;
 esac
     
