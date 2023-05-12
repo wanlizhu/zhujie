@@ -1148,7 +1148,10 @@ import statistics as stat
 data=[]
 with open(\"$FILE\", \"r\") as file:
     for line in file.readlines():
-        data.append(float(line))
+        try:
+            data.append(float(line))
+        except:
+            continue
 print(stat.stdev(data))")
     python3 -c "$CMD"
 }
@@ -1165,7 +1168,10 @@ import statistics as stat
 data=[]
 with open(\"$FILE\", \"r\") as file:
     for line in file.readlines():
-        data.append(float(line))
+        try:
+            data.append(float(line))
+        except:
+            continue
 print(stat.mean(data))")
     python3 -c "$CMD"
 }
@@ -1367,6 +1373,7 @@ case "$1" in
         echo "    apexlegends: run nvtest DxvkApexLegends" > /dev/stderr
         echo "    catia: run viewperf test catia" > /dev/stderr
         echo "    display: show local and remote displays on this machine" > /dev/stderr
+        echo "    loop: run tests multiple times and show stats" > /dev/stderr
     ;;
     
     show-ip)
@@ -1510,6 +1517,22 @@ case "$1" in
     display)
         shift
         display "$@"
+    ;;
+    
+    loop)
+        shift
+        if [ -z "$1" -o -z "$2" ]; then
+            echo "Usage: zhujie loop <TIMES> <CMD>" > /dev/stderr
+            exit 1
+        fi
+        
+        for i in `seq 1 $1`; do
+            $2 | tee $HOME/zhujie-loop.records
+        done
+        
+        echo ""
+        mean $HOME/zhujie-loop.records
+        stddev $HOME/zhujie-loop.records
     ;;
 esac
     
