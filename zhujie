@@ -1293,7 +1293,7 @@ function apex() {
         exit 1
     fi
     
-    check-display
+    # check-display
     
     if [ "$(is-nvidia-gpu)" = "0" ]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
