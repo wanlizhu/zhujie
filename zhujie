@@ -69,6 +69,15 @@ function check-display() {
     fi
 }
 
+function is-nvidia-gpu() {
+    LINE=$(lspci | grep NVIDIA)
+    if [ "$LINE" = "" ]; then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
 function ram-size() {
     echo ""
 }
@@ -89,11 +98,7 @@ function cpu-name() {
     echo ""
 }
 
-function cpu-physical-cores() {
-    echo ""
-}
-
-function cpu-logical-cores() {
+function cpu-cores() {
     echo ""
 }
 
@@ -110,7 +115,11 @@ function gpu-vram-size() {
 }
 
 function gpu-driver() {
-    cat /proc/driver/nvidia/version
+    if [ "$(is-nvidia-gpu)" = "1" ]; then
+        cat /proc/driver/nvidia/version
+    else
+        echo
+    fi
 }
 
 function opengl-version() {
@@ -135,9 +144,8 @@ function monitor-color-depth() {
 }
 
 function sysinfo() {
-    echo "         System"
-    echo "==============="
-    echo "    OS Name: $(system-name)"
+    echo ">>> OS"
+    echo "    Name: $(system-name)"
     echo "    Kernel: $(uname -r)"
     echo "    X Server: $(xserver-info)"
     echo "    X Window: $(xwindow-info)"
@@ -146,21 +154,18 @@ function sysinfo() {
     echo "    RAM: $(ram-size)"
     echo ""
     
-    echo "            CPU"
-    echo "==============="
+    echo ">>> CPU"
     echo "    Name: $(cpu-name)"
-    echo "    Physical Cores: $(cpu-physical-cores)"
-    echo "    Logical Cores: $(cpu-logical-cores)"
+    echo "    Cores: $(cpu-cores)"
     echo "    Prefetch: $(cpu-prefetch)"
     echo ""
     
-    echo "            GPU"
-    echo "==============="
+    echo ">>> GPU"
     echo "    Name: $(gpu-name)"
     echo "    VRAM: $(gpu-vram-size)"
     echo "    Driver: $(gpu-driver)"
-    echo "    OpenGL API: $(opengl-version)"
-    echo "    Vulkan API: $(vulkan-version)"
+    echo "    OpenGL: $(opengl-version)"
+    echo "    Vulkan: $(vulkan-version)"
     echo "    Monitor: $(monitor-name)"
     echo "    Resolution: $(monitor-resolution)"
     echo "    Color Depth: $(monitor-color-depth)"
@@ -1153,15 +1158,6 @@ with open(\"$FILE\", \"r\") as file:
         data.append(float(line))
 print(stat.mean(data))")
     python3 -c "$CMD"
-}
-
-function is-nvidia-gpu() {
-    LINE=$(lspci | grep NVIDIA)
-    if [ "$LINE" = "" ]; then
-        echo 0
-    else
-        echo 1
-    fi
 }
 
 function fake-display() {
