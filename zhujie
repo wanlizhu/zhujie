@@ -682,7 +682,7 @@ function install-dvs-driver() {
         public)
             PATCH=$([ "$ID" = "Develop" ] && echo "/develop" || echo "")
             URL="http://linuxqa/builds/release/display/x86_64${PATCH}/$CL/NVIDIA-Linux-x86_64-$CL.run"
-            OUT="$HOME/Downloads/NVIDIA-Public-$TYPE-$ID.run"
+            OUT="$HOME/Downloads/NVIDIA-Public-$TYPE-$CL.run"
         ;;
     esac
     
@@ -692,7 +692,11 @@ function install-dvs-driver() {
         echo "Reuse cache: $OUT"
         chmod 777 "$OUT" 
     else
-        wget $URL -O "$OUT" && chmod 777 "$OUT" || (
+        TMPFILE="/tmp/$(basename $OUT)"
+        wget $URL -O "$TMPFILE" && (
+            mv -f $TMPFILE $OUT
+            chmod 777 "$OUT"
+        ) || (
             echo "Error: can't download $URL" > /dev/stderr
             exit 1
         )
@@ -760,6 +764,8 @@ function flamegraph() {
             --name)
                 shift
                 NAME="$1"
+                SVG_FILE="$OUT/perf-$NAME.svg"
+                PERF_DATA="$OUT/perf-$NAME.data"
             ;;
             
             --pid)
