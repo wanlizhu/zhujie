@@ -2,9 +2,6 @@
 # System
 export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
 export __GL_SYNC_TO_VBLANK=0
-if [ -z "$DISPLAY" ]; then
-    export DISPLAY=:0
-fi
 
 # NVIDIA tools
 export P4V=$HOME/NVIDIA/P4V
