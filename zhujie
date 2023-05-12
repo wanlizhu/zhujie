@@ -501,7 +501,6 @@ function run-installer() {
 
     sudo chmod +x "$INSTALLER"
 
-    echo "Info: install NVIDIA driver '$INSTALLER'"
     who am i > /dev/null && (
         sudo systemctl isolate multi-user
         sudo "$INSTALLER" -sb
@@ -642,91 +641,96 @@ function talos() {
     cd "$CWD_BAK"
 }
 
-function driver() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie driver [dev_a [CL|current]] [public [release_id|current][:dev]] [-i]" > /dev/stderr
-        echo "    e.g. zhujie driver dev_a CL" > /dev/stderr
-        echo "    e.g. zhujie driver dev_a current" > /dev/stderr
-        echo "    e.g. zhujie driver public RELEASE_ID" > /dev/stderr
-        echo "    e.g. zhujie driver public RELEASE_ID:dev" > /dev/stderr
-        exit 1
-    fi
-
-    URL=""
-    OUT=""
-    INSTALL=0
-    DVSBUILD_DOWNLOADS="$HOME/NVIDIA/OUT/Drivers"
-    mkdir -p "$DVSBUILD_DOWNLOADS"
+function install-dvs-driver() {
+    TYPE="Release"
+    BRANCH=""
+    CL=""
     
     while [ -n "$1" ]; do
         case "$1" in
-            -i|--install)
-                INSTALL=1
+            debug) 
+                TYPE="Debug" 
             ;;
-            
-            dev_a)
+            develop) 
+                TYPE="Develop" 
+            ;;
+            dev_a) 
                 shift
-                if [ "$1" = "current" ]; then
-                    echo xxx
-                    exit 1
-                else 
-                    CL="$1"
-                fi
-                TYPE="Release"
-                URL_PATCH="Release"
-                URL_PATCH2=""
-                if [[ $CL == *":dbg"* ]]; then
-                    TYPE="Debug"
-                    URL_PATCH="Debug"
-                    URL_PATCH2="-internal"
-                fi
-                CL="${CL%:*}"
-                URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${URL_PATCH}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${URL_PATCH2}.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-dev_a-$TYPE-CL$CL.run"
-                echo "Downloading: $OUT"
+                BRANCH="dev_a" 
+                CL="$1"
             ;;
-            
             public)
                 shift
-                if [ "$1" = "current" ]; then
-                    echo xxx
-                    exit 1
-                else
-                    ID="$1"
-                fi
-                TYPE="Release"
-                URL_PATCH=""
-                if [[ $ID == *":dev"* ]]; then
-                    TYPE="Develop"
-                    URL_PATCH="/develop"
-                fi
-                ID="${ID%:*}"
-                URL="http://linuxqa/builds/release/display/x86_64${URL_PATCH}/$ID/NVIDIA-Linux-x86_64-$ID.run"
-                OUT="$DVSBUILD_DOWNLOADS/NVIDIA-Public-$TYPE-$ID.run"
-                echo "Downloading: $OUT"
+                BRANCH="public"
+                CL="$1"
+            ;;
+            *)
+                echo "Error: unknown argument '$1'" > /dev/stderr
+                exit 1
             ;;
         esac
         shift
     done
     
-    if [ "$URL" = "" -o "$OUT" = "" ]; then
-        driver
-        exit 1
-    fi
+    case "$BRANCH" in
+        dev_a)
+            SUFFIX=$([ "$TYPE" = "Debug" ] && echo "-internal" || echo "") 
+            URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${SUFFIX}.run"
+            OUT="$HOME/Downloads/NVIDIA-dev_a-$TYPE-CL$CL.run"
+            
+        ;;
+        public)
+            PATCH=$([ "$ID" = "Develop" ] && echo "/develop" || echo "")
+            URL="http://linuxqa/builds/release/display/x86_64${PATCH}/$CL/NVIDIA-Linux-x86_64-$CL.run"
+            OUT="$HOME/Downloads/NVIDIA-Public-$TYPE-$ID.run"
+        ;;
+    esac
+    
+    echo "Downloading: $OUT"   
     
     if [ -f "$OUT" ]; then
         echo "Reuse cache: $OUT"
         chmod 777 "$OUT" 
     else
-        wget $URL -O "$OUT" && (
-            chmod 777 "$OUT" 
-        ) || (
-            INSTALL=0
+        wget $URL -O "$OUT" && chmod 777 "$OUT" || (
+            echo "Error: can't download $URL" > /dev/stderr
+            exit 1
         )
     fi
     
-    if [ "$INSTALL" = "1" ]; then
-        install "$OUT"
+    if [ -f "$OUT" ]; then
+        read -p "Do you want to install now? (Y/n) " ANS
+        case "$ANS" in
+            " "|y|Y|1)
+                echo "Installing $OUT"
+                install "$OUT"
+            ;;
+        esac
+    fi
+}
+
+function drivers() {
+    if [ -z "$1" ]; then
+        echo "Usage: zhujie drivers [debug] [develop] [BRANCH CL] [public RELEASE_ID]" > /dev/stderr
+        echo "    e.g. zhujie drivers dev_a CL" > /dev/stderr
+        echo "    e.g. zhujie drivers dev_a CL debug" > /dev/stderr
+        echo "    e.g. zhujie drivers public RELEASE_ID" > /dev/stderr
+        echo "    e.g. zhujie drivers public RELEASE_ID develop" > /dev/stderr
+        exit 1
+    fi
+    
+    IS_PUBLIC=0
+    
+    for VAR in "$@"; do
+        case "$VAR" in
+            public) IS_PUBLIC=1; break ;;
+        esac
+    done
+
+    if [ ! -f "/mnt/linuxqa/nvt.sh" -o "$IS_PUBLIC" = "1" ]; then
+        install-dvs-driver "$@"
+    else
+        /mnt/linuxqa/nvt.sh drivers "$@"
     fi
 }
 
@@ -1340,7 +1344,7 @@ case "$1" in
         echo "    build: build NVIDIA drivers" > /dev/stderr
         echo "    install: install NVIDIA drivers or packages" > /dev/stderr
         echo "    remove: remove packages" > /dev/stderr
-        echo "    driver: download driver from DVS build" > /dev/stderr
+        echo "    drivers: download driver from DVS build" > /dev/stderr
         echo "    flamegraph: generate flamegraph SVG" > /dev/stderr
         echo "    fuji: fuji film tools" > /dev/stderr
         echo "    sysinfo: show system info" > /dev/stderr
@@ -1406,9 +1410,9 @@ case "$1" in
         talos "$@"
     ;;
     
-    driver)
+    drivers)
         shift
-        driver "$@"
+        drivers "$@"
     ;;
     
     framegraph)
