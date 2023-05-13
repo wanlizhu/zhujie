@@ -643,6 +643,10 @@ function click-message-window() {
     echo "Info: click-message-window exit"
 }
 
+function force-talos-quit() {
+    echo
+}
+
 function talos() {
     # Vulkan
     # 2560x1440
@@ -661,6 +665,7 @@ function talos() {
     fi
     
     click-message-window &
+    force-talos-quit &
 
     CWD_BAK="$(pwd)"
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
@@ -668,7 +673,9 @@ function talos() {
     if [ "$1" = "-v" ]; then
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
     else
+        SECONDS=0
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>&1 | tee $HOME/zhujie-talos.log
+        echo XXX $SECONDS
     fi
     
     cd "$CWD_BAK"
