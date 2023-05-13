@@ -1357,7 +1357,7 @@ function disable-cpus() {
     
     for RANGE in "$@"; do
         for i in `seq $(parse-range $RANGE)`; do
-            echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+            echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
         done
     done
     
