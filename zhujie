@@ -1425,7 +1425,7 @@ function disable-cpus() {
 }
 
 function enable-cpus() {
-    for i in `seq 0 $(($(cpu-count) - 1))`; do
+    for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
     
@@ -1434,6 +1434,80 @@ function enable-cpus() {
 
 function show-cpus() {
     lscpu --all --extended
+}
+
+function visualize() {
+    INFILE="$1"
+    CHART="$2"
+    TITLE="$3"
+    XLABEL="$4"
+    YLABEL="$5"
+    
+    if [ -z "$INFILE" ]; then
+        echo "Usage: zhujie visualize <INFILE> <CHART> <TITLE> <XLABEL> <YLABEL>" > /dev/stderr
+        exit 1
+    fi
+    
+    if [ -z "$CHART" ]; then
+        CHART="polyline"
+    fi
+    
+    if [ -z "$TITLE" ]; then
+        TITLE=$(basename $INFILE)
+    fi
+    
+    if [ -z "$XLABEL" ]; then
+        XLABEL="Test Index"
+    fi
+    
+    if [ -z "$YLABEL" ]; then
+        YLABEL="Average FPS"
+    fi
+    
+    python3 -c "
+import subprocess as subproc
+try:
+    import matplotlib
+    import numpy
+except ImportError:
+    subproc.run('python3 -m pip install matplotlib', shell=True, check=True)
+    subproc.run('python3 -m pip install numpy', shell=True, check=True)
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+
+def viz_polyline(values, pos):
+    values=np.array(values)
+    pos=np.array(pos)
+    plt.suptitle(\"$TITLE\")
+    plt.xlabel(\"$XLABEL\")
+    plt.ylabel(\"$YLABEL\")
+    plt.xticks(np.arange(pos.min(), pos.max(), 1))
+    plt.yticks(np.arange(values.min(), values.max(), (values.max() - values.min())/15.0))
+    plt.plot(pos, values, color='blue')
+    plt.savefig(\"$INFILE.png\")
+    plt.show()
+    
+def viz_barh(values, pos):
+    pass
+    
+values = []
+with open(\"$INFILE\") as file:
+    for line in file.readlines():
+        try:
+            value = float(line)
+            values.append(value)
+        except:
+            continue
+
+pos=list(range(1, len(values)+1))
+if \"$CHART\" == \"barh\":
+    viz_barh(values, pos)
+elif \"$CHART\" == \"polyline\":
+    viz_polyline(values, pos)
+else:
+    raise Exception('Unknown chart type "$CHART"')
+"
 }
 
 
@@ -1625,6 +1699,11 @@ case "$1" in
     show-cpus)
         shift
         show-cpus "$@"
+    ;;
+    
+    viz|visualize)
+        shift
+        visualize "$@"
     ;;
 esac
     
