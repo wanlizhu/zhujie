@@ -616,7 +616,7 @@ function ddnet() {
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
-function click-message-window() {
+function click-talos-message-window() {
     which xdotool > /dev/null || sudo apt install -y xdotool
     STOP=0
     ROUNDS=0
@@ -640,11 +640,39 @@ function click-message-window() {
         fi
     done
     
-    echo "Info: click-message-window exit"
+    echo "Info: click-talos-message-window exit"
 }
 
 function force-talos-quit() {
-    echo
+    STOP=0
+    SECONDS=0
+    sleep 30
+    
+    while [ "$STOP" = "0" ]; do
+        if [ ! -f "$HOME/zhujie-talos.log" ]; then
+            STOP=1
+            continue
+        fi
+        
+        LINE=$(cat "$HOME/zhujie-talos.log" | grep "corrupted size vs. prev_size")
+        if [ ! -z "$LINE" ]; then
+            pkill -9 Talos
+            STOP=1
+            sleep 2
+        else
+            sleep 5
+            if [ "$SECONDS" -gt "120" ]; then
+                echo "Error: force-talos-quit got nothing after 2 mins" > /dev/stderr
+                STOP=1
+            fi
+        fi
+    done
+    
+    if [ ! -z "$(pidof Talos)" ]; then
+        echo "Error: can't kill process Talos" > /dev/stderr
+    fi
+            
+    echo "Info: force-talos-quit exit"
 }
 
 function talos() {
@@ -664,7 +692,7 @@ function talos() {
         exit 1
     fi
     
-    click-message-window &
+    click-talos-message-window &
     force-talos-quit &
 
     CWD_BAK="$(pwd)"
@@ -673,9 +701,7 @@ function talos() {
     if [ "$1" = "-v" ]; then
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
     else
-        SECONDS=0
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>&1 | tee $HOME/zhujie-talos.log
-        echo XXX $SECONDS
     fi
     
     cd "$CWD_BAK"
