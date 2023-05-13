@@ -739,7 +739,7 @@ function drivers() {
 }
 
 function flamegraph() {    
-    NAME=$(date +%s)
+    NAME="NoName"
     OUT="$HOME"
     SVG_FILE="$OUT/perf-$NAME.svg"
     PERF_DATA="$OUT/perf-$NAME.data"
@@ -750,27 +750,27 @@ function flamegraph() {
     
     while [ -n "$1" ]; do
         case "$1" in
-            --name)
+            -n|--name)
                 shift
                 NAME="$1"
                 SVG_FILE="$OUT/perf-$NAME.svg"
                 PERF_DATA="$OUT/perf-$NAME.data"
             ;;
             
-            --pid)
+            -p|--pid)
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
                 PERF_RECORD_PID=" --pid=$1 "
             ;;
 
-            --sleep)
+            -s|--sleep)
                 shift
                 PERF_RECORD_SECONDS=$1
             ;;
 
             *)
 	            if [ ! -z "$(pidof $1)" ]; then
-	                NAME=$1
+	                NAME=$([ "$NAME" = "NoName" ] && echo "$1" || echo "$NAME")
 	                SVG_FILE="$OUT/perf-$NAME.svg"
                     PERF_DATA="$OUT/perf-$NAME.data"
                     PERF_RECORD_SYSTEM_WIDE=0
