@@ -1310,6 +1310,72 @@ function display() {
     fi
 }
 
+function prime-run() {
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export __VK_LAYER_NV_optimus=NVIDIA_only
+    export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    if [ ! -f "$VK_ICD_FILENAMES" ]; then 
+        export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+    fi
+    exec "$@"
+}
+
+function loop() {
+    if [ -z "$1" -o -z "$2" ]; then
+        echo "Usage: zhujie loop <TIMES> <CMD>" > /dev/stderr
+        exit 1
+    fi
+        
+    rm -rf $HOME/zhujie-loop.records
+    for i in `seq 1 $1`; do
+        $2 | tee -a $HOME/zhujie-loop.records
+    done
+        
+    echo ""
+    echo -ne "Mean: " && mean $HOME/zhujie-loop.records
+    echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
+}
+
+function cpu-count() {
+    lscpu | grep "^CPU(s):" | awk '{print $2}'
+}
+
+function parse-range() {
+    if [[ $1 == *"-"* ]]; then
+        echo "${1/-/ }"
+    else
+        echo "$1 $1"
+    fi
+}
+
+function disable-cpus() {
+    if [ -z "$1" ]; then
+        echo "No CPU index to disable, aborting..." > /dev/stderr
+        exit 1
+    fi
+    
+    for RANGE in "$@"; do
+        for i in `seq $(parse-range $RANGE)`; do
+            echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+        done
+    done
+    
+    lscpu --all --extended
+}
+
+function enable-cpus() {
+    for i in `seq 0 $(($(cpu-count) - 1))`; do
+        echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+    done
+    
+    lscpu --all --extended
+}
+
+function show-cpus() {
+    lscpu --all --extended
+}
+
 
 
 
@@ -1438,14 +1504,7 @@ case "$1" in
     
     prime-run)
         shift
-        export __NV_PRIME_RENDER_OFFLOAD=1
-        export __GLX_VENDOR_LIBRARY_NAME=nvidia
-        export __VK_LAYER_NV_optimus=NVIDIA_only
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-        if [ ! -f "$VK_ICD_FILENAMES" ]; then 
-            export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
-        fi
-        exec "$@"
+        prime-run "$@"
     ;;
     
     choose-kernel)
@@ -1490,19 +1549,22 @@ case "$1" in
     
     loop)
         shift
-        if [ -z "$1" -o -z "$2" ]; then
-            echo "Usage: zhujie loop <TIMES> <CMD>" > /dev/stderr
-            exit 1
-        fi
-        
-        rm -rf $HOME/zhujie-loop.records
-        for i in `seq 1 $1`; do
-            $2 | tee -a $HOME/zhujie-loop.records
-        done
-        
-        echo ""
-        echo -ne "Mean: " && mean $HOME/zhujie-loop.records
-        echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
+        loop "$@"
+    ;;
+    
+    disable-cpus)
+        shift
+        disable-cpus "$@"
+    ;;
+    
+    enable-cpus)
+        shift
+        enable-cpus "$@"
+    ;;
+    
+    show-cpus)
+        shift
+        show-cpus "$@"
     ;;
 esac
     
