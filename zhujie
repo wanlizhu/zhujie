@@ -616,6 +616,33 @@ function ddnet() {
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
+function click-message-window() {
+    which xdotool > /dev/null || sudo apt install -y xdotool
+    STOP=0
+    ROUNDS=0
+    
+    while [ "$STOP" = "0" -a "$ROUNDS" != "3" ]; do
+        sleep 3
+        ROUNDS=$((ROUNDS+1))
+        WINDOW_ID=$(xdotool getactivewindow)
+        WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
+        if [ "$WINDOW_NAME" = "Message" ]; then
+            POSITION=$(xdotool getwindowgeometry $WINDOW_ID | grep Position: | awk '{print $2}')
+            EXTENT=$(xdotool getwindowgeometry $WINDOW_ID | grep Geometry: | awk '{print $2}')
+            X=${POSITION%,*}
+            Y=${POSITION#*,}
+            W=${EXTENT%x*}
+            H=${EXTENT#*x}
+            xdotool mousemove $((X+W-50)) $((Y+H-70))
+            xdotool click 1
+        elif [ "$WINDOW_NAME" = "Talos - Linux - 64bit" ]; then
+            STOP=1
+        fi
+    done
+    
+    echo "Info: click-message-window exit"
+}
+
 function talos() {
     # Vulkan
     # 2560x1440
@@ -625,13 +652,15 @@ function talos() {
     # Launch steam if it's not currently running
     pgrep -x steam >/dev/null && echo "Info: steam is running..." || (
         steam &
-        sleep 15
+        sleep 20
     )
 
     if [ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]; then
         echo "Error: install 'Talos Principle' in steam's window and try again, aborting..." > /dev/stderr
         exit 1
     fi
+    
+    click-message-window &
 
     CWD_BAK="$(pwd)"
     cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
