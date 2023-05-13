@@ -68,13 +68,17 @@ function combine-lines() {
 function check-display() {
     if [ -z "$DISPLAY" ]; then
         echo "[Error: DISPLAY is not set]"
-        return
+        return 1
     fi
     
     glxinfo 1> /dev/null 2> /dev/null || (
         echo "[Error: Unable to open display $DISPLAY]"
-        return
+        return 1
     )
+}
+
+function assert-display() {
+    check-display || exit 1
 }
 
 function is-nvidia-gpu() {
@@ -607,7 +611,7 @@ function ddnet() {
     # Default
     # RaiNyMore2 -- GPU-intensive 
 
-    check-display
+    assert-display
     
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
@@ -616,7 +620,7 @@ function talos() {
     # Vulkan
     # 2560x1440
     
-    check-display
+    assert-display
 
     # Launch steam if it's not currently running
     pgrep -x steam >/dev/null && echo "Info: steam is running..." || (
@@ -1260,7 +1264,7 @@ function apex() {
         exit 1
     fi
     
-    # check-display
+    # assert-display
     
     if [ "$(is-nvidia-gpu)" = "0" ]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
@@ -1282,7 +1286,7 @@ function catia() {
         exit 1
     fi
     
-    check-display
+    assert-display
     
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
