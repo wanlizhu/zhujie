@@ -1419,11 +1419,12 @@ function disable-cpus() {
     
     for RANGE in "$@"; do
         for i in `seq $(parse-range $RANGE)`; do
-            echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+            echo disable $i #echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
         done
     done
     
-    lscpu --all --extended
+    #show-cpus
+    echo
 }
 
 function enable-all-cpus() {
@@ -1431,11 +1432,11 @@ function enable-all-cpus() {
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
     
-    lscpu --all --extended
+    #show-cpus
 }
 
 function show-cpus() {
-    lscpu --all --extended
+    lscpu --all --extended 
 }
 
 function visualize() {
@@ -1759,8 +1760,8 @@ case "$1" in
     test)
         for i in `seq 1 20`; do
             enable-all-cpus
-            disable-cpus "$(gen-randoms 8 1 23)"
-            talos >> talos-disable-random-8-cores.log
+            disable-cpus $(gen-randoms 8 1 23)
+            #talos >> talos-disable-random-8-cores.log
         done
     ;;
 esac
