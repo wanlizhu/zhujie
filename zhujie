@@ -1387,13 +1387,12 @@ function loop() {
         exit 1
     fi
         
-    SUCCESS=1
     rm -rf $HOME/zhujie-loop.records
     for i in `seq 1 $1`; do
-        $2 | tee -a $HOME/zhujie-loop.records && SUCCESS=1 || SUCCESS=0
+        $2 | tee -a $HOME/zhujie-loop.records
     done
         
-    if [ "$SUCCESS" = "1" ]; then
+    if [ -f "$HOME/zhujie-loop.records" ]; then
         echo ""
         echo -ne "Mean: " && mean $HOME/zhujie-loop.records
         echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
