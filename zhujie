@@ -1171,7 +1171,8 @@ function stddev() {
         exit 1
     fi
     
-    CMD=$(printf "
+    which python3 || sudo apt install -y python3
+    python3 -c "
 import statistics as stat
 data=[]
 with open(\"$FILE\", \"r\") as file:
@@ -1180,8 +1181,7 @@ with open(\"$FILE\", \"r\") as file:
             data.append(float(line))
         except:
             continue
-print(stat.stdev(data))")
-    python3 -c "$CMD"
+print(stat.stdev(data))"
 }
 
 function mean() {
@@ -1191,7 +1191,8 @@ function mean() {
         exit 1
     fi
     
-    CMD=$(printf "
+    which python3 || sudo apt install -y python3
+    python3 -c "
 import statistics as stat
 data=[]
 with open(\"$FILE\", \"r\") as file:
@@ -1200,8 +1201,7 @@ with open(\"$FILE\", \"r\") as file:
             data.append(float(line))
         except:
             continue
-print(stat.mean(data))")
-    python3 -c "$CMD"
+print(stat.mean(data))"
 }
 
 function fake-display() {
@@ -1382,7 +1382,7 @@ function prime-run() {
 }
 
 function loop() {
-    if [ -z "$1" -o -z "$2" ]; then
+    if [ -z "$1" ]; then
         echo "Usage: zhujie loop <TIMES> <CMD>" > /dev/stderr
         exit 1
     fi
@@ -1395,6 +1395,8 @@ function loop() {
     echo ""
     echo -ne "Mean: " && mean $HOME/zhujie-loop.records
     echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
+    
+    visualize $HOME/zhujie-loop.records
 }
 
 function cpu-count() {
@@ -1424,7 +1426,7 @@ function disable-cpus() {
     lscpu --all --extended
 }
 
-function enable-cpus() {
+function enable-all-cpus() {
     for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
@@ -1437,14 +1439,30 @@ function show-cpus() {
 }
 
 function visualize() {
-    INFILE="$1"
-    CHART="$2"
-    TITLE="$3"
-    XLABEL="$4"
-    YLABEL="$5"
+    INFILE=""
+    CHART=""
+    TITLE=""
+    XLABEL=""
+    YLABEL=""
+    
+    while [ ! -z "$1" ]; do
+        case "$1" in
+            -i|--input) shift; INFILE="$1" ;;
+            -c|--chart) shift; CHART="$1" ;;
+            -t|--title) shift; TITLE="$1" ;;
+            -x|--xlabel) shift; XLABEL="$1" ;;
+            -y|--ylabel) shift; YLABEL="$1" ;;
+            *)
+                if [ -f "$1" ]; then
+                    INFILE="$1"
+                fi
+            ;;
+        esac
+        shift
+    done
     
     if [ -z "$INFILE" ]; then
-        echo "Usage: zhujie visualize <INFILE> <CHART> <TITLE> <XLABEL> <YLABEL>" > /dev/stderr
+        echo "Usage: zhujie visualize -i <INFILE> -c <CHART> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
         exit 1
     fi
     
@@ -1464,6 +1482,7 @@ function visualize() {
         YLABEL="Average FPS"
     fi
     
+    which python3 || sudo apt install -y python3
     python3 -c "
 import subprocess as subproc
 try:
@@ -1475,16 +1494,25 @@ except ImportError:
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import statistics as stat
 
 def viz_polyline(values, pos):
     values=np.array(values)
     pos=np.array(pos)
+    ymax=values.max()
+    ymin=values.min()
+    xmax=pos[np.argmax(values)]
+    xmin=pos[np.argmin(values)]
+    delta=(values.max() - values.min()) / 15.0
     plt.suptitle(\"$TITLE\")
-    plt.xlabel(\"$XLABEL\")
-    plt.ylabel(\"$YLABEL\")
+    plt.title('Mean: {}, StdDev: {:.4f}'.format(stat.mean(values), stat.stdev(values)), fontweight='bold')
+    plt.xlabel(\"$XLABEL\", fontweight='bold')
+    plt.ylabel(\"$YLABEL\", fontweight='bold')
     plt.xticks(np.arange(pos.min(), pos.max(), 1))
-    plt.yticks(np.arange(values.min(), values.max(), (values.max() - values.min())/15.0))
+    plt.yticks(np.arange(values.min(), values.max(), delta))
     plt.plot(pos, values, color='blue')
+    plt.annotate('Max: {}'.format(ymax), xy=(xmax, ymax), xytext=(xmax, ymax))
+    plt.annotate('Min: {}'.format(ymin), xy=(xmin, ymin), xytext=(xmin, ymin))
     plt.savefig(\"$INFILE.png\")
     plt.show()
     
@@ -1510,6 +1538,28 @@ else:
 "
 }
 
+function gen-randoms() {
+    if [ -z "$1" ]; then
+        echo "Usage: gen-randoms <COUNT> <MIN> <MAX>" > /dev/stderr
+        exit 1
+    fi
+    
+    COUNT="$1"
+    MIN=$([ -z "$2" ] && echo 0 || echo "$2")
+    MAX=$([ -z "$3" ] && echo 100 || echo "$3")
+    NUMBERS=""
+    
+    for i in `seq 1 $COUNT`; do
+        NUM=$(($MIN + $RANDOM % $MAX))
+        if [ -z "$NUMBERS" ]; then
+            NUMBERS=$NUM
+        else
+            NUMBERS="$NUMBERS $NUM"
+        fi
+    done
+    
+    echo $NUMBERS
+}
 
 
 
@@ -1691,9 +1741,9 @@ case "$1" in
         disable-cpus "$@"
     ;;
     
-    enable-cpus)
+    enable-all-cpus)
         shift
-        enable-cpus "$@"
+        enable-all-cpus "$@"
     ;;
     
     show-cpus)
@@ -1704,6 +1754,14 @@ case "$1" in
     viz|visualize)
         shift
         visualize "$@"
+    ;;
+    
+    test)
+        for i in `seq 1 20`; do
+            enable-all-cpus
+            disable-cpus "$(gen-randoms 8 1 23)"
+            talos >> talos-disable-random-8-cores.log
+        done
     ;;
 esac
     
