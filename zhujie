@@ -1582,6 +1582,9 @@ function combine-images() {
             -v|--vertical)
                 VERTICAL=1
             ;;
+            -h|--horizontal)
+                VERTICAL=0
+            ;;
             *)
                 if [ -z "$FILES" ]; then
                     FILES="\"$1\""
