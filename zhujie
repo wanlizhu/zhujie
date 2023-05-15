@@ -66,19 +66,30 @@ function combine-lines() {
 }
 
 function check-display() {
+    NEEDS_DISPLAY=0
+    
     if [ -z "$DISPLAY" ]; then
-        echo "[Error: DISPLAY is not set]"
-        return 1
+        echo "[Error: DISPLAY is not set]" > /dev/stderr
+        NEEDS_DISPLAY=1
     fi
     
     glxinfo 1> /dev/null 2> /dev/null || (
-        echo "[Error: Unable to open display $DISPLAY]"
-        return 1
+        echo "[Error: Unable to open display $DISPLAY]" > /dev/stderr
+        NEEDS_DISPLAY=1
     )
-}
-
-function assert-display() {
-    check-display || exit 1
+    
+    if [ "$NEEDS_DISPLAY" = "1" ]; then
+        read -p "Set up DISPLAY: (empty for :0) " ANS
+        case "$ANS" in
+            "") export DISPLAY=:0 ;;
+             *) export DISPLAY=$ANS ;;
+        esac 
+    fi
+    
+    glxinfo 1> /dev/null 2> /dev/null || (
+        echo "[Error: Unable to open display $DISPLAY], aborting..." > /dev/stderr
+        exit 1
+    )
 }
 
 function is-nvidia-gpu() {
@@ -139,7 +150,7 @@ function gpu-driver() {
     fi
 }
 
-function sysinfo() {
+function info() {
     echo "Kernel: $(uname -r)"
     echo "X Server: $(xserver-info)"
     echo "X Window: $(xwindow-info)"
@@ -204,25 +215,29 @@ function init() {
 }
 
 function pull() {
-    if [ ! -d "$HOME/NVIDIA/zhujie" ]; then
-        echo "Error: folder '$HOME/NVIDIA/zhujie' is missing, aborting..." > /dev/stderr
+    PROJECT_DIR="$(dirname $0)"
+    
+    if [ ! -d "$PROJECT_DIR/.git" ]; then
+        echo "Error: '$PROJECT_DIR' is not a Git repository, aborting..." > /dev/stderr
         exit 1
     fi
     
-    pushd "$HOME/NVIDIA/zhujie" > /dev/null
+    pushd "$PROJECT_DIR" > /dev/null
     git pull $ZHUJIE_URL master
     popd > /dev/null 
     
-    source "$HOME/NVIDIA/zhujie/zhujie"
+    source "$PROJECT_DIR/zhujie"
 }
 
 function push() {
-    if [ ! -d "$HOME/NVIDIA/zhujie" ]; then
-        echo "Error: folder '$HOME/NVIDIA/zhujie' is missing, aborting..." > /dev/stderr
+    PROJECT_DIR="$(dirname $0)"
+    
+    if [ ! -d "$PROJECT_DIR/.git" ]; then
+        echo "Error: '$PROJECT_DIR' is not a Git repository, aborting..." > /dev/stderr
         exit 1
     fi
     
-    pushd "$HOME/NVIDIA/zhujie" > /dev/null
+    pushd "$PROJECT_DIR" > /dev/null
     du -sh * | sort -rh
     echo ""
 
@@ -611,7 +626,7 @@ function ddnet() {
     # Default
     # RaiNyMore2 -- GPU-intensive 
 
-    assert-display
+    check-display
     
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
@@ -675,7 +690,7 @@ function talos() {
     # Vulkan
     # 2560x1440
     
-    assert-display
+    check-display
 
     # Launch steam if it's not currently running
     pgrep -x steam >/dev/null || (
@@ -939,9 +954,9 @@ function fuji-sync() {
     echo ""    
 }
 
-function nvlibs() {
+function nvidia-libs() {
     if [ -z "$1" ]; then
-        echo "Usage: zhujie nvlibs [opengl] [-f|--filter]" > /dev/stderr
+        echo "Usage: zhujie nvidia-libs [opengl] [-f|--filter]" > /dev/stderr
         exit 1
     fi
     
@@ -961,7 +976,7 @@ function nvlibs() {
             ;;
             
             *)
-                nvlibs
+                nvidia-libs
                 exit 1
             ;;
         esac
@@ -1324,7 +1339,7 @@ function apex() {
         exit 1
     fi
     
-    # assert-display
+    # check-display
     
     if [ "$(is-nvidia-gpu)" = "0" ]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
@@ -1346,7 +1361,7 @@ function catia() {
         exit 1
     fi
     
-    assert-display
+    check-display
     
     CWD_BAK="$(pwd)"
     cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
@@ -1413,7 +1428,7 @@ function parse-range() {
     fi
 }
 
-function disable-cpus() {
+function cpus-offline() {
     if [ -z "$1" ]; then
         echo "No CPU index to disable, aborting..." > /dev/stderr
         exit 1
@@ -1424,19 +1439,15 @@ function disable-cpus() {
             echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
         done
     done
-    
-    #show-cpus
 }
 
-function enable-all-cpus() {
+function cpus-online() {
     for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
-    
-    #show-cpus
 }
 
-function show-cpus() {
+function cpus() {
     lscpu --all --extended 
 }
 
@@ -1473,7 +1484,7 @@ function visualize() {
     fi
     
     if [ -z "$TITLE" ]; then
-        TITLE=$(basename $INFILE)
+        TITLE="$INFILE"
     fi
     
     if [ -z "$XLABEL" ]; then
@@ -1572,37 +1583,10 @@ function gen-randoms() {
 case "$1" in
     help)
         echo "Usage: zhujie <CMD>" > /dev/stderr
-        echo "    help: show this message" > /dev/stderr
-        echo "    show-ip: show important IPs" > /dev/stderr
-        echo "    init: install packages for develop environment" > /dev/stderr
-        echo "    pull: pull the latest code from github" > /dev/stderr
-        echo "    push: push local changes to github" > /dev/stderr
-        echo "    ddnet: run phoronix test - ddnet" > /dev/stderr
-        echo "    talos: run phoronix test - talos principle" > /dev/stderr
-        echo "    build: build NVIDIA drivers" > /dev/stderr
-        echo "    install: install NVIDIA drivers or packages" > /dev/stderr
-        echo "    remove: remove packages" > /dev/stderr
-        echo "    drivers: download driver from DVS build" > /dev/stderr
-        echo "    fg|flamegraph: generate flamegraph SVG" > /dev/stderr
-        echo "    fuji: fuji film tools" > /dev/stderr
-        echo "    sysinfo: show system info" > /dev/stderr
-        echo "    nvlibs: show NVIDIA libs in specified folder" > /dev/stderr
-        echo "    prbisect: bisect P4 changes" > /dev/stderr
-        echo "    pic-v: create PIC-V capture" > /dev/stderr
-        echo "    vpn: connect to NVIDIA VPN" > /dev/stderr
-        echo "    prime-run: force application to use NVIDIA GPU on laptop" > /dev/stderr
-        echo "    choose-kernel: set the default Linux kernel to boot into" > /dev/stderr
-        echo "    stddev: calculate standard deviation" > /dev/stderr
-        echo "    mean: calculate mean" > /dev/stderr
-        echo "    fake-display: fake a display if there is no monitor connected" > /dev/stderr
-        echo "    vnc: start/stop/status a VNC server" > /dev/stderr
-        echo "    apex: run nvtest DxvkApexLegends" > /dev/stderr
-        echo "    catia: run viewperf test catia" > /dev/stderr
-        echo "    display: show local and remote displays on this machine" > /dev/stderr
-        echo "    loop: run tests multiple times and show stats" > /dev/stderr
+        exit 1
     ;;
     
-    show-ip)
+    ips)
         echo "ROUTER IP: $IP_ROUTER"
         echo "NVIDIA IP: $IP_NVIDIA"
         echo "ZERO-TIER: $IP_ZEROTIER"
@@ -1633,7 +1617,7 @@ case "$1" in
         install "$@"  
     ;;
     
-    remove)
+    rm|remove)
         shift
         remove "$@"
     ;;
@@ -1648,12 +1632,12 @@ case "$1" in
         talos "$@"
     ;;
     
-    drivers)
+    drv|drivers)
         shift
         drivers "$@"
     ;;
     
-    fg|flamegraph)
+    flgf|flamegraph)
         shift
         flamegraph "$@"
     ;;
@@ -1663,14 +1647,9 @@ case "$1" in
         fuji "$@"
     ;;
     
-    sysinfo)
+    info)
         shift
-        sysinfo "$@"
-    ;;
-    
-    nvlibs)
-        shift
-        nvlibs "$@"
+        info "$@"
     ;;
     
     p4bisect)
@@ -1693,7 +1672,7 @@ case "$1" in
         prime-run "$@"
     ;;
     
-    choose-kernel)
+    cskn|choose-kernel)
         shift
         choose-kernel "$@"
     ;;
@@ -1708,7 +1687,7 @@ case "$1" in
         mean "$@"
     ;;
     
-    fake-display)
+    fkdp|fake-display)
         shift
         fake-display "$@"
     ;;
@@ -1728,7 +1707,7 @@ case "$1" in
         catia "$@"
     ;;
     
-    display)
+    dp|display)
         shift
         display "$@"
     ;;
@@ -1738,19 +1717,19 @@ case "$1" in
         loop "$@"
     ;;
     
-    disable-cpus)
+    cpus-offline)
         shift
-        disable-cpus "$@"
+        cpus-offline "$@"
     ;;
     
-    enable-all-cpus)
+    cpus-online)
         shift
-        enable-all-cpus "$@"
+        cpus-online "$@"
     ;;
     
-    show-cpus)
+    cpus)
         shift
-        show-cpus "$@"
+        cpus "$@"
     ;;
     
     viz|visualize)
@@ -1758,13 +1737,17 @@ case "$1" in
         visualize "$@"
     ;;
     
+    img|image)
+    
+    ;;
+    
     test)
         for i in `seq 1 20`; do
-            enable-all-cpus
-            disable-cpus $(gen-randoms 8 1 23)
+            cpus-online
+            cpus-offline $(gen-randoms 8 1 23)
             talos >> talos-disable-random-8-cores.log
         done
-        enable-all-cpus
+        cpus-online
     ;;
 esac
-    
+
