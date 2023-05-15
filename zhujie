@@ -1574,6 +1574,72 @@ function gen-randoms() {
     echo $NUMBERS
 }
 
+function combine-images() {
+    FILES=""
+    VERTICAL=0
+    while [ ! -z "$1" ]; do
+        case "$1" in
+            -v|--vertical)
+                VERTICAL=1
+            ;;
+            *)
+                if [ -z "$FILES" ]; then
+                    FILES="\"$1\""
+                else
+                    FILES="$FILES, \"$1\""
+                fi
+            ;;
+        esac
+        shift
+    done
+    
+    which python3 || sudo apt install -y python3
+    python3 -c "
+import sys
+try:
+    from PIL import Image
+except:
+    subproc.run('python3 -m pip install PIL', shell=True, check=True)
+from PIL import Image
+
+images = [Image.open(x) for x in [$FILES]]
+widths, heights = zip(*(i.size for i in images))
+
+if \"$VERTICAL\" == \"1\":
+    total_height = sum(heights)
+    max_width = max(widths)
+    new_img = Image.new('RGB', (max_width, total_height))
+    y_offset = 0
+    for img in images:
+        new_img.paste(img, (0, y_offset))
+        y_offset += img.size[1]
+else:
+    total_width = sum(widths)
+    max_height = max(heights)
+    new_img = Image.new('RGB', (total_width, max_height))
+    x_offset = 0
+    for img in images:
+        new_img.paste(img, (x_offset,0))
+        x_offset += img.size[0]
+        
+new_img.save('combined-image.jpg')
+"
+}
+
+function image() {
+    if [ -z "$1" ]; then
+        echo "Usage: image <CMD> [FILE...]" > /dev/stderr
+        exit 1
+    fi
+    
+    case "$1" in
+        combine)
+            shift
+            combine-images "$@"
+        ;;
+    esac
+}
+
 
 
 
@@ -1738,7 +1804,8 @@ case "$1" in
     ;;
     
     img|image)
-    
+        shift
+        image "$@"
     ;;
     
     test)
