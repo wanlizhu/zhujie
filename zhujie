@@ -2,6 +2,7 @@
 
 # System
 export __GL_SYNC_TO_VBLANK=0
+export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$PATH"
 
 # NVIDIA tools
 export PATH="$HOME/NVIDIA_TOOLS:$PATH"
