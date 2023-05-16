@@ -1108,11 +1108,21 @@ function cpus() {
     lscpu --all --extended 
 }
 
+function pull-transient() {
+    if [[ ! -d /tmp/zhujie ]]; then 
+        git clone https://github.com/wanlizhu/zhujie /tmp/zhujie
+    fi 
+    
+    cd /tmp/zhujie
+    git pull
+    cp -f /tmp/zhujie/zhujie $0
+}
+
 function pull() {
     GIT_REPO=$(dirname $0)
     if [[ ! -d $GIT_REPO/.git ]]; then
-        echo "Error: '$GIT_REPO' is not a Git repository" > /dev/stderr
-        exit 1
+        pull-transient
+        return
     fi
     
     pushd $GIT_REPO > /dev/null
@@ -1138,6 +1148,11 @@ function push() {
 }
 
 function vpn() {
+    if [[ $1 == off ]]; then
+        sudo pkill -9 `pidof openconnect` 
+        return
+    fi
+    
     if [[ -z $1 ]]; then
         read -p "DUO pass code: " CODE
     else
