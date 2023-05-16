@@ -315,7 +315,7 @@ function install() {
             cd terminus-font-4.49.1
             ./configure
             make -j8
-            make install fontdir
+            sudo make install fontdir
         ;;
         *)
             if [[ -f $1 || -L $1 ]]; then
