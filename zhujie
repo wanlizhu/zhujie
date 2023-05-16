@@ -308,6 +308,15 @@ function install() {
             wget https://gtlfs.nvidia.com/client/linux -O ~/gtlfs
             chmod +x ~/gtlfs
         ;;
+        terminus)
+            wget https://sourceforge.net/projects/terminus-font/files/terminus-font-4.49/terminus-font-4.49.1.tar.gz/download -O /tmp/terminus-font-4.49.1.tar.gz
+            cd /tmp
+            tar -xvf terminus-font-4.49.1.tar.gz
+            cd terminus-font-4.49.1
+            ./configure
+            make -j8
+            make install fontdir
+        ;;
         *)
             if [[ -f $1 || -L $1 ]]; then
                 run-nvidia-installer "$1"
