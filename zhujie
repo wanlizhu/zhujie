@@ -1,104 +1,97 @@
 #!/bin/bash
+
 # System
-export ZHUJIE_URL="https://github.com/wanlizhu/zhujie.git"
 export __GL_SYNC_TO_VBLANK=0
 
 # NVIDIA tools
-export P4V=$HOME/NVIDIA/P4V
-export PIC_V=$HOME/NVIDIA/PIC-V
-export PIC_G=$HOME/NVIDIA/PIC-G
-export NGFX=$HOME/NVIDIA/Nsight_Graphics
-export FLAMEGRAPH=$HOME/NVIDIA/Flamegraph
-export APITRACE=$HOME/NVIDIA/APITrace
-
-# Perforce
-export P4USER=wanliz
-export P4PASSWD=""
-export P4ROOT=$HOME/NVIDIA/SRC_ON_P4
-export P4PORT=p4proxy-zj.nvidia.com:2006
-export P4IGNORE=$HOME/NVIDIA/P4IGNORE
-case $(hostname) in
-    nvidia-master)
-        export P4CLIENT=nvidia-src-zhujie
-    ;;
-    nvidia-wingman)
-        export P4CLIENT=nvidia-src-zhujie-wingman
-    ;;
-    *)
-        export P4CLIENT=""
-    ;;
-esac
-if [ "$P4CLIENT" != "" -a ! -f "$P4IGNORE" ]; then
-    echo "_out/" >> "$P4IGNORE"
-    echo ".git/" >> "$P4IGNORE" 
-    echo ".gitignore" >> "$P4IGNORE"
+export PATH="$HOME/NVIDIA_TOOLS:$PATH"
+if [[ -d $HOME/NVIDIA_TOOLS ]]; then
+    for SUBDIR in $(ls -F $HOME/NVIDIA_TOOLS | grep / | awk'{print substr($0, 1, length($0)-1)}'); do
+        case $SUBDIR in
+            PIC-V|PIC-G|flamegraph) 
+                export PATH="$HOME/NVIDIA_TOOLS/$SUBDIR:$PATH" 
+            ;;
+            P4V)
+                export PATH="$HOME/NVIDIA_TOOLS/P4V/bin:$PATH"
+            ;;
+            Nsight_Graphics)
+                export PATH="$HOME/NVIDIA_TOOLS/Nsight_Graphics/host/linux-desktop-nomad-x64:$PATH"
+            ;;
+        esac
+    done 
 fi
 
-# IP
-export IP_ROUTER=""
-export IP_NVIDIA=""
-export IP_ZEROTIER=""
+# Perforce
+case $(hostname) in
+    nvidia-master) 
+        export P4USER=wanliz
+        export P4PASSWD=""
+        export P4ROOT=$HOME/NVIDIA_SRC_P4SW
+        export P4CLIENT=nvidia-src-zhujie 
+        export P4PORT=p4proxy-zj.nvidia.com:2006
+        export P4IGNORE=$HOME/NVIDIA_P4IGNORE
+        export PATH="$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+    ;;
+    nvidia-wingman) 
+        export P4USER=wanliz
+        export P4PASSWD=""
+        export P4ROOT=$HOME/NVIDIA_SRC_P4SW
+        export P4CLIENT=nvidia-src-zhujie 
+        export P4PORT=p4proxy-zj.nvidia.com:2006
+        export P4IGNORE=$HOME/NVIDIA_P4IGNORE 
+        export PATH="$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+    ;;
+esac
 
-export PATH="$HOME:$HOME/NVIDIA/zhujie:$APITRACE/build:$FLAMEGRAPH:$P4V/bin:$NGFX/host/linux-desktop-nomad-x64:$P4ROOT/sw/misc/linux:$P4ROOT/sw/automation/dvs/dvsbuild:$P4ROOT/sw/pvt/dleone/bin:$PATH"
+# Find NVIDIA IP
+if [[ $(uname) == Linux ]]; then
+    for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
+        if [[ $IP =~ ^10\.19\..* ]]; then
+            export NVIDIA_IP=$IP
+        fi
+    done
+fi
 
-for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
-    if [[ "$IP" =~ ^192\.168\.192\..* ]]; then
-        IP_ZEROTIER=$IP
-    elif [[ "$IP" =~ ^192\.168\..* ]]; then
-        IP_ROUTER=$IP
-    fi
-    
-    if [[ "$IP" =~ ^10\.19\..* ]]; then
-        IP_NVIDIA=$IP
-    fi
-done
-
-function user-cancel() {
+function on-user-cancel() {
     echo ""
     popd > /dev/null
     exit 0
 }
 
-function combine-lines() {
-    INFILE="$1"
+function combine-file-lines() {
+    INFILE=$1
     tr -d '\r' < "$INFILE" > /tmp/combine-lines
     sed ':a;N;$!ba;s/\n/, /g' /tmp/combine-lines | sed 's/\n$//g'
 }
 
 function check-display() {
-    NEEDS_DISPLAY=0
-    
-    if [ -z "$DISPLAY" ]; then
-        echo "[Error: DISPLAY is not set]" > /dev/stderr
-        NEEDS_DISPLAY=1
+    INVALID=0
+    if [[ -z $DISPLAY ]]; then
+        echo "Error: DISPLAY is not set" > /dev/stderr
+        INVALID=1
     fi
-    
+
     glxinfo 1> /dev/null 2> /dev/null || (
-        echo "[Error: Unable to open display $DISPLAY]" > /dev/stderr
-        NEEDS_DISPLAY=1
+        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
+        INVALID=1
     )
-    
-    if [ "$NEEDS_DISPLAY" = "1" ]; then
-        read -p "Set up DISPLAY: (empty for :0) " ANS
-        case "$ANS" in
+
+    if [[ $INVALID == 1 ]]; then
+        read -p "Open display: (empty for :0) " RSVP
+        case $RSVP in
             "") export DISPLAY=:0 ;;
-             *) export DISPLAY=$ANS ;;
-        esac 
+             *) export DISPLAY=$RSVP ;;
+        esac
     fi
-    
+
     glxinfo 1> /dev/null 2> /dev/null || (
-        echo "[Error: Unable to open display $DISPLAY], aborting..." > /dev/stderr
+        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
         exit 1
     )
 }
 
-function is-nvidia-gpu() {
-    LINE=$(lspci | grep NVIDIA)
-    if [ "$LINE" = "" ]; then
-        echo 0
-    else
-        echo 1
-    fi
+function is-nvidia-gpu() { 
+    [[ -z $(lspci | grep NVIDIA) ]] && echo 1 || echo 0
 }
 
 function xserver-info() {
@@ -129,7 +122,7 @@ function monitor-name() {
 function monitor-resolution() {
     check-display
     LINE=$(xdpyinfo 2> /dev/null | grep dimensions)
-    echo "${LINE#  dimensions:    }"
+    echo ${LINE#  dimensions:    }
 }
 
 function monitor-color-depth() {
@@ -143,7 +136,7 @@ function gpu-names() {
 }
 
 function gpu-driver() {
-    if [ "$(is-nvidia-gpu)" = "1" ]; then
+    if [[ $(is-nvidia-gpu) == 1 ]]; then
         cat /proc/driver/nvidia/version
     else
         echo
@@ -167,250 +160,111 @@ function info() {
     echo ""
 }
 
-function init() { 
-    # Basic tools
-    sudo apt install -y openssh-server build-essential cmake sshfs vim net-tools pkg-config libglvnd-dev python3 openconnect steam libncurses-dev bison flex libssl-dev libelf-dev libxkbcommon-x11-dev screen mailutils xdotool p7zip-full wmctrl
-    
-    # Basic python tools
-    python3 -m pip install steamctl
-    python3 -m pip install mako
-    
-    # Linux perf tool
-    sudo apt install linux-tools-generic -y
-    sudo apt install linux-cloud-tools-generic -y
-    sudo apt install linux-tools-`uname -r` -y
-    sudo apt install linux-cloud-tools-`uname -r` -y
-    if [ "$(cat /proc/sys/kernel/perf_event_paranoid)" != "-1" ]; then
-        sudo sh -c "echo -1 > /proc/sys/kernel/perf_event_paranoid"
-        sudo echo "kernel.perf_event_paranoid = -1" >> /etc/sysctl.conf
-    fi
-    
-    # Requirements of building mesa
-    sudo python3 -m pip install mako
-    sudo apt install -y llvm wayland-protocols libwayland-egl-backend-dev libxcb-glx0 libxcb-glx0-dev libxcb-shm0 libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 libxcb-dri2-0 libxcb-dri2-0-dev libxcb-dri3-0 libxcb-dri3-dev libxcb-present-dev libxcb-present0 librust-wayland-scanner-dev wayland-scanner++ libvdpau-dev libomxil-bellagio-dev libva-dev libdrm-dev libxext-dev libxfixes-dev libxshmfence-dev libxxf86vm-dev libxrandr-dev
-    
-    # Run sudo without password
-    sudo bash -c "echo \"$USER ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers"
-    
-    if [ "$1" = "-a" ]; then
-        # GNOME
-        gsettings set org.gnome.desktop.screensaver lock-enabled false
-        gsettings set org.gnome.desktop.screensaver lock-delay 0
-        gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
-    
-        # Zero Tier
-        curl -s https://install.zerotier.com | sudo bash
-        sudo systemctl enable zerotier-one.service
-        sudo zerotier-cli join db64858fed3b37c1
-
-        # CPolar
-        read -p "CPolar Token: " TOKEN
-        if [ "$TOKEN" != "" ]; then
-            curl -L https://www.cpolar.com/static/downloads/install-release-cpolar.sh | sudo bash
-            cpolar authtoken $TOKEN
-            sudo systemctl enable cpolar
-            sudo systemctl start cpolar
-        fi
-    fi
-}
-
-function pull() {
-    PROJECT_DIR="$(dirname $0)"
-    
-    if [ ! -d "$PROJECT_DIR/.git" ]; then
-        echo "Error: '$PROJECT_DIR' is not a Git repository, aborting..." > /dev/stderr
-        exit 1
-    fi
-    
-    pushd "$PROJECT_DIR" > /dev/null
-    git pull $ZHUJIE_URL master
-    popd > /dev/null 
-    
-    source "$PROJECT_DIR/zhujie"
-}
-
-function push() {
-    PROJECT_DIR="$(dirname $0)"
-    
-    if [ ! -d "$PROJECT_DIR/.git" ]; then
-        echo "Error: '$PROJECT_DIR' is not a Git repository, aborting..." > /dev/stderr
-        exit 1
-    fi
-    
-    pushd "$PROJECT_DIR" > /dev/null
-    du -sh * | sort -rh
-    echo ""
-
-    trap user-cancel INT
-    read -r -n 1 -p "Press [ENTER] to continue or CTRL-C to cancel: "
-    echo ""
-    
-    git add .
-    git commit -m "$(date)"
-    git push --set-upstream $ZHUJIE_URL master
-    popd > /dev/null
-}
-
 function nvmake() {
-    MODULE="$1"
-    ARCH="$2"
-    BUILD_TYPE="$3"
-    NVBRANCH="sw/dev/gpu_drv/dev_a"
-    
-    if [ -z "$P4ROOT" ]; then
-        echo "Error: ENVVAR P4ROOT is missing or incorrect, aborting..." > /dev/stderr
+    MODULE=$1
+    ARCH=$2
+    BUILD_TYPE=$3
+    NVBRANCH=sw/dev/gpu_drv/dev_a
+
+    if [[ -z $P4ROOT ]]; then
+        echo "Error: P4ROOT is not configured" > /dev/stderr
         exit 1
     fi
 
-    if [ -z "$NVBRANCH" ]; then
-        echo "Error: ENVVAR NVBRANCH is missing or incorrect, aborting..." > /dev/stderr
+    if [[ -z $NVBRANCH ]]; then
+        echo "Error: NVBRANCH is not configured" > /dev/stderr
         exit 1
     fi
-    
-    if [ "$(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build)" != "root" ]; then
+
+    if [[ $(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build) != root ]]; then
         UNIX_BUILD_ARGS="--unshare-namespaces"
-    else
-        UNIX_BUILD_ARGS=""
     fi
-    
-    case "$MODULE" in
-        dev_a)
-            MODULE="drivers dist"
-        ;;
-        
-        opengl)
-            echo xxx
-            exit 1
-        ;;
-        
-        ppp)
-            MODULE="post-process-packages dist"
-        ;;
-        
-        sweep)
-            CWD_BAK=`pwd`
-            cd "$P4ROOT/$NVBRANCH"
-            
+
+    case $MODULE in
+         dev_a) MODULE="drivers dist" ;;
+        opengl) exit 1 ;; #TODO
+           ppp) MODULE="post-process-packages dist" ;;
+         sweep)
+            pushd $P4ROOT/$NVBRANCH > /dev/null
             $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
-            --tools "$P4ROOT/sw/tools" \
-            --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
-            nvmake sweep
-            
-            cd $CWD_BAK
+                --tools "$P4ROOT/sw/tools" \
+                --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
+                nvmake sweep
+            popd > /dev/null 
             return 0
         ;;
-        
         *)
-            echo "Error: NVIDIA module '$MODULE' is not supported, aborting..." > /dev/stderr
+            echo "Error: NVIDIA module '$MODULE' is not supported" > /dev/stderr
             exit 1
         ;;
     esac
-    
-    echo "NVMake: linux $MODULE $ARCH $BUILD_TYPE"
-    mkdir -p "$HOME/NVIDIA/OUT/"
-    
-    ERRORCODE=0
+
+    ERROR=0
     SECONDS=0
-    CWD_BAK=`pwd`
-    cd "$P4ROOT/$NVBRANCH"
-    
+
+    echo "NVMake: linux $MODULE $ARCH $BUILD_TYPE"
+    mkdir -p $HOME/NVIDIA_OUT/Linux-$MODULE-$ARCH-$BUILD_TYPE
+    pushd $P4ROOT/$NVBRANCH > /dev/null
     $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
-    --tools "$P4ROOT/sw/tools" \
-    --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
-    nvmake \
-    NV_COLOR_OUTPUT=1 \
-    NV_COMPRESS_THREADS=16 \
-    NV_FAST_PACKAGE_COMPRESSION=1 \
-    NV_EXCLUDE_BUILD_MODULES="" \
-    NV_KEEP_UNSTRIPPED_BINARIES=1 \
-    NV_GUARDWORD=0 \
-    -j16 \
-    linux \
-    $ARCH \
-    $BUILD_TYPE \
-    $MODULE \
-    1> "$HOME/NVIDIA/OUT/nvmake.stdout.log" \
-    2> "$HOME/NVIDIA/OUT/nvmake.stderr.log" && (
-        echo xxx
+        --tools "$P4ROOT/sw/tools" \
+        --devrel "$P4ROOT/sw/devrel/SDK/inc/GL" \
+        nvmake \
+        NV_COLOR_OUTPUT=1 \
+        NV_COMPRESS_THREADS=16 \
+        NV_FAST_PACKAGE_COMPRESSION=1 \
+        NV_EXCLUDE_BUILD_MODULES="" \
+        NV_KEEP_UNSTRIPPED_BINARIES=0 \
+        NV_GUARDWORD=0 \
+        -j16 \
+        linux \
+        $ARCH \
+        $BUILD_TYPE \
+        $MODULE \
+        1> $HOME/NVIDIA_OUT/Linux-$MODULE-$ARCH-$BUILD_TYPE/nvmake.log \
+        2> $HOME/NVIDIA_OUT/Linux-$MODULE-$ARCH-$BUILD_TYPE/nvmake.error && (
+        echo "NVMake: $(expr $SECONDS / 60) mins"
+        popd > /dev/null 
     ) || (
-        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" "$HOME/NVIDIA/OUT/nvmake.stderr.log";
-        ERRORCODE=1 
+        grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" $HOME/NVIDIA_OUT/Linux-$MODULE-$ARCH-$BUILD_TYPE/nvmake.error;
+        popd > /dev/null 
+        exit 1
     )
-
-    echo "NVMake: time cost: $(expr $SECONDS / 60) mins"
-    echo ""
-
-    cd "$CWD_BAK"
-    return $ERRORCODE
 }
 
 function build() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie build <dev_a|opengl|sweep|ppp> [ARCHS...] [TYPES...]" > /dev/stderr
+    if [[ -z $1 ]]; then
+        echo "Usage: build <dev_a|opengl|sweep|ppp> [ARCHS...] [TYPES...]" > /dev/stderr
         exit 1
     fi
-    
+
     ARCHS=""
     BUILD_TYPES=""
     MODULES=""
-    
-    while [ -n "$1" ]; do
-        case "$1" in
-            amd64)
-                ARCHS="$ARCHS amd64"
-            ;;
 
-            x86)
-                ARCHS="$ARCHS x86"
-            ;;
-
-            release)
-                BUILD_TYPES="$BUILD_TYPES release"
-            ;;
-
-            debug) 
-                BUILD_TYPES="$BUILD_TYPES debug"
-            ;;
-
-            develop)
-                BUILD_TYPES="$BUILD_TYPES develop"
-            ;;
-
-            sweep)
-                nvmake sweep * *
-                return 0
-            ;;
-
-            ppp)
-                nvmake ppp * *
-                return 0
-            ;;
-            
-            dev_a)
-                MODULES="$MODULES dev_a"
-            ;;
-            
-            opengl)
-                MODULES="$MODULES opengl"
-            ;;
-    
+    while [[ -n $1 ]]; do
+        case $1 in
+                        amd64|x86) ARCHS="$ARCHS $1" ;;
+            debug|release|develop) BUILD_TYPES="$BUILD_TYPES $1" ;;
+                     dev_a|opengl) MODULES="$MODULES $1" ;;
+                            sweep) nvmake sweep * *; return ;;
+                              ppp) nvmake ppp * *; return ;;   
             *)
-                echo "Error: unknown argument '$1', aborting..." > /dev/stderr
+                echo "Error: unknown argument '$1'" > /dev/stderr
                 build
                 exit 1
             ;;
         esac
         shift
     done
-    
-    if [ -z "$ARCHS" ]; then
-        ARCHS="amd64"
+
+    if [[ -z $ARCHS ]]; then
+        ARCHS=amd64
     fi
 
-    if [ -z "$BUILD_TYPES" ]; then
-        BUILD_TYPES="release"
+    if [[ -z $BUILD_TYPES ]]; then
+        BUILD_TYPES=release
     fi
-    
+
     for MODULE in $MODULES; do
         for ARCH in $ARCHS; do
             for BUILD_TYPE in $BUILD_TYPES; do
@@ -421,100 +275,84 @@ function build() {
 }
 
 function install() {
-    if [ "$1" = "" ]; then
-        echo "Usage: zhujie install [OPTIONS]" > /dev/stderr
-        echo "    e.g. zhujie install <INSTALLER_PATH>" > /dev/stderr
-        echo "    e.g. zhujie install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
-        echo "    e.g. zhujie install <-r|--revert> <ARCH>" > /dev/stderr
-        echo "    e.g. zhujie install mesa [version]" > /dev/stderr
+    if [[ -z $1 ]]; then
+        echo "Usage: install [OPTIONS]" > /dev/stderr
+        echo "    e.g. install <INSTALLER_PATH>" > /dev/stderr
+        echo "    e.g. install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
+        echo "    e.g. install <-r|--revert> <ARCH>" > /dev/stderr
+        echo "    e.g. install mesa [version]" > /dev/stderr
         exit 1
     fi
-    
-    while [ -n "$1" ]; do
-        case "$1" in
-            opengl)
-                shift
-                update-libs opengl $@
-                break
-            ;;
 
-            -r|--revert)
-                shift
-                revert-libs $@
-                break
-            ;;
-            
-            mesa)
-                echo xxx
+    case $1 in
+        opengl)
+            MODULE=$1
+            shift
+            update-nvidia-libs $MODULE "$@"
+        ;;
+        -r|--revert)
+            shift
+            revert-nvidia-libs "$@"
+        ;;
+        mesa)
+            exit 1 #TODO
+            glxinfo | grep "OpenGL renderer"
+        ;;
+        mainline)
+            sudo add-apt-repository ppa:cappelikan/ppa
+            sudo apt update
+            sudo apt install mainline
+            which mainline    
+        ;;
+        gtlfs)
+            wget https://gtlfs.nvidia.com/client/linux -O ~/gtlfs
+            chmod +x ~/gtlfs
+        ;;
+        *)
+            if [[ -f $1 || -L $1 ]]; then
+                run-nvidia-installer "$1"
+            else
+                echo "Error: '$1' doesn't exist" > /dev/stderr
                 exit 1
-                glxinfo | grep "OpenGL renderer"
-                break
-            ;;
-            
-            mainline)
-                sudo add-apt-repository ppa:cappelikan/ppa
-                sudo apt update
-                sudo apt install mainline
-                which mainline    
-            ;;
-            
-            gtlfs)
-                wget https://gtlfs.nvidia.com/client/linux -O ~/gtlfs
-                chmod +x ~/gtlfs
-            ;;
-    
-            *)
-                if [ -f "$1" -o -L "$1" ]; then
-                    run-installer "$1"
-                    break
-                else
-                    echo "Error: NVIDIA installer '$1' is missing, aborting..." > /dev/stderr
-                    exit 1
-                fi
-            ;;
-        esac
-        shift
-    done
+            fi
+        ;;
+    esac
 }
 
 function remove() {
-    if [ "$1" = "" ]; then
-        echo "Usage: zhujie remove [OPTIONS]" > /dev/stderr
-        echo "    e.g. zhujie remove mesa" > /dev/stderr
+    if [[ -z $1 ]]; then
+        echo "Usage: remove [OPTIONS]" > /dev/stderr
+        echo "    e.g. remove mesa" > /dev/stderr
         exit 1
     fi
-    
-    case "$1" in
+
+    case $1 in
         mesa)
-            echo xxx
-            exit 1
+            exit 1 #TODO
         ;;
-        
         mainline)
             sudo add-apt-repository --remove ppa:cappelikan/ppa
             sudo apt remove mainline
         ;;
-        
         gtlfs)
             rm -rf ~/gtlfs
         ;;
-        
         *)
-            echo "Error: can't remove '$1', aborting..." > /dev/stderr
+            echo "Error: can't remove '$1'" > /dev/stderr
             exit 1
         ;;
     esac
 }
 
-function run-installer() {
-    if [ "$1" = "" ]; then
-        echo "Usage: zhujie install <INSTALLER_PATH>" > /dev/stderr
+function run-nvidia-installer() {
+    INSTALLER=$1
+    if [[ -z $INSTALLER ]]; then
+        echo "Usage: run-nvidia-installer <INSTALLER_PATH>" > /dev/stderr
         exit 1
     fi
-    
-    INSTALLER="$1"
-    if [ ! -f "$INSTALLER" ]; then
-        echo "Error: NVIDIA installer '$INSTALLER' is missing, aborting..." > /dev/stderr
+
+    if [[ ! -f $INSTALLER ]]; then
+        echo "Error: NVIDIA installer '$INSTALLER' doesn't exist" > /dev/stderr
         exit 1
     fi
 
@@ -525,20 +363,20 @@ function run-installer() {
         sudo "$INSTALLER" -sb
         sudo systemctl isolate graphical
     ) || (
-    	echo "Error: can't run NVIDIA installer locally, aborting..." > /dev/stderr
+    	echo "Error: can't run NVIDIA installer locally" > /dev/stderr
         exit 1
     )	
 }
 
-function revert-libs() {
-    if [ "$1" = "" ]; then
-        echo "Usage: zhujie install <-r|--revert> <ARCH>" > /dev/stderr
+function revert-nvidia-libs() {
+    if [[ -z $1 ]]; then
+        echo "Usage: revert-nvidia-libs <ARCH>" > /dev/stderr
         exit 1
     fi
 
-    ARCH="$1" && shift
-    ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
-    FOLDER="/usr/lib/$ARCHNAME-linux-gnu"
+    ARCH=$1 && shift
+    ARCHNAME=$([[ $ARCH == amd64 ]] && echo x86_64 || echo i386)
+    FOLDER=/usr/lib/$ARCHNAME-linux-gnu
 
     for FILE in `ls $FOLDER/*.backup`; do
         sudo mv -f "$FILE" "${FILE%.*}"
@@ -546,49 +384,49 @@ function revert-libs() {
     done
 }
 
-function update-libs() {
-    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
-        echo "Usage: zhujie install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
-        return 1
-    fi
-
-    MODULE="$1" && shift
-    ARCH="$1" && shift
-    BUILD_TYPE="$1" && shift 
-    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
-
-    if [ "$(nvidia-source-version)" != "$(nvidia-version-installed $ARCH)" ]; then  
-        echo "Error: NVIDIA modules are version locked, can't overwrite *.so.$(nvidia-version-installed $ARCH) with *.so.$(nvidia-source-version), aborting..." > /dev/stderr
+function update-nvidia-libs() {
+    if [[  -z $1 || -z $2 || -z $3 ]]; then
+        echo "Usage: update-nvidia-libs <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
         exit 1
     fi
 
-    echo "Info: install NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
-    case "$MODULE" in
+    MODULE=$1 && shift
+    ARCH=$1 && shift
+    BUILD_TYPE=$1 && shift 
+    FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
+
+    if [[ $(nvidia-source-version) != $(nvidia-version-installed $ARCH) ]]; then  
+        echo "Error: NVIDIA modules are version locked can't overwrite *.so.$(nvidia-version-installed $ARCH) with *.so.$(nvidia-source-version)" > /dev/stderr
+        exit 1
+    fi
+
+    echo "Info: update NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
+    case $MODULE in
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
-            OUTDIR="$P4ROOT/$NVBRANCH/drivers/OpenGL/_out/$FOLDER"
-            BASENAMES="libnvidia-glcore.so"
+            OUTDIR=$P4ROOT/$NVBRANCH/drivers/OpenGL/_out/$FOLDER
+            BASENAMES=libnvidia-glcore.so
+
             for BASENAME in $BASENAMES; do
                 VERSION=$(nvidia-source-version)
-                ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
-                TARGETNAME="/usr/lib/$ARCHNAME-linux-gnu/$BASENAME.$VERSION"
-            
-                if [ -f "$TARGETNAME" -o -L "$TARGETNAME" ]; then
-                    if [ ! -f "$TARGETNAME.backup" ]; then
-                        sudo mv "$TARGETNAME" "$TARGETNAME.backup"
+                ARCHNAME=$([[ $ARCH == amd64 ]] && echo x86_64 || echo i386)
+                TARGETNAME=/usr/lib/$ARCHNAME-linux-gnu/$BASENAME.$VERSION
+
+                if [[ -f $TARGETNAME || -L $TARGETNAME ]]; then
+                    if [[ ! -f $TARGETNAME.backup ]]; then
+                        sudo mv $TARGETNAME $TARGETNAME.backup
                     fi
-                    sudo cp -f "$OUTDIR/$BASENAME" "$TARGETNAME"
+                    sudo cp -f $OUTDIR/$BASENAME $TARGETNAME
                 else
-                    echo "Error: '$TARGETNAME' is missing, aborting..." > /dev/stderr
+                    echo "Error: '$TARGETNAME' is missing" > /dev/stderr
                     exit 1
                 fi
 
-                echo "Backup & Update: $TARGETNAME"
+                echo "Updated: $TARGETNAME"
             done
         ;;
-
         *)
-            echo "Error: NVIDIA module '$MODULE' is not supported, aborting..." > /dev/stderr
+            echo "Error: NVIDIA module '$MODULE' is not supported" > /dev/stderr
             exit 1
         ;;
     esac 
@@ -599,22 +437,22 @@ function nvidia-source-version() {
 }
 
 function nvidia-version-installed() {
-    if [ "$1" = "" ]; then
+    if [[ -z $1 ]]; then
         echo "Usage: nvidia-version-installed <ARCH>" > /dev/stderr
         exit 1
-    fi
+    fi  
 
-    ARCH="$1"
-    ARCHNAME=$([ "$ARCH" = "amd64" ] && echo "x86_64" || echo "i386")
+    ARCH=$1
+    ARCHNAME=$([[ $ARCH == amd64 ]] && echo x86_64 || echo i386)
     SOFILE=$(ls /usr/lib/$ARCHNAME-linux-gnu/libnvidia-glcore.so* | head -n 1)
-    POS=$([ "$ARCH" = "amd64" ] && echo "46" || echo "44")
+    POS=$([[ $ARCH == amd64 ]] && echo 46 || echo 44)
     LEN=$(( ${#SOFILE} - POS ))
-    VERSION="${SOFILE:$POS:$LEN}"
+    VERSION=${SOFILE:$POS:$LEN}
 
-    if [ -f "/usr/lib/$ARCHNAME-linux-gnu/libnvidia-glvkspirv.so.$VERSION" ]; then
-        echo "$VERSION"
+    if [[ -f /usr/lib/$ARCHNAME-linux-gnu/libnvidia-glvkspirv.so.$VERSION ]]; then
+        echo $VERSION
     else
-        echo "Error: can't parse NVIDIA version installed, aborting..." > /dev/stderr
+        echo "Error: can't parse NVIDIA version installed" > /dev/stderr
         exit 1
     fi
 }
@@ -627,69 +465,67 @@ function ddnet() {
     # RaiNyMore2 -- GPU-intensive 
 
     check-display
-    
+
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
 
 function click-talos-message-window() {
     which xdotool > /dev/null || sudo apt install -y xdotool
+
     STOP=0
     ROUNDS=0
-    
-    while [ "$STOP" = "0" -a "$ROUNDS" != "3" ]; do
+    while [[ $STOP == 0 && $ROUNDS != 3 ]]; do
         sleep 3
         ROUNDS=$((ROUNDS+1))
         WINDOW_ID=$(xdotool getactivewindow)
         WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
-        if [ "$WINDOW_NAME" = "Message" ]; then
+        if [[ $WINDOW_NAME == Message ]]; then
             POSITION=$(xdotool getwindowgeometry $WINDOW_ID | grep Position: | awk '{print $2}')
             EXTENT=$(xdotool getwindowgeometry $WINDOW_ID | grep Geometry: | awk '{print $2}')
-            X=${POSITION%,*}
-            Y=${POSITION#*,}
-            W=${EXTENT%x*}
-            H=${EXTENT#*x}
+            X=${POSITION%,*}; Y=${POSITION#*,}
+            W=${EXTENT%x*};   H=${EXTENT#*x}
             xdotool mousemove $((X+W-50)) $((Y+H-70))
             xdotool click 1
-        elif [ "$WINDOW_NAME" = "Talos - Linux - 64bit" ]; then
+        elif [[ $WINDOW_NAME == "Talos - Linux - 64bit" ]]; then
             STOP=1
         fi
     done
 }
 
 function force-talos-quit() {
+    sleep 30
+
     STOP=0
     SECONDS=0
-    sleep 30
-    
-    while [ "$STOP" = "0" ]; do
-        if [ ! -f "$HOME/zhujie-talos.log" ]; then
+    while [[ $STOP == 0 ]]; do
+        if [[ ! -f $HOME/zhujie-talos.log ]]; then
             STOP=1
             continue
         fi
-        
-        LINE=$(cat "$HOME/zhujie-talos.error" | grep "corrupted size vs. prev_size")
-        if [ ! -z "$LINE" ]; then
+
+        LINE=$(cat $HOME/zhujie-talos.error | grep "corrupted size vs. prev_size")
+        if [[ -n $LINE ]]; then
             pkill -9 Talos 1> /dev/null 2> /dev/null
             STOP=1
             sleep 2
         else
-            sleep 5
-            if [ "$SECONDS" -gt "120" ]; then
+            if [[ $SECONDS > 120 ]]; then
                 echo "Error: force-talos-quit got nothing after 2 mins" > /dev/stderr
                 STOP=1
             fi
+            sleep 5
         fi
     done
-    
-    if [ ! -z "$(pidof Talos)" ]; then
-        echo "Error: can't kill process Talos" > /dev/stderr
+
+    if [[ -n $(pidof Talos) ]]; then
+        pkill -9 Talos 1> /dev/null 2> /dev/null
     fi
 }
 
 function talos() {
     # Vulkan
     # 2560x1440
-    
+
     check-display
 
     # Launch steam if it's not currently running
@@ -698,51 +534,37 @@ function talos() {
         sleep 20
     )
 
-    if [ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]; then
-        echo "Error: install 'Talos Principle' in steam's window and try again, aborting..." > /dev/stderr
+    if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
+        echo "Error: install 'Talos Principle' in steam's window and try again" > /dev/stderr
         exit 1
     fi
-    
+
     click-talos-message-window &
     force-talos-quit &
 
-    CWD_BAK="$(pwd)"
-    cd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
-    
-    if [ "$1" = "-v" ]; then
+    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
+
+    if [[ $1 == -v ]]; then
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
     else
         ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
-        
         cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}'
     fi
-    
-    cd "$CWD_BAK"
+
+    popd > /dev/null
 }
 
 function install-dvs-driver() {
-    TYPE="Release"
+    TYPE=Release
     BRANCH=""
-    CL=""
-    
-    while [ -n "$1" ]; do
-        case "$1" in
-            debug) 
-                TYPE="Debug" 
-            ;;
-            develop) 
-                TYPE="Develop" 
-            ;;
-            dev_a) 
-                shift
-                BRANCH="dev_a" 
-                CL="$1"
-            ;;
-            public)
-                shift
-                BRANCH="public"
-                CL="$1"
-            ;;
+    CL=""   
+
+    while [[ -n $1 ]]; do
+        case $1 in
+              debug)  TYPE=Debug  ;;
+            develop)  TYPE=Develop  ;;
+              dev_a)  shift; BRANCH=dev_a; CL=$1 ;;
+             public)  shift; BRANCH=public; CL=$1 ;;
             *)
                 echo "Error: unknown argument '$1'" > /dev/stderr
                 exit 1
@@ -750,40 +572,40 @@ function install-dvs-driver() {
         esac
         shift
     done
-    
-    case "$BRANCH" in
+
+    case $BRANCH in
         dev_a)
-            SUFFIX=$([ "$TYPE" = "Debug" ] && echo "-internal" || echo "") 
+            SUFFIX=$([[ $TYPE == Debug ]] && echo -internal || echo "") 
             URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${SUFFIX}.run"
-            OUT="$HOME/Downloads/NVIDIA-dev_a-$TYPE-CL$CL.run"
-            
+            OUT=$HOME/Downloads/NVIDIA-dev_a-$TYPE-CL$CL.run
+
         ;;
         public)
-            PATCH=$([ "$ID" = "Develop" ] && echo "/develop" || echo "")
+            PATCH=$([[ $ID == Develop ]] && echo /develop || echo "")
             URL="http://linuxqa/builds/release/display/x86_64${PATCH}/$CL/NVIDIA-Linux-x86_64-$CL.run"
-            OUT="$HOME/Downloads/NVIDIA-Public-$TYPE-$CL.run"
+            OUT=$HOME/Downloads/NVIDIA-Public-$TYPE-$CL.run
         ;;
     esac
-    
+
     echo "Downloading: $OUT"   
-    
-    if [ -f "$OUT" ]; then
+
+    if [[ -f $OUT ]]; then
         echo "Reuse cache: $OUT"
-        chmod 777 "$OUT" 
+        chmod 777 $OUT
     else
-        TMPFILE="/tmp/$(basename $OUT)"
-        wget $URL -O "$TMPFILE" && (
+        TMPFILE=/tmp/$(basename $OUT)
+        wget $URL -O $TMPFILE && (
             mv -f $TMPFILE $OUT
-            chmod 777 "$OUT"
+            chmod 777 $OUT
         ) || (
             echo "Error: can't download $URL" > /dev/stderr
             exit 1
         )
     fi
-    
-    if [ -f "$OUT" ]; then
-        read -p "Do you want to install now? (Y/n) " ANS
-        case "$ANS" in
+
+    if [[ -f $OUT ]]; then
+        read -p "Do you want to install now? (Y/n) " RSVP
+        case $RSVP in
             ""|y|Y|1)
                 echo "Installing $OUT"
                 install "$OUT"
@@ -793,24 +615,23 @@ function install-dvs-driver() {
 }
 
 function drivers() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie drivers [debug] [develop] [BRANCH CL] [public RELEASE_ID]" > /dev/stderr
-        echo "    e.g. zhujie drivers dev_a CL" > /dev/stderr
-        echo "    e.g. zhujie drivers dev_a CL debug" > /dev/stderr
-        echo "    e.g. zhujie drivers public RELEASE_ID" > /dev/stderr
-        echo "    e.g. zhujie drivers public RELEASE_ID develop" > /dev/stderr
+    if [[ -z $1 ]]; then
+        echo "Usage: drivers [debug] [develop] [BRANCH CL] [public RELEASE_ID]" > /dev/stderr
+        echo "    e.g. drivers dev_a CL" > /dev/stderr
+        echo "    e.g. drivers dev_a CL debug" > /dev/stderr
+        echo "    e.g. drivers public RELEASE_ID" > /dev/stderr
+        echo "    e.g. drivers public RELEASE_ID develop" > /dev/stderr
         exit 1
     fi
-    
+
     IS_PUBLIC=0
-    
-    for VAR in "$@"; do
-        case "$VAR" in
-            public) IS_PUBLIC=1; break ;;
+    for VAR in $@; do
+        case $VAR in
+            public) IS_PUBLIC=1 ;;
         esac
     done
 
-    if [ ! -f "/mnt/linuxqa/nvt.sh" -o "$IS_PUBLIC" = "1" ]; then
+    if [[ ! -f /mnt/linuxqa/nvt.sh || $IS_PUBLIC != 1 ]]; then
         install-dvs-driver "$@"
     else
         /mnt/linuxqa/nvt.sh drivers "$@"
@@ -818,224 +639,155 @@ function drivers() {
 }
 
 function flamegraph() {    
-    NAME="NoName"
-    OUT="$HOME"
-    SVG_FILE="$OUT/perf-$NAME.svg"
-    PERF_DATA="$OUT/perf-$NAME.data"
+    which perf || (
+        echo "Error: can't find perf in PATH" > /dev/stderr
+        exit 1
+    )
+
+    NAME=Perf-NoName
+    SVG_FILE=$HOME/$NAME.svg
+    PERF_DATA=$HOME/$NAME.data
     PERF_RECORD_SYSTEM_WIDE=1
     PERF_RECORD_PID=" -a "
     PERF_RECORD_SECONDS=10
     PERF_RECORD_ARGS=" -F 100 -g --call-graph dwarf "
-    
-    while [ -n "$1" ]; do
-        case "$1" in
+
+    while [[ -n $1 ]]; do
+        case $1 in
             -n|--name)
                 shift
-                NAME="$1"
-                SVG_FILE="$OUT/perf-$NAME.svg"
-                PERF_DATA="$OUT/perf-$NAME.data"
+                NAME=$1
+                SVG_FILE=$HOME/$NAME.svg
+                PERF_DATA=$HOME/$NAME.data
             ;;
-            
             -p|--pid)
                 shift
                 PERF_RECORD_SYSTEM_WIDE=0
                 PERF_RECORD_PID=" --pid=$1 "
             ;;
-
             -s|--sleep)
                 shift
                 PERF_RECORD_SECONDS=$1
             ;;
-
             *)
-	            if [ ! -z "$(pidof $1)" ]; then
-	                NAME=$([ "$NAME" = "NoName" ] && echo "$1" || echo "$NAME")
-	                SVG_FILE="$OUT/perf-$NAME.svg"
-                    PERF_DATA="$OUT/perf-$NAME.data"
+	            if [[ -n $(pidof $1) ]]; then
+	                NAME=$([[ $NAME == Perf-NoName ]] && echo $1 || echo $NAME)
+	                SVG_FILE=$HOME/$NAME.svg
+                    PERF_DATA=$HOME/$NAME.data
                     PERF_RECORD_SYSTEM_WIDE=0
                     PERF_RECORD_PID=" --pid=$(pidof $NAME) "
 	            else
-	                echo "Error: process '$1' doesn't exist, aborting" > /dev/stderr
+	                echo "Error: process $1 doesn't exist" > /dev/stderr
 	                exit 1
 	            fi
             ;;
         esac
         shift
     done
-    
+
     perf --help 1> /dev/null 2> /dev/null || (
         sudo apt install -y linux-tools-`uname -r`
         sudo apt install -y linux-cloud-tools-`uname -r`
         sudo apt install -y linux-tools-generic
         sudo apt install -y linux-cloud-tools-generic
     )
-    
-    if [ ! -d "$OUT" ]; then
-        mkdir -p "$OUT"
-    fi
-    
-    if [ ! -d "$FLAMEGRAPH" ]; then
-        echo "Error: ENVVAR FLAMEPATH is missing or incorrect, aborting..." > /dev/stderr
-        exit 1
-    fi
-    
-    if [ -f "$PERF_DATA" ]; then
+
+    if [[ -f $PERF_DATA ]]; then
         rm -rf "$PERF_DATA"
     fi
-    
+
     echo -ne "Info: perf record for $PERF_RECORD_SECONDS seconds\t"
-    sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS --output="$PERF_DATA" -- sleep $PERF_RECORD_SECONDS 2> /tmp/$(basename $PERF_DATA).error && echo "[OK]" || (echo "[FAILED]"; cat /tmp/$PERF_DATA.error; exit 1)
+    sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS \
+        --output="$PERF_DATA" \
+        --sleep $PERF_RECORD_SECONDS \
+        2> /tmp/$(basename $PERF_DATA).error \
+        && echo "[OK]" || (
+            echo "[FAILED]"
+            cat /tmp/$PERF_DATA.error
+            exit 1
+        )
     sudo chmod 777 "$PERF_DATA"
-    
-    if [ ! -f "$PERF_DATA" ]; then
-        echo "Error: perf data file '$PERF_DATA' is missing, aborting..." > /dev/stderr
+
+    if [[ ! -f $PERF_DATA ]]; then
+        echo "Error: '$PERF_DATA' is missing" > /dev/stderr
         exit 1
     fi
     
-    BASENAME=$(basename -- "$PERF_DATA")
+    BASENAME=$(basename "$PERF_DATA")
     
     echo -ne "Info: perf script\t"
-    sudo perf script --input="$PERF_DATA" 1> "/tmp/$BASENAME.perf" 2> "/tmp/$BASENAME.perf.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.error"; exit 1) 
+    sudo perf script --input="$PERF_DATA" \
+        1> "/tmp/$BASENAME.perf" \
+        2> "/tmp/$BASENAME.perf.error" \
+        && echo "[OK]" || (
+            echo "[FAILED]"
+            cat "/tmp/$BASENAME.perf.error"
+            exit 1
+        ) 
     
     echo -ne "Info: stackcollapse-perf.pl\t"
-    sudo "$FLAMEGRAPH/stackcollapse-perf.pl" "/tmp/$BASENAME.perf" 1> "/tmp/$BASENAME.perf.folded" 2> "/tmp/$BASENAME.perf.folded.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.error"; exit 1)
+    sudo stackcollapse-perf.pl "/tmp/$BASENAME.perf" \
+        1> "/tmp/$BASENAME.perf.folded" \
+        2> "/tmp/$BASENAME.perf.folded.error" \
+        && echo "[OK]" || (\
+            echo "[FAILED]"
+            cat "/tmp/$BASENAME.perf.folded.error"
+            exit 1
+        )
     
     echo -ne "Info: stackcollapse-recursive.pl\t"
-    sudo "$FLAMEGRAPH/stackcollapse-recursive.pl" "/tmp/$BASENAME.perf.folded" 1> "/tmp/$BASENAME.perf.folded.recursive" 2> "/tmp/$BASENAME.perf.folded.recursive.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.recursive.error"; exit 1)
+    sudo stackcollapse-recursive.pl "/tmp/$BASENAME.perf.folded" \
+        1> "/tmp/$BASENAME.perf.folded.recursive" \
+        2> "/tmp/$BASENAME.perf.folded.recursive.error" \
+        && echo "[OK]" || (\
+            echo "[FAILED]"
+            cat "/tmp/$BASENAME.perf.folded.recursive.error"
+            exit 1
+        )
     
     echo -ne "Info: flamegraph.pl\t"
-    sudo "$FLAMEGRAPH/flamegraph.pl" "/tmp/$BASENAME.perf.folded.recursive" 1> "$SVG_FILE" 2> "/tmp/$BASENAME.perf.folded.recursive.error" && echo "[OK]" || (echo "[FAILED]"; cat "/tmp/$BASENAME.perf.folded.recursive.error"; exit 1)
-}
-
-function fuji() {
-    while [ -n "$1" ]; do
-        case "$1" in
-            rename)
-                shift
-                fuji-rename "$@"
-                break
-            ;;
-            
-            sync)
-                shift
-                fuji-sync "$@"
-                break
-            ;;
-
-            *)
-                echo "Usage: zhujie fuji [rename ...] [sync]" > /dev/stderr
-	            exit 1
-            ;;
-        esac
-        shift
-    done
-}
-
-function fuji-rename() {
-    FOLDER="$1"
-    OLDSTR="$2"
-    NEWSTR="$3"
-
-    IFS=$'\n' 
-    for FILE in `find "$FOLDER" -type f -name "$OLDSTR*" -printf '%p\n'`; do
-        NEWFILE=`echo "$FILE" | sed "s/\(.\{4\}\)\([0-9]\{4\}\)\.\(.*\)/$NEWSTR\2.\3/g"`
-        if [ -f "$NEWFILE" ]; then
-            echo "Error: dest file '$NEWFILE' exists, aborting..." > /dev/stderr
+    sudo flamegraph.pl "/tmp/$BASENAME.perf.folded.recursive" \
+        1> "$SVG_FILE" \
+        2> "/tmp/$BASENAME.perf.folded.recursive.error" \
+        && echo "[OK]" || (\
+            echo "[FAILED]"
+            cat "/tmp/$BASENAME.perf.folded.recursive.error"
             exit 1
-        fi
-        
-        mv "$FILE" "$NEWFILE"
-        echo "Renamed: `basename \"$FILE\"` ==> `basename \"$NEWFILE\"`"
-    done
-    IFS=
+        )
 }
-
-function fuji-sync() {
-    echo ""    
-}
-
-function nvidia-libs() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie nvidia-libs [opengl] [-f|--filter]" > /dev/stderr
-        exit 1
-    fi
     
-    NVBRANCH="sw/dev/gpu_drv/dev_a"
-    FLAG_ALL=0
-    FILTER=""
-    
-    while [ -n "$1" ]; do
-        case "$1" in
-            opengl)
-                FOLDER="$P4ROOT/$NVBRANCH/drivers/OpenGL"
-            ;;
-            
-            -f|--filter)
-                shift
-                FILTER="$1"
-            ;;
-            
-            *)
-                nvidia-libs
-                exit 1
-            ;;
-        esac
-        shift
-    done
-    
-    if [ ! -d "$FOLDER" ]; then
-        FOLDER="$P4ROOT/$NVBRANCH"
-    fi
-    
-    echo "" > /tmp/nvinfo.libs
-    find "$FOLDER" -type f -name "*.so" > "/tmp/nvinfo.libs" && (
-        while read LINE; do
-            if [ ! -z "$FILTER" ]; then
-                if [[ $LINE == *"$FILTER"* ]]; then
-                    echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
-                fi
-            else
-                echo "${LINE/$P4ROOT\/$NVBRANCH\//''}"
-            fi
-        done < "/tmp/nvinfo.libs"
-    ) || (
-        echo "Error: can't find NVIDIA libs in folder '$FOLDER'" > /dev/stderr
+function p4bisect() {
+    which p4 || (
+        echo "Error: can't find p4 in PATH" > /dev/stderr
         exit 1
     )
-}
-
-function p4bisect() {
-    if [ "$1" = "" -o "$2" = "" -o "$3" = "" ]; then
+    
+    if [[ -z $1 || -z $2 || -z $3 ]]; then
         echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>" > /dev/stderr
         exit 1
     fi
     
-    MODULE="$1"
-    DATE_OLD="$2"
-    DATE_NEW="$3"
-    OUT="$HOME/NVIDIA/OUT/p4bisect"
-    CHANGES="$_OUT/changes-on-$MODULE"
-
-    case "$MODULE" in
-        dev_a)
-            FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a"
-        ;;
-        opengl)
-            FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL"
-        ;;
+    MODULE=$1
+    DATE_OLD=$2
+    DATE_NEW=$3
+    CHANGES="$HOME/p4-changes-on-$MODULE"
+    
+    case $MODULE in
+         dev_a) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a" ;;
+        opengl) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL" ;;
         *)
-            echo "Error: NVIDIA module '$1' is not supported, aborting..." > /dev/stderr
+            echo "Error: NVIDIA module '$1' is not supported" > /dev/stderr
             exit 1
         ;;
     esac 
     
-    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$CHANGES"
-    LINE_COUNT=$(wc -l < "$CHANGES")
-   
-    while [ $LINE_COUNT -gt 2 ]; do
+    p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $CHANGES
+    LINE_COUNT=$(wc -l < $CHANGES)
+        
+    while [[ $LINE_COUNT > 2 ]]; do
         LINE_NO=$(( $LINE_COUNT/2 ))
         LINE=$(sed -n "${LINE_NO}p" $CHANGES)
-
+    
         IFS=" " read -ra SEGMENTS <<< "$LINE"
         CL="${SEGMENTS[1]}"
         DESC=$(p4 describe -s $CL | head -n 1)
@@ -1043,109 +795,86 @@ function p4bisect() {
         IFS=" " read -ra SEGMENTS <<< "$DESC"
         DATE="${SEGMENTS[5]}:${SEGMENTS[6]}"
         ANSWERED=0
-
+    
         echo "Testing change $CL @$DATE (out of $LINE_COUNT changes):"
-
-        ANSWERED=0
-        while [ "$ANSWERED" = "0" ]; do
-            read -p "    Download from DVS build? (Y/n): " ANS_DOWNLOAD
-            case "$ANS_DOWNLOAD" in
-                y|Y|1)
-                    ANSWERED=1
-                    driver $CL 
-                ;;
-                n|N|0)
-                    ANSWERED=1
-                ;;
-            esac
-        done
-
-        ANSWERED=0
-        while [ "$ANSWERED" = "0" ]; do
-            read -p "    Is this change new? (y/n): " ANS_NEW 
-            case "$ANS_NEW" in
-                y|Y|1)
-                    ANSWERED=1
-                    DATE_NEW="$DATE"
-                ;;
-                n|N|0)
-                    ANSWERED=1
-                    DATE_OLD="$DATE"
-                ;;
-            esac
-        done
-
-        p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > "$CHANGES"
-        LINE_COUNT=$(wc -l < "$CHANGES")
+    
+        read -p "Download from DVS build? (Y/n): " RSVP
+        case $RSVP in
+            y|Y|1) drivers dev_a $CL ;;
+        esac
+    
+        read -p "Is this change new? (y/n): " RSVP 
+        case $RSVP in
+            y|Y|1) DATE_NEW="$DATE" ;;
+            n|N|0) DATE_OLD="$DATE" ;;
+        esac
+    
+        p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $CHANGES
+        LINE_COUNT=$(wc -l < $CHANGES)
+        
         echo ""
     done
 }
-
+    
 function pic-v() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie pic-v [APP]" > /dev/stderr
+    which pic-v || (
+        echo "Error: can't find pic-v in PATH" > /dev/stderr
+        exit 1
+    )
+    
+    if [[ -z $1 ]]; then
+        echo "Usage: pic-v [APP]" > /dev/stderr
         exit 1
     fi
-
-    if [ ! -d "$PIC_V" ]; then
-        echo "Error: ENVVAR PIC_V is missing or incorrect, aborting..." > /dev/stderr
-        exit 1
-    fi
-
+    
     # Launch pic-v if it's not running
-    pgrep -x pic-v >/dev/null && echo "PIC-V is running..." || (
-        gnome-terminal -- bash -c "cd $PIC_V && ./pic-v || read -p \"Press any key to continue...\""
+    pgrep -x pic-v >/dev/null || (
+        bash -c "cd $PIC_V && ./pic-v" &
         sleep 3
     )
-
+    
     # Launch game in current terminal 
-    cd $PIC_V
+    PIC_V_DIR=$(dirname `while pic-v | head -n 1`)
+    if [[ ! -f $PIC_V_DIR ]]; then
+        echo "Error: can't find pic-v's parent directory" > /dev/stderr
+        exit 1
+    fi
+    
+    cd $PIC_V_DIR
     source setup-env.sh
+    
     "$@" && (
         # Launch http server if it's not running
-        ps aux | grep "[p]ython3 -m http.server" && echo "PIC-V HTTP server is running..." || (
-            gnome-terminal -- bash -c "cd $PIC_V/PerfInspector/output && ./launch-py3-server.sh || read -p \"Press any key to continue...\""
+        ps aux | grep "[p]ython3 -m http.server" || (
+            bash -c "cd $PIC_V/PerfInspector/output && ./launch-py3-server.sh" &
             sleep 1
         )
     
         URL="http://localhost:8000/"
         which firefox && firefox $URL || ( 
-            which chromium && chromium $URL || echo "Open http://localhost:8000/ in your browser" 
+            which chromium && chromium $URL || 
+                echo "Open http://localhost:8000/ in your browser" 
         )
     )
 }
-
-function vpn() {
-    VPNURL="https://ngvpn32.vpn.nvidia.com:8443"
-    AUTHGROUP="--authgroup Employee"
-    USERNAME="-u wanliz"
-    CODE1="Xavier#35224047"
-    CODE2="$1"
     
-    if [ -z "$CODE2" ]; then
-        read -p "DUO pass code:" CODE2
-    fi
-    
-    echo "$CODE1,$CODE2" | sudo openconnect $AUTHGROUP $USERNAME $VPNURL
-}
-
 function choose-kernel() {
     echo "Found installed kernel:"
+    
     INDEX=-1
     for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
         THISNAME=${K:14:$[${#K}-14]}
-        MARK=$([ "$THISNAME" = "$(uname -r)" ] && echo "*" || echo " ")
+        MARK=$([[ $THISNAME == $(uname -r) ]] && echo "*" || echo " ")
         INDEX=$((INDEX+1))
         echo "$MARK [$INDEX]" $THISNAME
     done
     
     read -p "Choose a kernel to be default: " KNAME
-    
-    if [[ "$KNAME" =~ ^[0-9]+$ ]]; then
+    if [[ $KNAME =~ ^[0-9]+$ ]]; then
         INDEX=0
         for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
-            if [ "$INDEX" = "$KNAME" ]; then
-                KNAME="${K:14:$[${#K}-14]}"
+            if [[ $INDEX == $KNAME ]]; then
+                KNAME=${K:14:$[${#K}-14]}
                 break
             else
                 INDEX=$((INDEX+1))
@@ -1155,38 +884,281 @@ function choose-kernel() {
     
     INVALID=1
     for K in $(find /boot -name vmlinuz-* 2> /dev/null); do
-        if [ "${K:14:$[${#K}-14]}" = "$KNAME" ]; then
+        if [[ ${K:14:$[${#K}-14]} == $KNAME ]]; then
             INVALID=0
             break
         fi
     done
     
-    if [ "$INVALID" = "1" ]; then
-        echo "Error: kernel name '$KNAME' is invalid, aborting..." > /dev/stderr
+    if [[ $INVALID == 1 ]]; then
+        echo "Error: kernel '$KNAME' is invalid" > /dev/stderr
         exit 1
     fi
     
-    rm -rf "/tmp/grub.tmp"
+    rm -rf /tmp/grub.tmp
     while read -r LINE; do
-        if [[ "$LINE" == *"GRUB_DEFAULT"* ]]; then
+        if [[ $LINE == *"GRUB_DEFAULT"* ]]; then
             echo "GRUB_DEFAULT=\"Advanced options for Ubuntu>Ubuntu, with Linux $KNAME\"" >> "/tmp/grub.tmp"
         else
-            echo "$LINE" >> "/tmp/grub.tmp"
+            echo "$LINE" >> /tmp/grub.tmp
         fi
-    done < "/etc/default/grub"
+    done < /etc/default/grub
     
-    sudo cp "/tmp/grub.tmp" "/etc/default/grub"
+    sudo cp /tmp/grub.tmp /etc/default/grub
     sudo update-grub
+}
+    
+function fake-display() {
+    if [[ $EUID != 0 ]]; then
+        echo "Error: please run as root" > /dev/stderr
+        exit 1
+    fi
+    
+    RESOLUTION=$1
+    if [[ $(is-nvidia-gpu) == 1 ]]; then
+        if [[ -z $RESOLUTION ]]; then
+            echo "Usage: fake-display [RESOLUTION]" > /dev/stderr
+            read -p "Use the default resolution, 3840x2160? (Y/n): " RSVP
+            case $RSVP in
+                ""|y|Y|1) RESOLUTION=3840x2160 ;;
+                       *) RESOLUTION=$RSVP ;;
+            esac
+        fi
+    else
+        RESOLUTION=""
+        unset NVTEST_DRIVER_DIR
+    fi
+    
+    if [[ $(is-nvidia-gpu) == 1 ]]; then
+        /mnt/linuxqa/nvt.sh ${RESOLUTION}__runcmd --cmd 'sleep 100000000'
+    else
+        /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
+    fi
+}
+    
+function vnc() {
+    CMD=$1
+    ACTUAL_DISPLAY=$2
+    VNCCMD=""
+    VNCPORT="5900"
+    RESOLUTION=""
+    
+    if [[ -z $CMD ]]; then
+        echo "Usage: vnc <start|stop|restart|status> [ACTUAL_DISPLAY] [RESOLUTION]" > /dev/stderr
+        echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
+        echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
+        echo "" > /dev/stderr
+
+        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is $RFBPORT. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
+        echo "" > /dev/stderr
+
+        exit 1
+    fi
+    
+    if [[ -z $ACTUAL_DISPLAY ]]; then
+        VNCCMD=vncserver
+        if [[ -z $RESOLUTION && $CMD == start ]]; then
+            read -p "Virtual display resolution: (empty for 3840x2160) " RSVP
+            case $RSVP in 
+                "") RESOLUTION="-geometry 3840x2160" ;;
+                 *) RESOLUTION="-geometry $RSVP" ;;
+            esac
+        fi
+    else
+        VNCCMD=x0vncserver
+        RESOLUTION=""
+    fi
+    
+    which vncserver   > /dev/null || sudo apt install -y tigervnc-standalone-server 
+    which x0vncserver > /dev/null || sudo apt install -y tigervnc-scraping-server 
+    
+    if [[ ! -d $HOME/.vnc ]]; then
+        mkdir -p $HOME/.vnc
+    fi
+    
+    if [[ ! -f $HOME/.vnc/passwd && $CMD == start ]]; then
+        echo "Creating ~/.vnc/passwd file..."
+        vncpasswd || (
+            echo "Error: can't generate VNC password at $HOME/.vnc/passwd" > /dev/stderr
+            exit 1
+        )
+    fi
+    
+    if [[ -n $VNCPORT ]]; then
+        RFBPORT="-rfbport $VNCPORT"
+    fi
+    
+    case $CMD in
+        start)
+            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RFBPORT $RESOLUTION $ACTUAL_DISPLAY
+        ;;
+        stop)
+            $VNCCMD -kill $ACTUAL_DISPLAY
+        ;;
+        restart)
+            vnc stop  $ACTUAL_DISPLAY
+            vnc start $ACTUAL_DISPLAY
+        ;;
+        status)
+            $VNCCMD -list $ACTUAL_DISPLAY
+        ;;
+        *)
+            vnc
+            exit 1
+        ;;
+    esac
+}
+    
+function apex() {
+    if [[ $EUID != 0 ]]; then
+        echo "Error: please run as root" > /dev/stderr
+        exit 1
+    fi
+    
+    # check-display
+    
+    if [[ $(is-nvidia-gpu) == 0 ]]; then
+        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        unset NVTEST_DRIVER_DIR
+    fi
+    
+    if [[ $1 == -v ]]; then
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
+    else
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF \
+        1> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log \
+        2> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error && (
+            cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}'
+        ) || (
+            cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
+            cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
+        )
+    fi
+}
+    
+function catia() {
+    if [[ $EUID != 0 ]]; then
+        echo "Error: please run as root" > /dev/stderr
+        exit 1
+    fi
+    
+    check-display
+    
+    pushd /root/nvt/tests/viewperf2020v3/viewperf2020 > /dev/null
+    
+    if [[ $1 == -v ]]; then
+        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160
+    else
+        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 \
+        1> $HOME/catia_3840x2160.log \
+        2> $HOME/catia_3840x2160.error && (
+            cat $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}'
+        ) || (
+            cat $HOME/catia_3840x2160.log
+            cat $HOME/catia_3840x2160.error
+        )
+    fi
+    
+    popd > /dev/null
+}
+    
+function display() {
+    if [[ -n `ls -A /tmp/.X11-unix` ]]; then
+        echo -ne "Displays: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
+    else
+        echo "Displays: N/A"
+    fi
+}
+
+function prime-run() {
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export __VK_LAYER_NV_optimus=NVIDIA_only
+    export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    if [[ ! -f $VK_ICD_FILENAMES ]]; then 
+        export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+    fi
+    exec "$@"
+}
+
+function cpu-count() {
+    lscpu | grep "^CPU(s):" | awk '{print $2}'
+}
+
+function cpus-offline() {
+    if [[ -z $1 ]]; then
+        echo "Error: No CPU to put offline" > /dev/stderr
+        exit 1
+    fi
+    
+    for RANGE in $@; do
+        for i in `seq $(parse-range $RANGE)`; do
+            echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+        done
+    done
+}
+
+function cpus-online() {
+    for i in `seq 1 $(($(cpu-count) - 1))`; do
+        echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
+    done
+}
+    
+function cpus() {
+    lscpu --all --extended 
+}
+
+function pull() {
+    GIT_REPO=$(dirname $0)
+    if [[ ! -d $GIT_REPO/.git ]]; then
+        echo "Error: '$GIT_REPO' is not a Git repository" > /dev/stderr
+        exit 1
+    fi
+    
+    pushd $GIT_REPO > /dev/null
+    git pull https://github.com/wanlizhu/zhujie master
+    popd > /dev/null 
+    
+    source "$0"
+}
+
+function push() {
+    GIT_REPO=$(dirname $0)
+    if [[ ! -d $GIT_REPO/.git ]]; then
+        echo "Error: '$GIT_REPO' is not a Git repository" > /dev/stderr
+        exit 1
+    fi
+    
+    echo "Info: push git repo from $GIT_REPO"
+    pushd "$GIT_REPO" > /dev/null
+    git add .
+    git commit -m "$(date)"
+    git push --set-upstream https://github.com/wanlizhu/zhujie master
+    popd > /dev/null
+}
+
+function vpn() {
+    if [[ -z $1 ]]; then
+        read -p "DUO pass code: " CODE
+    else
+        CODE=$1
+    fi
+    
+    which openconnect || (
+        echo "Error: can't find openconnect in PATH" > /dev/stderr
+        exit 1
+    )
+    
+    echo "Xavier#35224047,$CODE" | sudo openconnect --authgroup Employee -u wanliz https://ngvpn32.vpn.nvidia.com:8443
 }
 
 function stddev() {
-    FILE="$1"
-    if [ ! -f "$FILE" ]; then
-        echo "Error: input file '$FILE' doesn't exist, aborting..." > /dev/stderr
+    FILE=$1
+    if [[ ! -f $FILE ]]; then
+        echo "Error: '$FILE' doesn't exist" > /dev/stderr
         exit 1
     fi
     
-    which python3 || sudo apt install -y python3
     python3 -c "
 import statistics as stat
 data=[]
@@ -1200,13 +1172,12 @@ print(stat.stdev(data))"
 }
 
 function mean() {
-    FILE="$1"
-    if [ ! -f "$FILE" ]; then
-        echo "Error: input file '$FILE' doesn't exist, aborting..." > /dev/stderr
+    FILE=$1
+    if [[ ! -f $FILE ]]; then
+        echo "Error: '$FILE' doesn't exist" > /dev/stderr
         exit 1
     fi
     
-    which python3 || sudo apt install -y python3
     python3 -c "
 import statistics as stat
 data=[]
@@ -1219,186 +1190,9 @@ with open(\"$FILE\", \"r\") as file:
 print(stat.mean(data))"
 }
 
-function fake-display() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: please run as root, aborting" > /dev/stderr
-        exit 1
-    fi
-
-    RESOLUTION="$1"
-    if [ "$(is-nvidia-gpu)" = "1" ]; then
-        if [ "$RESOLUTION" = "" ]; then
-            echo "Usage: zhujie fake-display [RESOLUTION]" > /dev/stderr
-            echo "    RESOLUTION: the format is like 3840x2160, only required for NVIDIA GPU to fake a display, and is not required for AMD GPU as there is always a physical monitor connected for AMD GPU" > /dev/stderr
-            echo ""
-            read -p "Use the default resolution, 3840x2160? (Y/n): " ANS
-            case "$ANS" in
-                ""|y|Y|1)
-                    RESOLUTION="3840x2160"
-                ;;
-                *)
-                    echo "Error: input is illegal, aborting..." > /dev/stderr
-                    exit 1
-                ;;
-            esac
-        fi
-    else
-        RESOLUTION=""
-        unset NVTEST_DRIVER_DIR
-    fi
-    
-    if [ "$(is-nvidia-gpu)" = "1" ]; then
-        /mnt/linuxqa/nvt.sh ${RESOLUTION}__runcmd --cmd 'sleep 100000000'
-    else
-        /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
-    fi
-}
-
-function vnc() {
-    CMD="$1"
-    ACTUAL_DISPLAY="$2"
-    VNCCMD=""
-    VNCPORT="5900"
-    RESOLUTION=""
-    
-    if [ -z "$CMD" ]; then
-        echo "Usage: zhujie vnc <start|stop|restart|status> [ACTUAL_DISPLAY] [RESOLUTION]" > /dev/stderr
-        echo "    start: start VNC server on ACTUAL_DISPLAY, or a new virtual display" > /dev/stderr 
-        echo "    stop: stop VNC server on ACTUAL_DISPLAY, or all VNC servers" > /dev/stderr
-        echo "    restart: restart VNC server on ACTUAL_DISPLAY, fallback to 'start' if it doesn't exist" > /dev/stderr
-        echo "    status: show status of the VNC server on ACTUAL_DISPLAY, or all VNC servers" > /dev/stderr
-        echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
-        echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
-        echo "" > /dev/stderr
-        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is $RFBPORT. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
-        echo "" > /dev/stderr
-        exit 1
-    fi
-    
-    if [ -z "$ACTUAL_DISPLAY" ]; then
-        VNCCMD=vncserver
-        if [ -z "$RESOLUTION" -a "$CMD" = "start" ]; then
-            read -p "Virtual display resolution: (empty for 3840x2160) " ANS
-            case "$ANS" in 
-                "") RESOLUTION="-geometry 3840x2160" ;;
-                 *) RESOLUTION="-geometry $ANS" ;;
-            esac
-        fi
-    else
-        VNCCMD=x0vncserver
-        RESOLUTION=""
-    fi
-    
-    which vncserver > /dev/null || sudo apt install -y tigervnc-standalone-server 
-    which x0vncserver > /dev/null || sudo apt install -y tigervnc-scraping-server 
-    
-    if [ ! -d "$HOME/.vnc" ]; then
-        mkdir -p "$HOME/.vnc"
-    fi
-    
-    if [ ! -f "$HOME/.vnc/passwd" -a "$CMD" = "start" ]; then
-        echo "Creating ~/.vnc/passwd file..."
-        vncpasswd || (
-            echo "Error: can't generate VNC password at $HOME/.vnc/passwd, aborting..." > /dev/stderr
-            exit 1
-        )
-    fi
-    
-    if [ ! -z "$VNCPORT" ]; then
-        RFBPORT="-rfbport $VNCPORT"
-    fi
-            
-    case "$CMD" in
-        start)
-            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RFBPORT $RESOLUTION $ACTUAL_DISPLAY
-        ;;
-        
-        stop)
-            $VNCCMD -kill $ACTUAL_DISPLAY
-        ;;
-        
-        restart)
-            vnc stop  $ACTUAL_DISPLAY
-            vnc start $ACTUAL_DISPLAY
-        ;;
-        
-        status)
-            $VNCCMD -list $ACTUAL_DISPLAY
-        ;;
-        
-        *)
-            vnc
-            exit 1
-        ;;
-    esac
-}
-
-function apex() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: please run as root, aborting" > /dev/stderr
-        exit 1
-    fi
-    
-    # check-display
-    
-    if [ "$(is-nvidia-gpu)" = "0" ]; then
-        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
-        unset NVTEST_DRIVER_DIR
-    fi
-    
-    if [ "$1" = "-v" ]; then
-        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
-    else
-        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF 2>&1 | tee $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' || (
-            cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
-        )
-    fi
-}
-
-function catia() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "Error: please run as root, aborting" > /dev/stderr
-        exit 1
-    fi
-    
-    check-display
-    
-    CWD_BAK="$(pwd)"
-    cd "/root/nvt/tests/viewperf2020v3/viewperf2020"
-  
-    if [ "$1" = "-v" ]; then
-        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160
-    else
-        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 2>&1 | tee $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' || (
-            cat $HOME/catia_3840x2160.log
-        )
-    fi
-    
-    cd "$CWD_BAK"
-}
-
-function display() {
-    if [ ! -z "ls -A /tmp/.X11-unix" ]; then
-        echo -ne "Displays: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
-    else
-        echo "Displays: N/A"
-    fi
-}
-
-function prime-run() {
-    export __NV_PRIME_RENDER_OFFLOAD=1
-    export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export __VK_LAYER_NV_optimus=NVIDIA_only
-    export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-    if [ ! -f "$VK_ICD_FILENAMES" ]; then 
-        export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
-    fi
-    exec "$@"
-}
-
 function loop() {
-    if [ -z "$1" ]; then
-        echo "Usage: zhujie loop <TIMES> <CMD>" > /dev/stderr
+    if [[ -z $1 ]]; then
+        echo "Usage: loop <TIMES> <CMD>" > /dev/stderr
         exit 1
     fi
         
@@ -1407,17 +1201,13 @@ function loop() {
         $2 | tee -a $HOME/zhujie-loop.records
     done
         
-    if [ -f "$HOME/zhujie-loop.records" ]; then
+    if [[ -f "$HOME/zhujie-loop.records" ]]; then
         echo ""
         echo -ne "Mean: " && mean $HOME/zhujie-loop.records
         echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
     
         visualize $HOME/zhujie-loop.records
     fi
-}
-
-function cpu-count() {
-    lscpu | grep "^CPU(s):" | awk '{print $2}'
 }
 
 function parse-range() {
@@ -1428,29 +1218,6 @@ function parse-range() {
     fi
 }
 
-function cpus-offline() {
-    if [ -z "$1" ]; then
-        echo "No CPU index to disable, aborting..." > /dev/stderr
-        exit 1
-    fi
-    
-    for RANGE in "$@"; do
-        for i in `seq $(parse-range $RANGE)`; do
-            echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
-        done
-    done
-}
-
-function cpus-online() {
-    for i in `seq 1 $(($(cpu-count) - 1))`; do
-        echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
-    done
-}
-
-function cpus() {
-    lscpu --all --extended 
-}
-
 function visualize() {
     INFILE=""
     CHART=""
@@ -1458,44 +1225,43 @@ function visualize() {
     XLABEL=""
     YLABEL=""
     
-    while [ ! -z "$1" ]; do
-        case "$1" in
-            -i|--input) shift; INFILE="$1" ;;
-            -c|--chart) shift; CHART="$1" ;;
-            -t|--title) shift; TITLE="$1" ;;
-            -x|--xlabel) shift; XLABEL="$1" ;;
-            -y|--ylabel) shift; YLABEL="$1" ;;
+    while [[ -n $1 ]]; do
+        case $1 in
+             -i|--input) shift; INFILE=$1 ;;
+             -c|--chart) shift; CHART=$1 ;;
+             -t|--title) shift; TITLE=$1 ;;
+            -x|--xlabel) shift; XLABEL=$1 ;;
+            -y|--ylabel) shift; YLABEL=$1 ;;
             *)
-                if [ -f "$1" ]; then
-                    INFILE="$1"
+                if [[ -f $1 ]]; then
+                    INFILE=$1
                 fi
             ;;
         esac
         shift
     done
     
-    if [ -z "$INFILE" ]; then
-        echo "Usage: zhujie visualize -i <INFILE> -c <CHART> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
+    if [[ ! -f $INFILE ]]; then
+        echo "Usage: visualize -i <INFILE> -c <CHART> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
         exit 1
     fi
     
-    if [ -z "$CHART" ]; then
+    if [[ -z $CHART ]]; then
         CHART="polyline"
     fi
     
-    if [ -z "$TITLE" ]; then
-        TITLE="$INFILE"
+    if [[ -z $TITLE ]]; then
+        TITLE=$(basename $INFILE)
     fi
     
-    if [ -z "$XLABEL" ]; then
+    if [[ -z $XLABEL ]]; then
         XLABEL="Test Index"
     fi
     
-    if [ -z "$YLABEL" ]; then
+    if [[ -z $YLABEL ]]; then
         YLABEL="Average FPS"
     fi
     
-    which python3 || sudo apt install -y python3
     python3 -c "
 import subprocess as subproc
 try:
@@ -1518,7 +1284,7 @@ def viz_polyline(values, pos):
     xmin=pos[np.argmin(values)]
     delta=(values.max() - values.min()) / 15.0
     plt.suptitle(\"$TITLE\")
-    plt.title('Mean: {}, StdDev: {:.4f}'.format(stat.mean(values), stat.stdev(values)), fontweight='bold')
+    plt.title('Mean: {}, StdDev: {:.4f}'.format(stat.mean(values), stat.stdev(values), fontweight='bold'), fontweight='bold')
     plt.xlabel(\"$XLABEL\", fontweight='bold')
     plt.ylabel(\"$YLABEL\", fontweight='bold')
     plt.xticks(np.arange(pos.min(), pos.max(), 1))
@@ -1547,24 +1313,24 @@ if \"$CHART\" == \"barh\":
 elif \"$CHART\" == \"polyline\":
     viz_polyline(values, pos)
 else:
-    raise Exception('Unknown chart type "$CHART"')
+    raise Exception('Unknown chart type $CHART')
 "
 }
 
-function gen-randoms() {
-    if [ -z "$1" ]; then
-        echo "Usage: gen-randoms <COUNT> <MIN> <MAX>" > /dev/stderr
+function randoms() {
+    if [[ -z $1 ]]; then
+        echo "Usage: randoms <COUNT> <MIN> <MAX>" > /dev/stderr
         exit 1
     fi
     
-    COUNT="$1"
-    MIN=$([ -z "$2" ] && echo 0 || echo "$2")
-    MAX=$([ -z "$3" ] && echo 100 || echo "$3")
+    COUNT=$1
+    MIN=$([[ -z $2 ]] && echo 0 || echo $2)
+    MAX=$([[ -z $3 ]] && echo 100 || echo $3)
     NUMBERS=""
     
     for i in `seq 1 $COUNT`; do
         NUM=$(($MIN + $RANDOM % $MAX))
-        if [ -z "$NUMBERS" ]; then
+        if [[ -z $NUMBERS ]]; then
             NUMBERS=$NUM
         else
             NUMBERS="$NUMBERS $NUM"
@@ -1574,19 +1340,30 @@ function gen-randoms() {
     echo $NUMBERS
 }
 
+function image() {
+    if [[ -z $1 ]]; then
+        echo "Usage: image <SUBCMD> [FILE...]" > /dev/stderr
+        exit 1
+    fi
+
+    case $1 in
+        combine)
+            shift
+            combine-images "$@"
+        ;;
+    esac
+}
+
 function combine-images() {
     FILES=""
     VERTICAL=0
-    while [ ! -z "$1" ]; do
-        case "$1" in
-            -v|--vertical)
-                VERTICAL=1
-            ;;
-            -h|--horizontal)
-                VERTICAL=0
-            ;;
+
+    while [[ -n $1 ]]; do
+        case $1 in
+              -v|--vertical) VERTICAL=1 ;;
+            -h|--horizontal) VERTICAL=0 ;;
             *)
-                if [ -z "$FILES" ]; then
+                if [[ -z $FILES ]]; then
                     FILES="\"$1\""
                 else
                     FILES="$FILES, \"$1\""
@@ -1595,10 +1372,10 @@ function combine-images() {
         esac
         shift
     done
-    
-    which python3 || sudo apt install -y python3
+
     python3 -c "
 import sys
+import subprocess as subproc
 try:
     from PIL import Image
 except:
@@ -1606,218 +1383,163 @@ except:
 from PIL import Image
 
 images = [Image.open(x) for x in [$FILES]]
-widths, heights = zip(*(i.size for i in images))
+widths, heights = zip(*(img.size for img in images))
 
 if \"$VERTICAL\" == \"1\":
-    total_height = sum(heights)
+    sum_height = sum(heights)
     max_width = max(widths)
-    new_img = Image.new('RGB', (max_width, total_height))
+    new_image = Image.new('RGB', (max_width, sum_height))
+    
     y_offset = 0
-    for img in images:
-        new_img.paste(img, (0, y_offset))
-        y_offset += img.size[1]
+    for image in images:
+        new_image.paste(image, (0, y_offset))
+        y_offset += image.size[1]
 else:
-    total_width = sum(widths)
+    sum_width = sum(widths)
     max_height = max(heights)
-    new_img = Image.new('RGB', (total_width, max_height))
+    new_image = Image.new('RGB', (sum_width, max_height))
+    
     x_offset = 0
-    for img in images:
-        new_img.paste(img, (x_offset,0))
-        x_offset += img.size[0]
-        
-new_img.save('combined-image.jpg')
+    for image in images:
+        new_image.paste(image, (x_offset, 0))
+        x_offset += image.size[0]
+
+new_image.save('combined-image.jpg')
 "
 }
 
-function image() {
-    if [ -z "$1" ]; then
-        echo "Usage: image <CMD> [FILE...]" > /dev/stderr
-        exit 1
-    fi
-    
-    case "$1" in
-        combine)
-            shift
-            combine-images "$@"
-        ;;
-    esac
-}
 
 
 
 
 
 
-
-case "$1" in
+case $1 in
     help)
-        echo "Usage: zhujie <CMD>" > /dev/stderr
+        echo "Usage: zhujie <SUBCMD>" > /dev/stderr
         exit 1
     ;;
-    
     ips)
-        echo "ROUTER IP: $IP_ROUTER"
-        echo "NVIDIA IP: $IP_NVIDIA"
-        echo "ZERO-TIER: $IP_ZEROTIER"
+        echo "NVIDIA IP: $NVIDIA_IP"
     ;;
-    
-    init)
-        shift
-        init "$@"
-    ;;
-    
     pull)
         shift
         pull "$@"
     ;;
-    
     push)
         shift
         push "$@"
     ;;
-    
     build)
         shift
         build "$@"
     ;;
-    
     install)
         shift
         install "$@"  
     ;;
-    
     rm|remove)
         shift
         remove "$@"
     ;;
-    
     ddnet)
         shift
         ddnet "$@"
     ;;
-    
     talos)
         shift
         talos "$@"
     ;;
-    
     drv|drivers)
         shift
         drivers "$@"
     ;;
-    
     flgf|flamegraph)
         shift
         flamegraph "$@"
     ;;
-    
-    fuji)
-        shift
-        fuji "$@"
-    ;;
-    
     info)
         shift
         info "$@"
     ;;
-    
     p4bisect)
         shift
         p4bisect "$@"
     ;;
-    
     pic-v)
         shift
         pic-v "$@"
     ;;
-    
     vpn)
         shift
         vpn "$@"
     ;;
-    
     prime-run)
         shift
         prime-run "$@"
     ;;
-    
     cskn|choose-kernel)
         shift
         choose-kernel "$@"
     ;;
-    
     stddev)
         shift
         stddev "$@"
     ;;
-    
     mean)
         shift
         mean "$@"
     ;;
-    
     fkdp|fake-display)
         shift
         fake-display "$@"
     ;;
-    
     vnc)
         shift
         vnc "$@"
     ;;
-    
     apex)
         shift
         apex "$@"
     ;;
-    
     catia)
         shift
         catia "$@"
     ;;
-    
     dp|display)
         shift
         display "$@"
     ;;
-    
     loop)
         shift
         loop "$@"
     ;;
-    
     cpus-offline)
         shift
         cpus-offline "$@"
     ;;
-    
     cpus-online)
         shift
         cpus-online "$@"
     ;;
-    
     cpus)
         shift
         cpus "$@"
     ;;
-    
     viz|visualize)
         shift
         visualize "$@"
     ;;
-    
     img|image)
         shift
         image "$@"
     ;;
-    
     test)
         for i in `seq 1 20`; do
             cpus-online
-            cpus-offline $(gen-randoms 8 1 23)
+            cpus-offline $(randoms 8 1 23)
             talos >> talos-disable-random-8-cores.log
         done
-        cpus-online
+        cpus-online 
     ;;
 esac
-
