@@ -282,7 +282,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
         if NR_FBMU >= 0 and line.startswith('Used'):
             VRAM_USED = float(line.split()[2])
             USAGE = VRAM_USED / VRAM_TOTAL
-            print('VRAM Usage: {:.2f}'.format(USAGE * 100.0))
+            print('VRAM Usage: {:.2f} %'.format(USAGE * 100.0))
             NR_FBMU = -1
         
         if line.startswith('BAR1 Memory Usage'):
@@ -296,7 +296,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
         if NR_BAR1 >= 0 and line.startswith('Used'):
             BAR1_USED = float(line.split()[2])
             USAGE = BAR1_USED / BAR1_TOTAL
-            print('BAR1 Usage: {:.2f}'.format(USAGE * 100.0))
+            print('BAR1 Usage: {:.2f} %'.format(USAGE * 100.0))
             NR_BAR1 = -1
             
         if line.startswith('Utilization'):
