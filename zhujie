@@ -802,13 +802,13 @@ function talos() {
     click-talos-message-window &
     kill-talos-later &
 
-    if [[ $ROUNDS > 1 ]]; then
-        rm /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    if [[ $ROUNDS > 1  && -f /tmp/zhujie-talos-$ROUNDS-rounds.fps ]]; then
+        rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     
-    nvidia-smi-perf &
+    nvidia-smi-perf 25 20 &
     
     for i in `seq 1 $ROUNDS`; do
         if [[ $VERBOSE == 1 ]]; then
@@ -1582,7 +1582,7 @@ with open(\"$INFILE\") as file:
             values_list = [[] for x in words]
             continue
         for i in range(0, len(words)):
-            values_list[i][j] = float(words[i])
+            values_list[i].append(float(words[i]))
             
 viz_polylines(values_list)
 "
