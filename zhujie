@@ -509,7 +509,9 @@ function force-talos-quit() {
 
         LINE=$(cat $HOME/zhujie-talos.error | grep "corrupted size vs. prev_size")
         if [[ -n $LINE ]]; then
-            pkill -9 Talos 1> /dev/null 2> /dev/null
+            while [[ -n $(pidof Talos) ]]; do 
+                pkill -9 Talos 1> /dev/null 2> /dev/null
+            done 
             STOP=1
             sleep 2
         else
