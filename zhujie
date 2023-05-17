@@ -1583,6 +1583,7 @@ case $1 in
         shift
         while [[ -z $(find-mac-ip) ]]; do
             read -p "Mac's IP: " MAC_IP
+            mkdir -p $HOME/.zhujie
             echo $MAC_IP > $HOME/.zhujie/mac-ip
         done
         scp "$@" zhujie@$(find-mac-ip):~/Downloads/
