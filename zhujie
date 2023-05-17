@@ -3,6 +3,11 @@
 # System
 export __GL_SYNC_TO_VBLANK=0
 
+# Add zhujie to PATH
+which zhujie > /dev/null || (
+    export PATH="$(dirname $0):$PATH"
+)
+
 # NVIDIA tools
 export PATH="$HOME/NVIDIA_TOOLS:$PATH"
 if [[ -d $HOME/NVIDIA_TOOLS ]]; then
@@ -94,14 +99,6 @@ function is-nvidia-gpu() {
     [[ -z $(lspci | grep NVIDIA) ]] && echo 1 || echo 0
 }
 
-function xserver-info() {
-    echo "" #TODO
-}
-
-function xwindow-info() {
-    echo "" #TODO
-}
-
 function cpu-name() {
      lscpu | sed -nr '/Model name/ s/.*:\s*(.*) @ .*/\1/p'
 }
@@ -121,42 +118,48 @@ function monitor-name() {
 
 function monitor-resolution() {
     check-display
-    LINE=$(xdpyinfo 2> /dev/null | grep dimensions)
-    echo ${LINE#  dimensions:    }
+    
 }
 
-function monitor-color-depth() {
-    check-display
-    echo "" #TODO
-}
-
-function gpu-names() {
-    sudo lshw -C video | awk -F'product: ' '/product/{print $2}' > /tmp/gpu-names
-    combine-lines /tmp/gpu-names
-}
-
-function gpu-driver() {
-    if [[ $(is-nvidia-gpu) == 1 ]]; then
-        cat /proc/driver/nvidia/version
-    else
-        echo
-    fi
-}
 
 function info() {
+    if [[ $(uname) == Darwin ]]; then
+        return
+    fi
+    
     echo "Kernel: $(uname -r)"
-    echo "X Server: $(xserver-info)"
-    echo "X Window: $(xwindow-info)"
-    echo "CPU: $(cpu-name)"
-    echo "CPU RAM: $(cpu-ram-size)"
-    echo "GPU (Usable): $(gpu-names)"
-    echo "GPU (Active): "
-    echo "GPU Driver: $(gpu-driver)"
-    echo "GPU Memory: $(glxinfo | grep -E -i 'Video memory' | awk '{print $3}')"
-    echo "Monitor: $(monitor-name)"
-    echo "Resolution: $(monitor-resolution)"
-    echo "Color Depth: $(monitor-color-depth)"
+    
+    # CPU Model Name
+    echo -ne "CPU Model Name: " 
+    lscpu | grep "Model name:" | awk -F "name:" '{print $2}' | awk '{$1=$1; print}'
+    
+    # Attached GPUs
+    which nvidia-smi > /dev/null && (
+        echo "Attached NVIDIA GPUs:"
+        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
+        echo ""
+        
+    ) || echo "Info: can't find nvidia-smi in PATH"
+    
+    # NVIDIA Driver 
+    if [[ -f /proc/driver/nvidia/version ]]; then 
+        cat /proc/driver/nvidia/version | head -n 1
+    fi
+    
+    # Dedicated Video Memory
+    echo -ne "Dedicated Video Memory: "
+    glxinfo | grep -E -i 'dedicated video memory' | head -n 1 | awk -F ": " '{ printf $2 " (" }'
+    glxinfo | grep -E -i 'dedicated video memory' | head -n 2 | awk -F ": " '{ printf "Avail: " $2 ")\n" }'
+    
+    # Monitor
+    which xdpyinfo > /dev/null && (
+        TMP=$(xdpyinfo 2> /dev/null | grep dimensions)
+        echo "Monitor:" ${TMP#  dimensions:    }
+    )
+    
+    # Available Display
     display
+    
     echo ""
 }
 
@@ -1094,7 +1097,7 @@ function cpu-count() {
     lscpu | grep "^CPU(s):" | awk '{print $2}'
 }
 
-function cpus-offline() {
+function cpu-offline() {
     if [[ -z $1 ]]; then
         echo "Error: No CPU to put offline" > /dev/stderr
         exit 1
@@ -1107,13 +1110,13 @@ function cpus-offline() {
     done
 }
 
-function cpus-online() {
+function cpu-online() {
     for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
 }
     
-function cpus() {
+function cpu() {
     lscpu --all --extended 
 }
 
@@ -1432,6 +1435,27 @@ new_image.save('combined-image.jpg')
 "
 }
 
+function check-ssh() {
+    if [[ -z $1 ]]; then
+        echo "Usage: check-ssh <IP>" > /dev/stderr
+        exit 1
+    fi
+    
+    which nmap > /dev/null || sudo apt install -y nmap
+    nmap $1 -Pn -p ssh | egrep -io 'open|closed|filtered'
+}
+
+function find-mac-ip() {
+    if [[ -f $HOME/.zhujie/mac-ip ]]; then
+        MAC_IP=$(cat $HOME/.zhujie/mac-ip)
+        if [[ $(check-ssh $MAC_IP) == open ]]; then
+            echo $MAC_IP && return
+        else
+            echo "Info: SSH server ($MAC_IP:22) is not available"
+        fi
+    fi
+}
+
 
 
 
@@ -1538,17 +1562,17 @@ case $1 in
         shift
         loop "$@"
     ;;
-    cpus-offline)
+    cpu-offline)
         shift
-        cpus-offline "$@"
+        cpu-offline "$@"
     ;;
-    cpus-online)
+    cpu-online)
         shift
-        cpus-online "$@"
+        cpu-online "$@"
     ;;
-    cpus)
+    cpu)
         shift
-        cpus "$@"
+        cpu "$@"
     ;;
     viz|visualize)
         shift
@@ -1558,12 +1582,20 @@ case $1 in
         shift
         image "$@"
     ;;
+    mac)
+        shift
+        while [[ -z $(find-mac-ip) ]]; do
+            read -p "Mac's IP: " MAC_IP
+            echo $MAC_IP > $HOME/.zhujie/mac-ip
+        done
+        scp "$@" zhujie@$(find-mac-ip)
+    ;;
     test)
         for i in `seq 1 20`; do
-            cpus-online
-            cpus-offline $(randoms 8 1 23)
+            cpu-online
+            cpu-offline $(randoms 8 1 23)
             talos >> talos-disable-random-8-cores.log
         done
-        cpus-online 
+        cpu-online 
     ;;
 esac
