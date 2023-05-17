@@ -1535,6 +1535,8 @@ function visualize() {
     fi
     
     python3 -c "
+from signal import signal, SIGINT
+from sys import exit
 import subprocess as subproc
 try:
     import matplotlib
@@ -1546,6 +1548,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import statistics as stat
+
+def sigint_proc(signal_received, frame):
+    print('SIGINT or CTRL-C detected')
+    exit(0)
+
+signal(SIGINT, sigint_proc)
 
 def viz_polyline(values):
     values=np.array(values)
