@@ -518,7 +518,7 @@ function force-talos-quit() {
             if [[ -z $(pidof Talos) ]]; then
                 STOP=1
             fi
-            sleep 5
+            sleep 2
         fi
     done
 }
