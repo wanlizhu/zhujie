@@ -1571,16 +1571,20 @@ def viz_polylines(values_list):
     if len(values_list) == 1:
         viz_polyline(values_list[0])
     else:
-        pass
+        for V in values_list:
+            print(V)
     
 values_list = []
 with open(\"$INFILE\") as file:
     lines = file.readlines()
     for j in range(0, len(lines)):
-        words = lines[j].split(',')
+        words = lines[j].strip().split(',')
         if not values_list:
             values_list = [[] for x in words]
-            continue
+            try:
+                _ = float(words[0])
+            except:
+                continue
         for i in range(0, len(words)):
             values_list[i].append(float(words[i]))
             
