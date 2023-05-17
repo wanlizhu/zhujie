@@ -1449,7 +1449,7 @@ function find-mac-ip() {
 }
 
 function ip() {
-    ifconfig | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+     ifconfig | grep "inet " | awk '{print $2}'
 }
 
 
