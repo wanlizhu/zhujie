@@ -87,32 +87,58 @@ function check-display() {
     )
 }
 
-function is-nvidia-gpu() { 
-    [[ -z $(lspci | grep NVIDIA) ]] && echo 1 || echo 0
+function has-nvidia-gpu() { 
+    [[ -n $(lspci | grep NVIDIA) ]] && echo 1 || echo 0
 }
 
-function cpu-name() {
-     lscpu | sed -nr '/Model name/ s/.*:\s*(.*) @ .*/\1/p'
-}
-
-function cpu-ram-size() {
-    echo "" #TODO
-}
-
-function gpu-count() {
-    sudo lshw -C video | grep product: | wc -l
-}
-
-function monitor-name() {
-    check-display
-    echo "" #TODO
-}
-
-function monitor-resolution() {
-    check-display
+function cpu() {
+    # CPU Model Name
+    echo -ne "CPU Model Name: " 
+    lscpu | grep "Model name:" | awk -F "name:" '{print $2}' | awk '{$1=$1; print}'
     
+    # lscpu --all --extended 
 }
 
+function gpu() {
+    echo "GPU HW Count: $(sudo lshw -C video | grep product: | wc -l)"
+    
+    # NVIDIA RM Version 
+    if [[ -f /proc/driver/nvidia/version ]]; then 
+        cat /proc/driver/nvidia/version | head -n 1
+    fi
+    
+    # NVIDIA GPU(s)
+    nvidia-smi-static
+}
+
+function nvidia-smi-static() {
+    which nvidia-smi > /dev/null || echo "Info: can't find nvidia-smi in PATH"
+    
+    GPU_COUNT=$(nvidia-smi -L | wc -l)
+    echo "Attached NVIDIA GPUs:"
+    
+    for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
+        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
+        nvidia-smi --query --id=$INDEX 
+        echo ""
+    done
+}
+
+function display() {
+    # Monitor
+    which xdpyinfo > /dev/null && (
+        TMP=$(xdpyinfo 2> /dev/null | grep dimensions)
+        echo "Monitor:" ${TMP#  dimensions:    }
+    )
+    
+    if [[ -n `ls -A /tmp/.X11-unix` ]]; then
+        echo -ne ".X11-unix: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
+    else
+        echo ".X11-unix: [NULL]"
+    fi
+    
+    echo "DISPLAY: $([[ -n $DISPLAY ]] && echo $DISPLAY || '[NULL]')"
+}
 
 function info() {
     if [[ $(uname) == Darwin ]]; then
@@ -120,39 +146,9 @@ function info() {
     fi
     
     echo "Kernel: $(uname -r)"
-    
-    # CPU Model Name
-    echo -ne "CPU Model Name: " 
-    lscpu | grep "Model name:" | awk -F "name:" '{print $2}' | awk '{$1=$1; print}'
-    
-    # Attached GPUs
-    which nvidia-smi > /dev/null && (
-        echo "Attached NVIDIA GPUs:"
-        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
-        echo ""
-        
-    ) || echo "Info: can't find nvidia-smi in PATH"
-    
-    # NVIDIA Driver 
-    if [[ -f /proc/driver/nvidia/version ]]; then 
-        cat /proc/driver/nvidia/version | head -n 1
-    fi
-    
-    # Dedicated Video Memory
-    echo -ne "Dedicated Video Memory: "
-    glxinfo | grep -E -i 'dedicated video memory' | head -n 1 | awk -F ": " '{ printf $2 " (" }'
-    glxinfo | grep -E -i 'dedicated video memory' | head -n 2 | awk -F ": " '{ printf "Avail: " $2 ")\n" }'
-    
-    # Monitor
-    which xdpyinfo > /dev/null && (
-        TMP=$(xdpyinfo 2> /dev/null | grep dimensions)
-        echo "Monitor:" ${TMP#  dimensions:    }
-    )
-    
-    # Available Display
-    display
-    
-    echo ""
+    cpu && echo 
+    gpu && echo 
+    display && echo 
 }
 
 function nvmake() {
@@ -525,6 +521,22 @@ function kill-talos-later() {
     done
 }
 
+function capture-perf-data() {
+    APP_NAME=$1
+    INTERVAL=1
+    CHANCES=10
+    
+    while [[ $CHANCES > 0 ]]; do
+        if [[ -z $(pidof $APP_NAME) ]]; then
+            CHANCES=$(($CHANCES-1))
+            sleep $INTERVAL
+            continue
+        fi
+        
+        
+    done
+}
+
 function talos() {
     # Vulkan
     # 2560x1440
@@ -555,6 +567,7 @@ function talos() {
 
     click-talos-message-window &
     kill-talos-later &
+    capture-perf-data Talos &
 
     if [[ $ROUNDS > 1 ]]; then
         rm /tmp/zhujie-talos-$ROUNDS-rounds.fps
@@ -940,7 +953,7 @@ function fake-display() {
     fi
     
     RESOLUTION=$1
-    if [[ $(is-nvidia-gpu) == 1 ]]; then
+    if [[ $(has-nvidia-gpu) == 1 ]]; then
         if [[ -z $RESOLUTION ]]; then
             echo "Usage: fake-display [RESOLUTION]" > /dev/stderr
             read -p "Use the default resolution, 3840x2160? (Y/n): " RSVP
@@ -954,7 +967,7 @@ function fake-display() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    if [[ $(is-nvidia-gpu) == 1 ]]; then
+    if [[ $(has-nvidia-gpu) == 1 ]]; then
         /mnt/linuxqa/nvt.sh ${RESOLUTION}__runcmd --cmd 'sleep 100000000'
     else
         /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
@@ -1042,7 +1055,7 @@ function apex() {
     
     # check-display
     
-    if [[ $(is-nvidia-gpu) == 0 ]]; then
+    if [[ $(has-nvidia-gpu) == 0 ]]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
@@ -1086,14 +1099,6 @@ function catia() {
     
     popd > /dev/null
 }
-    
-function display() {
-    if [[ -n `ls -A /tmp/.X11-unix` ]]; then
-        echo -ne "Displays: [" && (cd /tmp/.X11-unix && for x in $(ls); do echo -ne ":${x#X} "; done; echo "]")
-    else
-        echo "Displays: N/A"
-    fi
-}
 
 function prime-run() {
     export __NV_PRIME_RENDER_OFFLOAD=1
@@ -1127,10 +1132,6 @@ function cpu-online() {
     for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
-}
-    
-function cpu() {
-    lscpu --all --extended 
 }
 
 function pull-transient() {
@@ -1593,6 +1594,10 @@ case $1 in
     cpu)
         shift
         cpu "$@"
+    ;;
+    gpu)
+        shift
+        gpu "$@"
     ;;
     viz|visualize)
         shift
