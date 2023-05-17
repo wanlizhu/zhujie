@@ -120,7 +120,11 @@ function nvidia-smi-static() {
     echo "Attached NVIDIA GPUs:"
     
     for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
-        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
+        if [[ $INDEX > 0 ]]; then
+            echo ""
+        fi
+        
+        nvidia-smi -L | awk -F '\(UUID:' '{print $1}' | awk  "NR==$(($INDEX+1)){ print; exit; }"
         nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
         python3 -c "
 import sys
@@ -179,7 +183,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
             continue        
 " > /tmp/nvidia-gpu-$INDEX.info.static
 
-        cat /tmp/nvidia-gpu-$INDEX.info.static | awk '{ print "    " $0 } END { printf "\n" }'
+        cat /tmp/nvidia-gpu-$INDEX.info.static 
     done
 }
 
@@ -190,7 +194,11 @@ function nvidia-smi-dynamic() {
     echo "Attached NVIDIA GPUs:"
     
     for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
-        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
+        if [[ $INDEX > 0 ]]; then
+            echo ""
+        fi
+
+        nvidia-smi -L | awk -F '\(UUID:' '{print $1}' | awk  "NR==$(($INDEX+1)){ print; exit; }"
         nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
         python3 -c "
 import sys
@@ -307,12 +315,52 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
         if NR_CLOCKS >= 0 and NR_CLOCKS + 1 == NR:
             GRAPHICS_CLOCK=float(line.split()[2])
             USAGE = GRAPHICS_CLOCK / MAX_GRAPHICS_CLOCK
-            print('Graphics Clock Usage: {:.2f}'.format(USAGE))
+            print('Graphics Clock Usage: {:.2f} %'.format(USAGE * 100.0))
             NR_CLOCKS = -1
             continue
 " > /tmp/nvidia-gpu-$INDEX.info.dynamic
         
-        cat /tmp/nvidia-gpu-$INDEX.info.dynamic | awk '{ print "    " $0 } END { printf "\n" }'
+        cat /tmp/nvidia-gpu-$INDEX.info.dynamic
+    done
+}
+
+function nvidia-smi-perf() {
+    NAME=$1
+    SAMPLES=$2
+    
+    if [[ -f /tmp/nvidia-smi-perf.csv ]]; then
+        rm -rf /tmp/nvidia-smi-perf.csv
+    fi
+    
+    echo "VRAM Usage,BAR1 Usage,GPU Utilization,Graphics Clock Usage" > /tmp/nvidia-smi-perf.csv
+    
+    for i in `seq 1 $SAMPLES`; do
+        nvidia-smi-dynamic > /dev/null
+        python3 -c "
+import sys
+VRAM_USAGE=0.0
+BAR1_USAGE=0.0
+GPU_UTILIZATION=0.0
+GRAPHICS_CLOCK_USAGE=0.0
+with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
+    for line in file.readlines():
+        line=line.strip()
+        if line.startswith('VRAM Usage:'):
+            VRAM_USAGE = float(line.split()[2])
+            continue
+        if line.startswith('BAR1 Usage:'):
+            BAR1_USAGE = float(line.split()[2])
+            continue
+        if line.startswith('GPU Utilization:'):
+            GPU_UTILIZATION = float(line.split()[2])
+            continue
+        if line.startswith(''Graphics Clock Usage:):
+            GRAPHICS_CLOCK_USAGE = float(line.split()[3])
+            continue
+with open('/tmp/nvidia-smi-perf.csv', 'a') as file:
+    file.write('{},{},{},{}\n'.format(VRAM_USAGE, BAR1_USAGE, GPU_UTILIZATION, GRAPHICS_CLOCK_USAGE))
+"
+        sleep 1
     done
 }
 
@@ -699,9 +747,7 @@ function kill-talos-later() {
 
         LINE=$(cat $HOME/zhujie-talos.error | grep "corrupted size vs. prev_size")
         if [[ -n $LINE ]]; then
-            while [[ -n $(pidof Talos) ]]; do 
-                pkill -9 Talos 1> /dev/null 2> /dev/null
-            done 
+            pkill -9 Talos 
             STOP=1
             sleep 2
         else
@@ -710,22 +756,6 @@ function kill-talos-later() {
             fi
             sleep 2
         fi
-    done
-}
-
-function capture-perf-data() {
-    APP_NAME=$1
-    INTERVAL=1
-    CHANCES=10
-    
-    while [[ $CHANCES > 0 ]]; do
-        if [[ -z $(pidof $APP_NAME) ]]; then
-            CHANCES=$(($CHANCES-1))
-            sleep $INTERVAL
-            continue
-        fi
-        
-        
     done
 }
 
