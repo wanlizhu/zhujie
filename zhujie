@@ -325,14 +325,32 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
 }
 
 function nvidia-smi-perf() {
-    NAME=$1
+    WAIT=$1
     SAMPLES=$2
+    CSV_NAME=$3
     
-    if [[ -f /tmp/nvidia-smi-perf.csv ]]; then
-        rm -rf /tmp/nvidia-smi-perf.csv
+    if [[ -z $WAIT ]]; then
+        WAIT=0
     fi
     
-    echo "VRAM Usage,BAR1 Usage,GPU Utilization,Graphics Clock Usage" > /tmp/nvidia-smi-perf.csv
+    while [[ $WAIT > 0 ]]; do
+        sleep 1
+        WAIT=$(($WAIT - 1))
+    done
+    
+    if [[ -z $SAMPLES ]]; then
+        SAMPLES=20
+    fi
+    
+    if [[ -z $CSV_NAME ]]; then
+        CSV_NAME=/tmp/nvidia-smi-perf.csv
+    fi
+    
+    if [[ -f $CSV_NAME ]]; then
+        rm -rf $CSV_NAME
+    fi
+    
+    echo "VRAM Usage,BAR1 Usage,GPU Utilization,Graphics Clock Usage" > $CSV_NAME
     
     for i in `seq 1 $SAMPLES`; do
         nvidia-smi-dynamic > /dev/null
@@ -357,7 +375,7 @@ with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
         if line.startswith(''Graphics Clock Usage:):
             GRAPHICS_CLOCK_USAGE = float(line.split()[3])
             continue
-with open('/tmp/nvidia-smi-perf.csv', 'a') as file:
+with open(\"$CSV_NAME\", 'a') as file:
     file.write('{},{},{},{}\n'.format(VRAM_USAGE, BAR1_USAGE, GPU_UTILIZATION, GRAPHICS_CLOCK_USAGE))
 "
         sleep 1
@@ -789,7 +807,6 @@ function talos() {
 
     click-talos-message-window &
     kill-talos-later &
-    capture-perf-data Talos &
 
     if [[ $ROUNDS > 1 ]]; then
         rm /tmp/zhujie-talos-$ROUNDS-rounds.fps
@@ -801,6 +818,8 @@ function talos() {
         if [[ $VERBOSE == 1 ]]; then
             ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
         else
+            nvidia-smi-perf 20 20 zhujie-talos-$ROUNDS-rounds-$i.csv &
+            
             ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
             
             cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
