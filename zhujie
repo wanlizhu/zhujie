@@ -102,11 +102,6 @@ function cpu() {
 function gpu() {
     echo "GPU HW Count: $(sudo lshw -C video | grep product: | wc -l)"
     
-    # NVIDIA RM Version 
-    if [[ -f /proc/driver/nvidia/version ]]; then 
-        cat /proc/driver/nvidia/version | head -n 1
-    fi
-    
     # NVIDIA GPU(s)
     nvidia-smi-static
 }
@@ -114,13 +109,210 @@ function gpu() {
 function nvidia-smi-static() {
     which nvidia-smi > /dev/null || echo "Info: can't find nvidia-smi in PATH"
     
+    nvidia-smi --query | grep "Driver Version" | awk -F ":" '{print "NVIDIA Driver Version:" $2}'
+    
+    # NVIDIA RM Version 
+    if [[ -f /proc/driver/nvidia/version ]]; then 
+        cat /proc/driver/nvidia/version | head -n 1
+    fi
+    
     GPU_COUNT=$(nvidia-smi -L | wc -l)
     echo "Attached NVIDIA GPUs:"
     
     for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
         nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
-        nvidia-smi --query --id=$INDEX 
-        echo ""
+        nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
+        python3 -c "
+import sys
+with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
+    NR=-1
+    NR_FBMU=-1
+    NR_BAR1=-1
+    NR_GPU_POWER=-1
+    NR_MAX_CLOCK=-1
+    
+    for line in file.readlines():
+        line = line.strip()
+        NR += 1
+        
+        if line.startswith('Display Mode'):
+            if line.split()[3] == 'Enabled':
+                print('Monitor Attached: YES')
+            else:
+                print('Monitor Attached: NO')
+            continue
+            
+        if line.startswith('FB Memory Usage'):
+            NR_FBMU = NR
+            continue
+            
+        if NR_FBMU >= 0 and NR_FBMU + 1 == NR:
+            print('Total VRAM: {} MB'.format(line.split()[2]))
+            NR_FBMU = -1
+            continue
+        
+        if line.startswith('BAR1 Memory Usage'):
+            NR_BAR1 = NR
+            continue
+        
+        if NR_BAR1 >= 0 and NR_BAR1 + 1 == NR:
+            print('Total Bar1 Memory: {} {}'.format(line.split()[2], line.split()[3]))
+            NR_BAR1 = -1
+            continue
+        
+        if line.startswith('GPU Power Readings'):
+            NR_GPU_POWER = NR
+            continue
+        
+        if NR_GPU_POWER >= 0 and NR_GPU_POWER + 6 == NR:
+            print('Max Power Limit: {} {}'.format(line.split()[4], line.split()[5]))
+            NR_GPU_POWER = -1
+            continue
+        
+        if line.startswith('Max Clocks'):
+            NR_MAX_CLOCK = NR
+            continue
+            
+        if NR_MAX_CLOCK >= 0 and NR_MAX_CLOCK + 1 == NR:
+            print('Max Graphics Clock: {} MHz'.format(line.split()[2]))
+            NR_MAX_CLOCK = -1
+            continue        
+" > /tmp/nvidia-gpu-$INDEX.info.static
+
+        cat /tmp/nvidia-gpu-$INDEX.info.static | awk '{ print "    " $0 } END { printf "\n" }'
+    done
+}
+
+function nvidia-smi-dynamic() {
+    which nvidia-smi > /dev/null || echo "Info: can't find nvidia-smi in PATH"
+    
+    GPU_COUNT=$(nvidia-smi -L | wc -l)
+    echo "Attached NVIDIA GPUs:"
+    
+    for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
+        nvidia-smi -L | awk -F '\(UUID:' '{print $1}'
+        nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
+        python3 -c "
+import sys
+with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
+    LINES=file.readlines()
+    NR=-1
+    NR_THROTTLE=-1
+    NR_FBMU=-1
+    REASONS=[]
+    VRAM_TOTAL=0
+    NR_BAR1=-1
+    BAR1_TOTAL=0
+    NR_UTILIZATION=-1
+    NR_CLOCKS=-1
+    MAX_GRAPHICS_CLOCK=1
+    NR_MAX_CLOCKS=-1
+    
+    NR=-1
+    for line in LINES:
+        line = line.strip()
+        NR += 1
+        
+        if line.startswith('Max Clocks'):
+            NR_MAX_CLOCKS = NR
+            continue
+        
+        if NR_MAX_CLOCKS >= 0 and line.startswith('Graphics'):
+            MAX_GRAPHICS_CLOCK = float(line.split()[2])
+            break
+    
+    NR=-1
+    for line in LINES:
+        line = line.strip()
+        NR += 1
+        
+        if line.startswith('Performance State'):
+            print('Performance State: {}'.format(line.split()[3]))
+            continue
+        
+        if line.startswith('Clocks Throttle Reasons'):
+            NR_THROTTLE = NR
+            continue
+            
+        if NR_THROTTLE >= 0 and line.startswith('Applications Clocks Setting       : Active'):
+            REASONS.append('Applications Clocks Setting')
+            continue
+        
+        if NR_THROTTLE >= 0 and line.startswith('SW Power Cap                      : Active'):
+            REASONS.append('SW Power Cap')
+            continue
+            
+        if NR_THROTTLE >= 0 and line.startswith('HW Slowdown                       : Active'):
+            REASONS.append('HW Slowdown')
+            continue
+            
+        if NR_THROTTLE >= 0 and line.startswith('Sync Boost                        : Active'):
+            REASONS.append('Sync Boost')
+            continue
+            
+        if NR_THROTTLE >= 0 and line.startswith('SW Thermal Slowdown               : Active'):
+            REASONS.append('SW Thermal Slowdown')
+            continue
+        
+        if NR_THROTTLE >= 0 and line.startswith('Display Clock Setting             : Active'):
+            REASONS.append('Display Clock Setting')
+            continue
+        
+        if line.startswith('FB Memory Usage'):
+            NR_THROTTLE = -1
+            NR_FBMU = NR
+            if REASONS:
+                print('Clocks Throttle Reasons: {}'.format(', '.join(REASONS)))
+            else:
+                print('Clocks Throttle Reasons: [NULL]')
+            continue
+        
+        if NR_FBMU >= 0 and line.startswith('Total'):
+            VRAM_TOTAL = float(line.split()[2])
+            continue
+        
+        if NR_FBMU >= 0 and line.startswith('Used'):
+            VRAM_USED = float(line.split()[2])
+            USAGE = VRAM_USED / VRAM_TOTAL
+            print('VRAM Usage: {:.2f}'.format(USAGE * 100.0))
+            NR_FBMU = -1
+        
+        if line.startswith('BAR1 Memory Usage'):
+            NR_BAR1 = NR
+            continue
+        
+        if NR_BAR1 >= 0 and line.startswith('Total'):
+            BAR1_TOTAL = float(line.split()[2])
+            continue
+        
+        if NR_BAR1 >= 0 and line.startswith('Used'):
+            BAR1_USED = float(line.split()[2])
+            USAGE = BAR1_USED / BAR1_TOTAL
+            print('BAR1 Usage: {:.2f}'.format(USAGE * 100.0))
+            NR_BAR1 = -1
+            
+        if line.startswith('Utilization'):
+            NR_UTILIZATION = NR
+            continue
+        
+        if NR_UTILIZATION >= 0 and NR_UTILIZATION + 1 == NR:
+            print('GPU Utilization: {} %'.format(line.split()[2]))
+            NR_UTILIZATION = -1
+            continue
+        
+        if line.startswith('Clocks'):
+            NR_CLOCKS = NR
+            continue
+            
+        if NR_CLOCKS >= 0 and NR_CLOCKS + 1 == NR:
+            GRAPHICS_CLOCK=float(line.split()[2])
+            USAGE = GRAPHICS_CLOCK / MAX_GRAPHICS_CLOCK
+            print('Graphics Clock Usage: {:.2f}'.format(USAGE))
+            NR_CLOCKS = -1
+            continue
+" > /tmp/nvidia-gpu-$INDEX.dynamic
+        
+        cat /tmp/nvidia-gpu-$INDEX.info.dynamic | awk '{ print "    " $0 } END { printf "\n" }'
     done
 }
 
