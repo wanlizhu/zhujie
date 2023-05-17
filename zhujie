@@ -49,15 +49,6 @@ case $(hostname) in
     ;;
 esac
 
-# Find NVIDIA IP
-if [[ $(uname) == Linux ]]; then
-    for IP in $(ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}'); do
-        if [[ $IP =~ ^10\.19\..* ]]; then
-            export NVIDIA_IP=$IP
-        fi
-    done
-fi
-
 function on-user-cancel() {
     echo ""
     popd > /dev/null
@@ -1457,6 +1448,10 @@ function find-mac-ip() {
     fi
 }
 
+function ip() {
+    ifconfig | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+}
+
 
 
 
@@ -1468,8 +1463,9 @@ case $1 in
         echo "Usage: zhujie <SUBCMD>" > /dev/stderr
         exit 1
     ;;
-    ips)
-        echo "NVIDIA IP: $NVIDIA_IP"
+    ip)
+        shift
+        ip "$@"
     ;;
     pull)
         shift
