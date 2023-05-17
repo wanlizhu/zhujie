@@ -1589,7 +1589,7 @@ case $1 in
             read -p "Mac's IP: " MAC_IP
             echo $MAC_IP > $HOME/.zhujie/mac-ip
         done
-        scp "$@" zhujie@$(find-mac-ip)
+        scp "$@" zhujie@$(find-mac-ip):~/Downloads/
     ;;
     test)
         for i in `seq 1 20`; do
