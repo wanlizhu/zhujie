@@ -513,17 +513,12 @@ function force-talos-quit() {
             STOP=1
             sleep 2
         else
-            if [[ $SECONDS > 120 ]]; then
-                echo "Error: force-talos-quit got nothing after 2 mins" > /dev/stderr
+            if [[ -z $(pidof Talos) ]]; then
                 STOP=1
             fi
             sleep 5
         fi
     done
-
-    if [[ -n $(pidof Talos) ]]; then
-        pkill -9 Talos 1> /dev/null 2> /dev/null
-    fi
 }
 
 function talos() {
@@ -1449,7 +1444,7 @@ function find-mac-ip() {
 }
 
 function ip() {
-     ifconfig | grep "inet " | awk '{print $2}'
+     ifconfig | grep "inet " | awk '{print $2}' | sort
 }
 
 
