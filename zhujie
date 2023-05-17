@@ -372,7 +372,7 @@ with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
         if line.startswith('GPU Utilization:'):
             GPU_UTILIZATION = float(line.split()[2])
             continue
-        if line.startswith(''Graphics Clock Usage:):
+        if line.startswith('Graphics Clock Usage:'):
             GRAPHICS_CLOCK_USAGE = float(line.split()[3])
             continue
 with open(\"$CSV_NAME\", 'a') as file:
