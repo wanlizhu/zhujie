@@ -1449,6 +1449,10 @@ function ip() {
      ifconfig | grep "inet " | awk '{print $2}' | sort
 }
 
+function z() {
+    zhujie "$@"
+}
+
 
 
 
