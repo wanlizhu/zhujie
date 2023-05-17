@@ -327,7 +327,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
 function nvidia-smi-perf() {
     WAIT=$1
     SAMPLES=$2
-    CSV_NAME=$3
+    CSV_NAME=/tmp/nvidia-smi-perf.csv
     
     if [[ -z $WAIT ]]; then
         WAIT=0
@@ -342,15 +342,9 @@ function nvidia-smi-perf() {
         SAMPLES=20
     fi
     
-    if [[ -z $CSV_NAME ]]; then
-        CSV_NAME=/tmp/nvidia-smi-perf.csv
+    if [[ ! -f $CSV_NAME ]]; then
+        echo "GPU Utilization,Graphics Clock Usage,VRAM Usage,BAR1 Usage" > $CSV_NAME
     fi
-    
-    if [[ -f $CSV_NAME ]]; then
-        rm -rf $CSV_NAME
-    fi
-    
-    echo "VRAM Usage,BAR1 Usage,GPU Utilization,Graphics Clock Usage" > $CSV_NAME
     
     for i in `seq 1 $SAMPLES`; do
         nvidia-smi-dynamic > /dev/null
@@ -376,7 +370,7 @@ with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
             GRAPHICS_CLOCK_USAGE = float(line.split()[3])
             continue
 with open(\"$CSV_NAME\", 'a') as file:
-    file.write('{},{},{},{}\n'.format(VRAM_USAGE, BAR1_USAGE, GPU_UTILIZATION, GRAPHICS_CLOCK_USAGE))
+    file.write('{},{},{},{}\n'.format(GPU_UTILIZATION, GRAPHICS_CLOCK_USAGE, VRAM_USAGE, BAR1_USAGE))
 "
         sleep 1
     done
@@ -814,12 +808,12 @@ function talos() {
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     
+    nvidia-smi-perf &
+    
     for i in `seq 1 $ROUNDS`; do
         if [[ $VERBOSE == 1 ]]; then
             ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
         else
-            nvidia-smi-perf 20 20 zhujie-talos-$ROUNDS-rounds-$i.csv &
-            
             ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
             
             cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
@@ -830,6 +824,10 @@ function talos() {
     
     if [[ $ROUNDS > 1 ]]; then
         visualize /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    fi
+    
+    if [[ -f /tmp/nvidia-smi-perf.csv ]]; then
+        visualize /tmp/nvidia-smi-perf.csv
     fi
 }
 
@@ -1500,7 +1498,6 @@ function parse-range() {
 
 function visualize() {
     INFILE=""
-    CHART=""
     TITLE=""
     XLABEL=""
     YLABEL=""
@@ -1508,7 +1505,6 @@ function visualize() {
     while [[ -n $1 ]]; do
         case $1 in
              -i|--input) shift; INFILE=$1 ;;
-             -c|--chart) shift; CHART=$1 ;;
              -t|--title) shift; TITLE=$1 ;;
             -x|--xlabel) shift; XLABEL=$1 ;;
             -y|--ylabel) shift; YLABEL=$1 ;;
@@ -1522,12 +1518,8 @@ function visualize() {
     done
     
     if [[ ! -f $INFILE ]]; then
-        echo "Usage: visualize -i <INFILE> -c <CHART> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
+        echo "Usage: visualize -i <INFILE> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
         exit 1
-    fi
-    
-    if [[ -z $CHART ]]; then
-        CHART="polyline"
     fi
     
     if [[ -z $TITLE ]]; then
@@ -1555,9 +1547,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import statistics as stat
 
-def viz_polyline(values, pos):
+def viz_polyline(values):
     values=np.array(values)
-    pos=np.array(pos)
+    pos=np.array(list(range(1, len(values)+1)))
     ymax=values.max()
     ymin=values.min()
     xmax=pos[np.argmax(values)]
@@ -1574,26 +1566,25 @@ def viz_polyline(values, pos):
     plt.annotate('Min: {}'.format(ymin), xy=(xmin, ymin), xytext=(xmin, ymin))
     plt.savefig(\"$INFILE.png\")
     plt.show()
-    
-def viz_barh(values, pos):
-    pass
-    
-values = []
-with open(\"$INFILE\") as file:
-    for line in file.readlines():
-        try:
-            value = float(line)
-            values.append(value)
-        except:
-            continue
 
-pos=list(range(1, len(values)+1))
-if \"$CHART\" == \"barh\":
-    viz_barh(values, pos)
-elif \"$CHART\" == \"polyline\":
-    viz_polyline(values, pos)
-else:
-    raise Exception('Unknown chart type $CHART')
+def viz_polylines(values_list):
+    if len(values_list) == 1:
+        viz_polyline(values_list[0])
+    else:
+        pass
+    
+values_list = []
+with open(\"$INFILE\") as file:
+    lines = file.readlines()
+    for j in range(0, len(lines)):
+        words = lines[j].split(',')
+        if not values_list:
+            values_list = [[] for x in words]
+            continue
+        for i in range(0, len(words)):
+            values_list[i][j] = float(words[i])
+            
+viz_polylines(values_list)
 "
 }
 
