@@ -310,7 +310,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
             print('Graphics Clock Usage: {:.2f}'.format(USAGE))
             NR_CLOCKS = -1
             continue
-" > /tmp/nvidia-gpu-$INDEX.dynamic
+" > /tmp/nvidia-gpu-$INDEX.info.dynamic
         
         cat /tmp/nvidia-gpu-$INDEX.info.dynamic | awk '{ print "    " $0 } END { printf "\n" }'
     done
