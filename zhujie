@@ -475,12 +475,10 @@ function ddnet() {
 
 function click-talos-message-window() {
     which xdotool > /dev/null || sudo apt install -y xdotool
-
-    STOP=0
-    ROUNDS=0
-    while [[ $STOP == 0 && $ROUNDS != 3 ]]; do
-        sleep 3
-        ROUNDS=$((ROUNDS+1))
+    sleep 3
+    
+    VALID=1
+    while [[ $VALID == 1 ]]; do
         WINDOW_ID=$(xdotool getactivewindow)
         WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
         if [[ $WINDOW_NAME == Message ]]; then
@@ -490,13 +488,17 @@ function click-talos-message-window() {
             W=${EXTENT%x*};   H=${EXTENT#*x}
             xdotool mousemove $((X+W-50)) $((Y+H-70))
             xdotool click 1
-        elif [[ $WINDOW_NAME == "Talos - Linux - 64bit" ]]; then
-            STOP=1
+        else #elif [[ $WINDOW_NAME == "Talos - Linux - 64bit" ]]; then
+            sleep 10
+        fi
+        
+        if [[ -z $(pidof Talos) ]]; then
+            VALID=0
         fi
     done
 }
 
-function force-talos-quit() {
+function kill-talos-later() {
     sleep 30
 
     STOP=0
@@ -528,6 +530,17 @@ function talos() {
     # 2560x1440
 
     check-display
+    
+    ROUNDS=1
+    VERBOSE=0
+    
+    while [[ -n $1 ]]; do
+        case $1 in
+            [0-9]*) ROUNDS=$1 ;;
+            -v|--verbose) VERBOSE=1 ;;
+        esac
+        shift
+    done
 
     # Launch steam if it's not currently running
     pgrep -x steam >/dev/null || (
@@ -541,18 +554,29 @@ function talos() {
     fi
 
     click-talos-message-window &
-    force-talos-quit &
+    kill-talos-later &
 
-    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
-
-    if [[ $1 == -v ]]; then
-        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-    else
-        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
-        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}'
+    if [[ $ROUNDS > 1 ]]; then
+        rm /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
-
+    
+    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
+    
+    for i in `seq 1 $ROUNDS`; do
+        if [[ $VERBOSE == 1 ]]; then
+            ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
+        else
+            ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
+            
+            cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        fi
+    done
+    
     popd > /dev/null
+    
+    if [[ $ROUNDS > 1 ]]; then
+        visualize /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    fi
 }
 
 function install-dvs-driver() {
@@ -1129,8 +1153,6 @@ function pull() {
     pushd $GIT_REPO > /dev/null
     git pull https://github.com/wanlizhu/zhujie master
     popd > /dev/null 
-    
-    source "$0"
 }
 
 function push() {
