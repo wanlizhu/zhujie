@@ -2,6 +2,7 @@
 
 # System
 export __GL_SYNC_TO_VBLANK=0
+export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$PATH"
 
 # Add zhujie to PATH
 which zhujie > /dev/null || (
