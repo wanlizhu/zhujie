@@ -1,25 +1,17 @@
-import subprocess as subproc
-try:
-    import matplotlib
-    import numpy
-except ImportError:
-    subproc.run('python3 -m pip install matplotlib', shell=True, check=True)
-    subproc.run('python3 -m pip install numpy', shell=True, check=True)
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-import statistics as stat
-
-    
-values_list = []
-with open("/tmp/test.fps") as file:
-    lines = file.readlines()
-    for j in range(0, len(lines)):
-        words = lines[j].split(',')
-        if not values_list:
-            values_list = [[] for x in words]
-            continue
-        for i in range(0, len(words)):
-            values_list[i].append(float(words[i]))
-            
-            
+columns = []
+labels = []
+with open("/tmp/test.fps", "r") as file:
+    NL = -1
+    for line in [ line.strip() for line in file.readlines() ]:
+        NL += 1
+        NW = -1
+        for word in [ word.strip() for word in line.split(',') ]:
+            NW += 1
+            if len(columns) == 0:
+                columns = [ [] for x in line.split(',') ]
+                labels = [ 'FPS' for x in columns ]
+            if word.replace('.', '0').replace('-', '0').isdigit():
+                columns[NW][NL] = float(word)
+            elif NL == 0:
+                labels[NW] = word
+                NL -= 1

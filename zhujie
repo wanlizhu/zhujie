@@ -1307,7 +1307,7 @@ with open(\"$FILE\", \"r\") as file:
                 columns = [ [] for x in line.split(',') ]
                 labels = [ 'FPS' for x in columns ]
             if word.replace('.', '0').replace('-', '0').isdigit():
-                columns[NW][NL] = float(word)
+                columns[NW].append(float(word))
             elif NL == 0:
                 labels[NW] = word
                 NL -= 1
@@ -1338,7 +1338,7 @@ with open(\"$FILE\", \"r\") as file:
                 columns = [ [] for x in line.split(',') ]
                 labels = [ 'FPS' for x in columns ]
             if word.replace('.', '0').replace('-', '0').isdigit():
-                columns[NW][NL] = float(word)
+                columns[NW].append(float(word))
             elif NL == 0:
                 labels[NW] = word
                 NL -= 1
