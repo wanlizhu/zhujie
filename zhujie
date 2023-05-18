@@ -1190,7 +1190,7 @@ function apex() {
                     cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
                 )
             else
-                . /root/bin/apex_legends_lnxstress_120 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
+                . /root/bin/apex_legends_lnxstress_120.sh 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
                     cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $HOME/Apex_Legends.$ROUNDS.fps
                     FPS_FILE=$HOME/Apex_Legends.$ROUNDS.fps
                 ) || (
