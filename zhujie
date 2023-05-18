@@ -129,62 +129,33 @@ function nvidia-smi-static() {
         python3 -c "
 import sys
 with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
-    NR=-1
-    NR_FBMU=-1
-    NR_BAR1=-1
-    NR_GPU_POWER=-1
-    NR_MAX_CLOCK=-1
-    
-    for line in file.readlines():
-        line = line.strip()
+    lines = [ line.strip() for line in file.readlines() ]
+    NR = -1
+    for line in lines:
         NR += 1
-        
+        words = line.split()
         if line.startswith('Display Mode'):
-            if line.split()[3] == 'Enabled':
-                print('Monitor Attached: YES')
-            else:
-                print('Monitor Attached: NO')
+            print('Monitor Attached: {}'.format('YES' if words[3] == 'Enabled' else 'NO'))
             continue
-            
-        if line.startswith('FB Memory Usage'):
-            NR_FBMU = NR
+        if NR >= 1 and lines[NR - 1] == 'FB Memory Usage':
+            print('Total VRAM: {} MB'.format(words[2]))
             continue
-            
-        if NR_FBMU >= 0 and NR_FBMU + 1 == NR:
-            print('Total VRAM: {} MB'.format(line.split()[2]))
-            NR_FBMU = -1
+        if NR >= 1 and lines[NR - 1] == 'BAR1 Memory Usage':
+            print('Total Bar1 Memory: {} MB'.format(words[2]))
             continue
-        
-        if line.startswith('BAR1 Memory Usage'):
-            NR_BAR1 = NR
+        if NR >= 6 and lines[NR - 6] == 'GPU Power Readings':
+            print('Max Power Limit: {} W'.format(words[4])
             continue
-        
-        if NR_BAR1 >= 0 and NR_BAR1 + 1 == NR:
-            print('Total Bar1 Memory: {} {}'.format(line.split()[2], line.split()[3]))
-            NR_BAR1 = -1
-            continue
-        
-        if line.startswith('GPU Power Readings'):
-            NR_GPU_POWER = NR
-            continue
-        
-        if NR_GPU_POWER >= 0 and NR_GPU_POWER + 6 == NR:
-            print('Max Power Limit: {} {}'.format(line.split()[4], line.split()[5]))
-            NR_GPU_POWER = -1
-            continue
-        
-        if line.startswith('Max Clocks'):
-            NR_MAX_CLOCK = NR
-            continue
-            
-        if NR_MAX_CLOCK >= 0 and NR_MAX_CLOCK + 1 == NR:
-            print('Max Graphics Clock: {} MHz'.format(line.split()[2]))
-            NR_MAX_CLOCK = -1
+        if NR >= 1 and lines[NR - 1] == 'Max Clocks':
+            print('Max Graphics Clock: {} MHz'.format(words[2]))
             continue        
 " > /tmp/nvidia-gpu-$INDEX.info.static
-
         cat /tmp/nvidia-gpu-$INDEX.info.static 
     done
+}
+
+function cpu-usage() {
+    echo 0.5
 }
 
 function nvidia-smi-dynamic() {
@@ -203,121 +174,14 @@ function nvidia-smi-dynamic() {
         python3 -c "
 import sys
 with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
-    LINES=file.readlines()
+    lines = [ line.strip() for line in file.readlines() ]
     NR=-1
-    NR_THROTTLE=-1
-    NR_FBMU=-1
-    REASONS=[]
-    VRAM_TOTAL=0
-    NR_BAR1=-1
-    BAR1_TOTAL=0
-    NR_UTILIZATION=-1
-    NR_CLOCKS=-1
-    MAX_GRAPHICS_CLOCK=1
-    NR_MAX_CLOCKS=-1
-    
-    NR=-1
-    for line in LINES:
-        line = line.strip()
+    for line in lines:
         NR += 1
-        
-        if line.startswith('Max Clocks'):
-            NR_MAX_CLOCKS = NR
-            continue
-        
-        if NR_MAX_CLOCKS >= 0 and line.startswith('Graphics'):
-            MAX_GRAPHICS_CLOCK = float(line.split()[2])
+        words = line.split()
+        if NR >= 1 and lines[NR - 1] == 'Utilization':
+            print('GPU Utilization: {} %'.format(words[2]))
             break
-    
-    NR=-1
-    for line in LINES:
-        line = line.strip()
-        NR += 1
-        
-        if line.startswith('Performance State'):
-            print('Performance State: {}'.format(line.split()[3]))
-            continue
-        
-        if line.startswith('Clocks Throttle Reasons'):
-            NR_THROTTLE = NR
-            continue
-            
-        if NR_THROTTLE >= 0 and line.startswith('Applications Clocks Setting       : Active'):
-            REASONS.append('Applications Clocks Setting')
-            continue
-        
-        if NR_THROTTLE >= 0 and line.startswith('SW Power Cap                      : Active'):
-            REASONS.append('SW Power Cap')
-            continue
-            
-        if NR_THROTTLE >= 0 and line.startswith('HW Slowdown                       : Active'):
-            REASONS.append('HW Slowdown')
-            continue
-            
-        if NR_THROTTLE >= 0 and line.startswith('Sync Boost                        : Active'):
-            REASONS.append('Sync Boost')
-            continue
-            
-        if NR_THROTTLE >= 0 and line.startswith('SW Thermal Slowdown               : Active'):
-            REASONS.append('SW Thermal Slowdown')
-            continue
-        
-        if NR_THROTTLE >= 0 and line.startswith('Display Clock Setting             : Active'):
-            REASONS.append('Display Clock Setting')
-            continue
-        
-        if line.startswith('FB Memory Usage'):
-            NR_THROTTLE = -1
-            NR_FBMU = NR
-            if REASONS:
-                print('Clocks Throttle Reasons: {}'.format(', '.join(REASONS)))
-            else:
-                print('Clocks Throttle Reasons: [NULL]')
-            continue
-        
-        if NR_FBMU >= 0 and line.startswith('Total'):
-            VRAM_TOTAL = float(line.split()[2])
-            continue
-        
-        if NR_FBMU >= 0 and line.startswith('Used'):
-            VRAM_USED = float(line.split()[2])
-            USAGE = VRAM_USED / VRAM_TOTAL
-            print('VRAM Usage: {:.2f} %'.format(USAGE * 100.0))
-            NR_FBMU = -1
-        
-        if line.startswith('BAR1 Memory Usage'):
-            NR_BAR1 = NR
-            continue
-        
-        if NR_BAR1 >= 0 and line.startswith('Total'):
-            BAR1_TOTAL = float(line.split()[2])
-            continue
-        
-        if NR_BAR1 >= 0 and line.startswith('Used'):
-            BAR1_USED = float(line.split()[2])
-            USAGE = BAR1_USED / BAR1_TOTAL
-            print('BAR1 Usage: {:.2f} %'.format(USAGE * 100.0))
-            NR_BAR1 = -1
-            
-        if line.startswith('Utilization'):
-            NR_UTILIZATION = NR
-            continue
-        
-        if NR_UTILIZATION >= 0 and NR_UTILIZATION + 1 == NR:
-            print('GPU Utilization: {} %'.format(line.split()[2]))
-            NR_UTILIZATION = -1
-            continue
-        
-        if line.startswith('Clocks'):
-            NR_CLOCKS = NR
-            continue
-            
-        if NR_CLOCKS >= 0 and NR_CLOCKS + 1 == NR:
-            GRAPHICS_CLOCK=float(line.split()[2])
-            USAGE = GRAPHICS_CLOCK / MAX_GRAPHICS_CLOCK
-            print('Graphics Clock Usage: {:.2f} %'.format(USAGE * 100.0))
-            NR_CLOCKS = -1
-            continue
 " > /tmp/nvidia-gpu-$INDEX.info.dynamic
         
         cat /tmp/nvidia-gpu-$INDEX.info.dynamic
@@ -326,7 +190,8 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
 
 function nvidia-smi-perf() {
     WAIT=$1
-    SAMPLES=$2
+    DURATION=$2
+    INTERVAL=1
     CSV_NAME=/tmp/nvidia-smi-perf.csv
     
     if [[ -z $WAIT ]]; then
@@ -338,41 +203,30 @@ function nvidia-smi-perf() {
         WAIT=$(($WAIT - 1))
     done
     
-    if [[ -z $SAMPLES ]]; then
-        SAMPLES=20
+    if [[ -z $DURATION ]]; then
+        DURATION=20
     fi
     
     if [[ ! -f $CSV_NAME ]]; then
-        echo "GPU Utilization,Graphics Clock Usage,VRAM Usage,BAR1 Usage" > $CSV_NAME
+        echo "GPU Usage,CPU Usage" > $CSV_NAME
     fi
     
-    for i in `seq 1 $SAMPLES`; do
+    for i in `seq 0 $INTERVAL $DURATION`; do
         nvidia-smi-dynamic > /dev/null
         python3 -c "
 import sys
-VRAM_USAGE=0.0
-BAR1_USAGE=0.0
-GPU_UTILIZATION=0.0
-GRAPHICS_CLOCK_USAGE=0.0
+GPU_Usage = 0.0
 with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
-    for line in file.readlines():
-        line=line.strip()
-        if line.startswith('VRAM Usage:'):
-            VRAM_USAGE = float(line.split()[2])
-            continue
-        if line.startswith('BAR1 Usage:'):
-            BAR1_USAGE = float(line.split()[2])
-            continue
+    for line in [ line.strip() for line in file.readlines() ]:
+        words = line.split()
         if line.startswith('GPU Utilization:'):
-            GPU_UTILIZATION = float(line.split()[2])
-            continue
-        if line.startswith('Graphics Clock Usage:'):
-            GRAPHICS_CLOCK_USAGE = float(line.split()[3])
-            continue
+            GPU_Usage = float(words[2])
+            break
+CPU_Usage = 0.0
 with open(\"$CSV_NAME\", 'a') as file:
-    file.write('{},{},{},{}\n'.format(GPU_UTILIZATION, GRAPHICS_CLOCK_USAGE, VRAM_USAGE, BAR1_USAGE))
+    file.write('{},{}\n'.format(GPU_Usage, CPU_Usage))
 "
-        sleep 1
+        sleep $INTERVAL
     done
 }
 
@@ -822,12 +676,15 @@ function talos() {
     
     popd > /dev/null
     
+    echo ""
+    
     if [[ $ROUNDS > 1 ]]; then
-        visualize /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        echo -ne "Average FPS: "
+        average /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
     
     if [[ -f /tmp/nvidia-smi-perf.csv ]]; then
-        visualize /tmp/nvidia-smi-perf.csv
+        average /tmp/nvidia-smi-perf.csv
     fi
 }
 
@@ -1439,14 +1296,26 @@ function stddev() {
     
     python3 -c "
 import statistics as stat
-data=[]
+columns = []
+labels = []
 with open(\"$FILE\", \"r\") as file:
-    for line in file.readlines():
-        try:
-            data.append(float(line))
-        except:
-            continue
-print(stat.stdev(data))"
+    NL = -1
+    for line in [ line.strip() for line in file.readlines() ]:
+        NL += 1
+        NW = -1
+        for word in [ word.strip() for word in line.split(',') ]:
+            NW += 1
+            if len(columns) == 0:
+                columns = [ [] for x in words ]
+                labels = [ 'FPS' for x in words ]
+            if word.replace('.', '0').replace('-', '0').isdigit():
+                columns[NW][NL] = float(word)
+            elif NL == 0:
+                labels[NW] = word
+                NL -= 1
+for i in range(0, len(columns)):
+    print('{}: {:.4f}'.format(labels[i], stat.stdev(columns[i])))
+"
 }
 
 function mean() {
@@ -1458,14 +1327,30 @@ function mean() {
     
     python3 -c "
 import statistics as stat
-data=[]
+columns = []
+labels = []
 with open(\"$FILE\", \"r\") as file:
-    for line in file.readlines():
-        try:
-            data.append(float(line))
-        except:
-            continue
-print(stat.mean(data))"
+    NL = -1
+    for line in [ line.strip() for line in file.readlines() ]:
+        NL += 1
+        NW = -1
+        for word in [ word.strip() for word in line.split(',') ]:
+            NW += 1
+            if len(columns) == 0:
+                columns = [ [] for x in words ]
+                labels = [ 'FPS' for x in words ]
+            if word.replace('.', '0').replace('-', '0').isdigit():
+                columns[NW][NL] = float(word)
+            elif NL == 0:
+                labels[NW] = word
+                NL -= 1
+for i in range(0, len(columns)):
+    print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
+"
+}
+
+function average() {
+    mean "$@"
 }
 
 function loop() {
