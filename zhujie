@@ -1186,12 +1186,12 @@ function apex() {
     
     DIRECT_CALL=1
     if [[ $DIRECT_CALL == 0 ]]; then
-        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}rounds.fps
-        PERF_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}rounds.perf
+        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
+        PERF_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.perf
     else
         check-display
-        FPS_FILE=$HOME/Apex_Legends.${ROUNDS}rounds.fps
-        PERF_FILE=$HOME/Apex_Legends.${ROUNDS}rounds.perf
+        FPS_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.fps
+        PERF_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.perf
     fi
     
     if [[ -f $FPS_FILE ]]; then
@@ -1880,6 +1880,7 @@ case $1 in
         fi
     ;;
     hh|html-htop-screen)
+        which aha > /dev/null || sudo apt install -y aha
         FILE=$HOME/htop-screen.html
         INDEX=1
         while [[ -f $FILE ]]; do
