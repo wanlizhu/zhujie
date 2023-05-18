@@ -1304,8 +1304,8 @@ with open(\"$FILE\", \"r\") as file:
         for word in [ word.strip() for word in line.split(',') ]:
             NW += 1
             if len(columns) == 0:
-                columns = [ [] for x in words ]
-                labels = [ 'FPS' for x in words ]
+                columns = [ [] for x in line.split(',') ]
+                labels = [ 'FPS' for x in columns ]
             if word.replace('.', '0').replace('-', '0').isdigit():
                 columns[NW][NL] = float(word)
             elif NL == 0:
