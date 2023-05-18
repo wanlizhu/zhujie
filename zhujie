@@ -205,9 +205,11 @@ function nvidia-smi-perf() {
         DURATION=20
     fi
     
-    if [[ ! -f $CSV_NAME ]]; then
-        echo "GPU Usage,CPU Usage" > $CSV_NAME
+    if [[ -f $CSV_NAME ]]; then
+        rm -rf $CSV_NAME
     fi
+    
+    echo "GPU Usage,CPU Usage" > $CSV_NAME
     
     for i in `seq 0 $INTERVAL $DURATION`; do
         nvidia-smi-dynamic > /dev/null
@@ -1285,37 +1287,6 @@ function vpn() {
     echo "Xavier#35224047,$CODE" | sudo openconnect --authgroup Employee -u wanliz https://ngvpn32.vpn.nvidia.com:8443
 }
 
-function stddev() {
-    FILE=$1
-    if [[ ! -f $FILE ]]; then
-        echo "Error: '$FILE' doesn't exist" > /dev/stderr
-        exit 1
-    fi
-    
-    python3 -c "
-import statistics as stat
-columns = []
-labels = []
-with open(\"$FILE\", \"r\") as file:
-    NL = -1
-    for line in [ line.strip() for line in file.readlines() ]:
-        NL += 1
-        NW = -1
-        for word in [ word.strip() for word in line.split(',') ]:
-            NW += 1
-            if len(columns) == 0:
-                columns = [ [] for x in line.split(',') ]
-                labels = [ 'FPS' for x in columns ]
-            if word.replace('.', '0').replace('-', '0').isdigit():
-                columns[NW].append(float(word))
-            elif NL == 0:
-                labels[NW] = word
-                NL -= 1
-for i in range(0, len(columns)):
-    print('{}: {:.4f}'.format(labels[i], stat.stdev(columns[i])))
-"
-}
-
 function mean() {
     FILE=$1
     if [[ ! -f $FILE ]]; then
@@ -1328,9 +1299,7 @@ import statistics as stat
 columns = []
 labels = []
 with open(\"$FILE\", \"r\") as file:
-    NL = -1
     for line in [ line.strip() for line in file.readlines() ]:
-        NL += 1
         NW = -1
         for word in [ word.strip() for word in line.split(',') ]:
             NW += 1
@@ -1339,16 +1308,43 @@ with open(\"$FILE\", \"r\") as file:
                 labels = [ 'FPS' for x in columns ]
             if word.replace('.', '0').replace('-', '0').isdigit():
                 columns[NW].append(float(word))
-            elif NL == 0:
+            else:
                 labels[NW] = word
-                NL -= 1
 for i in range(0, len(columns)):
     print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
 "
 }
 
+function mean2() {
+    FILE=$1
+    if [[ ! -f $FILE ]]; then
+        echo "Error: '$FILE' doesn't exist" > /dev/stderr
+        exit 1
+    fi
+    
+    python3 -c "
+import statistics as stat
+columns = []
+labels = []
+with open(\"$FILE\", \"r\") as file:
+    for line in [ line.strip() for line in file.readlines() ]:
+        NW = -1
+        for word in [ word.strip() for word in line.split(',') ]:
+            NW += 1
+            if len(columns) == 0:
+                columns = [ [] for x in line.split(',') ]
+                labels = [ 'FPS' for x in columns ]
+            if word.replace('.', '0').replace('-', '0').isdigit():
+                columns[NW].append(float(word))
+            else:
+                labels[NW] = word
+for i in range(0, len(columns)):
+    print('{}: {:.4f} (StdDev: {:.4f})'.format(labels[i], stat.mean(columns[i]), stat.stdev(columns[i])))
+"
+}
+
 function average() {
-    mean "$@"
+    mean2 "$@"
 }
 
 function loop() {
@@ -1364,9 +1360,24 @@ function loop() {
         
     if [[ -f "$HOME/zhujie-loop.records" ]]; then
         echo ""
-        echo -ne "Mean: " && mean $HOME/zhujie-loop.records
-        echo -ne "StdDev: " && stddev $HOME/zhujie-loop.records
-    
+        average $HOME/zhujie-loop.records
+    fi
+}
+
+function loop-v() {
+    if [[ -z $1 ]]; then
+        echo "Usage: loop <TIMES> <CMD>" > /dev/stderr
+        exit 1
+    fi
+        
+    rm -rf $HOME/zhujie-loop.records
+    for i in `seq 1 $1`; do
+        $2 | tee -a $HOME/zhujie-loop.records
+    done
+        
+    if [[ -f "$HOME/zhujie-loop.records" ]]; then
+        echo ""
+        average $HOME/zhujie-loop.records
         visualize $HOME/zhujie-loop.records
     fi
 }
@@ -1678,13 +1689,17 @@ case $1 in
         shift
         choose-kernel "$@"
     ;;
-    stddev)
-        shift
-        stddev "$@"
-    ;;
     mean)
         shift
         mean "$@"
+    ;;
+    mean2)
+        shift
+        mean2 "$@"
+    ;;
+    average)
+        shift
+        average "$@"
     ;;
     fkdp|fake-display)
         shift
@@ -1709,6 +1724,10 @@ case $1 in
     loop)
         shift
         loop "$@"
+    ;;
+    loop-v)
+        shift
+        loop-v "$@"
     ;;
     cpu-offline)
         shift
