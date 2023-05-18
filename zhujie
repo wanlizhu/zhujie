@@ -1174,13 +1174,14 @@ function apex() {
     
     if [[ -f $FPS_FILE ]]; then
         rm -rf $FPS_FILE
-        echo "FPS" > $FPS_FILE
     fi
     
     if [[ -f $PERF_FILE ]]; then
         rm -rf $PERF_FILE
-        echo "GPU Usage,CPU Usage" > $PERF_FILE
     fi
+    
+    echo "FPS" > $FPS_FILE
+    echo "GPU Usage,CPU Usage" > $PERF_FILE
     
     SECONDS=0
     
