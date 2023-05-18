@@ -1180,7 +1180,7 @@ function apex() {
                 $APEX_CMD
             else
                 cd /root/nvt/tests/dxvk/run_dir
-                $APEX_CMD_LNXSTRESS_120
+                exec "$APEX_CMD_LNXSTRESS_120"
             fi
         else
             if [[ $DIRECT_CALL == 0 ]]; then
@@ -1195,7 +1195,7 @@ function apex() {
                 )
             else
                 cd /root/nvt/tests/dxvk/run_dir
-                $APEX_CMD_LNXSTRESS_120 \
+                exec "$APEX_CMD_LNXSTRESS_120" \
                 1> $HOME/Apex_Legends.log \
                 2> $HOME/Apex_Legends.error && (
                     cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $HOME/Apex_Legends.$ROUNDS.fps
