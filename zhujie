@@ -1338,8 +1338,10 @@ function mean() {
 import statistics as stat
 columns = []
 labels = []
+lines_count = 0
 with open(\"$FILE\", \"r\") as file:
     for line in [ line.strip() for line in file.readlines() ]:
+        lines_count += 1
         NW = -1
         for word in [ word.strip() for word in line.split(',') ]:
             NW += 1
@@ -1350,8 +1352,9 @@ with open(\"$FILE\", \"r\") as file:
                 columns[NW].append(float(word))
             else:
                 labels[NW] = word
-for i in range(0, len(columns)):
-    print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
+if lines_count >= 2:
+    for i in range(0, len(columns)):
+        print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
 "
 }
 
@@ -1366,8 +1369,11 @@ function mean2() {
 import statistics as stat
 columns = []
 labels = []
+lines_count = 0
+has_label_line = False
 with open(\"$FILE\", \"r\") as file:
     for line in [ line.strip() for line in file.readlines() ]:
+        lines_count += 1
         NW = -1
         for word in [ word.strip() for word in line.split(',') ]:
             NW += 1
@@ -1378,8 +1384,10 @@ with open(\"$FILE\", \"r\") as file:
                 columns[NW].append(float(word))
             else:
                 labels[NW] = word
-for i in range(0, len(columns)):
-    print('{}: {:.4f} (StdDev: {:.4f})'.format(labels[i], stat.mean(columns[i]), stat.stdev(columns[i])))
+                has_label_line = True
+if lines_count >= 2 + (1 if has_label_line else 0):
+    for i in range(0, len(columns)):
+        print('{}: {:.4f} (StdDev: {:.4f})'.format(labels[i], stat.mean(columns[i]), stat.stdev(columns[i])))
 "
 }
 
