@@ -1869,7 +1869,7 @@ case $1 in
     ;;
     save-htop-config)
         cp $HOME/.config/htop/htoprc $(dirname $0)
-        echo "Saved"
+        echo "Saved to $(dirname $0)/htoprc"
     ;;
     reset-htop-config)
         if [[ -f $(dirname $0)/htoprc ]]; then
@@ -1878,6 +1878,16 @@ case $1 in
         else
             echo "Template doesn't exist" > /dev/stderr
         fi
+    ;;
+    hh|html-htop-screen)
+        FILE=$HOME/htop-screen.html
+        INDEX=1
+        while [[ -f $FILE ]]; do
+            FILE=$HOME/htop-screen-$INDEX.html
+            INDEX=$(($INDEX+1))
+        done
+        echo q | htop | aha --black --line-fix > $FILE
+        echo "Saved to $FILE"
     ;;
     test)
         for i in `seq 1 20`; do
