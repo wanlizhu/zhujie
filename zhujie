@@ -1197,8 +1197,9 @@ function cpu-usage() {
     if [[ -n $PID ]]; then
         RANGE=$(parse-range $(taskset -pc $PID | awk '{ print $6 }'))
         for i in `seq $RANGE`; do 
-            echo CPU$i
+            echo $i > /dev/null
         done
+        echo "0.0 %"
     else
         echo "0.0 %"
     fi
