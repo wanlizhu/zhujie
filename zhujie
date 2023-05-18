@@ -144,7 +144,7 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
             print('Total Bar1 Memory: {} MB'.format(words[2]))
             continue
         if NR >= 6 and lines[NR - 6] == 'GPU Power Readings':
-            print('Max Power Limit: {} W'.format(words[4])
+            print('Max Power Limit: {} W'.format(words[4]))
             continue
         if NR >= 1 and lines[NR - 1] == 'Max Clocks':
             print('Max Graphics Clock: {} MHz'.format(words[2]))
