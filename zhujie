@@ -1176,7 +1176,8 @@ function apex() {
             if [[ $DIRECT_CALL == 0 ]]; then
                 /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF
             else
-                . $(dirname $0)/apex_legends_lnxstress_120
+                cd $(dirname $0)
+                ./apex_legends_lnxstress_120
             fi
         else
             if [[ $DIRECT_CALL == 0 ]]; then
@@ -1190,7 +1191,8 @@ function apex() {
                     cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
                 )
             else
-                . $(dirname $0)/apex_legends_lnxstress_120 \
+                cd $(dirname $0)
+                ./apex_legends_lnxstress_120 \
                 1> $HOME/Apex_Legends.log \
                 2> $HOME/Apex_Legends.error && (
                     cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $HOME/Apex_Legends.$ROUNDS.fps
