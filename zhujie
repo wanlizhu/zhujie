@@ -1779,7 +1779,7 @@ case $1 in
         shift
         mean2 "$@"
     ;;
-    average)
+    avg|average)
         shift
         average "$@"
     ;;
