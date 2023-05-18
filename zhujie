@@ -183,6 +183,25 @@ with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
     done
 }
 
+function cpu-usage() {
+    TYPE=$([[ -z $1 ]] && echo all || echo $1)
+    case $TYPE in
+        all)
+            echo "0.0 %"
+        ;;
+        p-cores)
+            echo "0.0 %"
+        ;;
+        e-cores)
+            echo "0.0 %"
+        ;;
+        *)
+            echo "Error: unknown argument $TYPE" > /dev/stderr
+            exit 1
+        ;;
+    esac
+}
+
 function nvidia-smi-perf() {
     WAIT=$1
     DURATION=$2
@@ -206,10 +225,13 @@ function nvidia-smi-perf() {
         rm -rf $CSV_NAME
     fi
     
+    which mpstat > /dev/null || sudo apt install -y sysstat
+    
     echo "GPU Usage,CPU Usage" > $CSV_NAME
     
     for i in `seq 0 $INTERVAL $DURATION`; do
         nvidia-smi-dynamic > /dev/null
+        CPU_USAGE=$(cpu-usage | awk '{ print $1 }')
         python3 -c "
 import sys
 GPU_Usage = 0.0
@@ -219,7 +241,7 @@ with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
         if line.startswith('GPU Utilization:'):
             GPU_Usage = float(words[2])
             break
-CPU_Usage = 0.0
+CPU_Usage = $CPU_USAGE
 with open(\"$CSV_NAME\", 'a') as file:
     file.write('{},{}\n'.format(GPU_Usage, CPU_Usage))
 "
@@ -1844,6 +1866,18 @@ case $1 in
             echo $MAC_IP > $HOME/.zhujie/mac-ip
         done
         scp "$@" zhujie@$(find-mac-ip):~/Downloads/
+    ;;
+    save-htop-config)
+        cp $HOME/.config/htop/htoprc $(dirname $0)
+        echo "Saved"
+    ;;
+    reset-htop-config)
+        if [[ -f $(dirname $0)/htoprc ]]; then
+            cp -f $(dirname $0)/htoprc $HOME/.config/htop/htoprc
+            echo "Updated $HOME/.config/htop/htoprc"
+        else
+            echo "Template doesn't exist" > /dev/stderr
+        fi
     ;;
     test)
         for i in `seq 1 20`; do
