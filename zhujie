@@ -100,8 +100,6 @@ function cpu() {
 }
 
 function gpu() {
-    echo "GPU HW Count: $(sudo lshw -C video | grep product: | wc -l)"
-    
     # NVIDIA GPU(s)
     nvidia-smi-static
 }
