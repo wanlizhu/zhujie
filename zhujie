@@ -154,7 +154,7 @@ function perf() {
         if [[ -z $PID ]]; then
             CPU_AFFINITY="-"
         else
-            CPU_AFFINITY=$(taskset -pc $PID)
+            CPU_AFFINITY=$(taskset -pc $PID  | awk '{ print $6 }')
         fi
         
         echo "$GPU_USAGE, $CPU_USAGE, $CPU_AFFINITY"
@@ -1195,7 +1195,7 @@ function cpu-usage() {
     PID=$1
     
     if [[ -n $PID ]]; then
-        RANGE=$(parse-range $(taskset -pc $PID))
+        RANGE=$(parse-range $(taskset -pc $PID | awk '{ print $6 }'))
         for i in `seq $RANGE`; do 
             echo CPU$i
         done
