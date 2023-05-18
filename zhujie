@@ -1172,6 +1172,7 @@ function apex() {
     
     FPS_FILE=""
     SECONDS=0
+    
     for i in `seq 1 $ROUNDS`; do
         if [[ $VERBOSE == 1 ]]; then
             if [[ $DIRECT_CALL == 0 ]]; then
@@ -1210,9 +1211,8 @@ function apex() {
         fi
     done
     
-    if [[ $ROUNDS == 1 ]]; then
-        echo "$SECONDS seconds"
-    fi
+    echo ""
+    echo "Finished $ROUNDS rounds in $SECONDS seconds"
     
     if [[ $ROUNDS > 1 && -f $FPS_FILE ]]; then
         average $FPS_FILE
