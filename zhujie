@@ -120,132 +120,10 @@ function nvidia-smi-static() {
         fi
         
         nvidia-smi -L | awk -F '\(UUID:' '{print $1}' | awk  "NR==$(($INDEX+1)){ print; exit; }"
-        nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
-        python3 -c "
-import sys
-with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
-    lines = [ line.strip() for line in file.readlines() ]
-    NR = -1
-    for line in lines:
-        NR += 1
-        words = line.split()
-        if line.startswith('Display Mode'):
-            print('Monitor Attached: {}'.format('YES' if words[3] == 'Enabled' else 'NO'))
-            continue
-        if NR >= 1 and lines[NR - 1] == 'FB Memory Usage':
-            print('Total VRAM: {} MB'.format(words[2]))
-            continue
-        if NR >= 1 and lines[NR - 1] == 'BAR1 Memory Usage':
-            print('Total Bar1 Memory: {} MB'.format(words[2]))
-            continue
-        if NR >= 6 and lines[NR - 6] == 'GPU Power Readings':
-            print('Max Power Limit: {} W'.format(words[4]))
-            continue
-        if NR >= 1 and lines[NR - 1] == 'Max Clocks':
-            print('Max Graphics Clock: {} MHz'.format(words[2]))
-            continue        
-" > /tmp/nvidia-gpu-$INDEX.info.static
-        cat /tmp/nvidia-gpu-$INDEX.info.static 
-    done
-}
-
-function cpu-usage() {
-    echo 0.5
-}
-
-function nvidia-smi-dynamic() {
-    which nvidia-smi > /dev/null || echo "Info: can't find nvidia-smi in PATH"
-    
-    GPU_COUNT=$(nvidia-smi -L | wc -l)
-    echo "Attached NVIDIA GPUs:"
-    
-    for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
-        if [[ $INDEX > 0 ]]; then
-            echo ""
-        fi
-
-        nvidia-smi -L | awk -F '\(UUID:' '{print $1}' | awk  "NR==$(($INDEX+1)){ print; exit; }"
-        nvidia-smi --query --id=$INDEX > /tmp/nvidia-gpu-$INDEX.info
-        python3 -c "
-import sys
-with open(\"/tmp/nvidia-gpu-$INDEX.info\", 'r') as file:
-    lines = [ line.strip() for line in file.readlines() ]
-    NR=-1
-    for line in lines:
-        NR += 1
-        words = line.split()
-        if NR >= 1 and lines[NR - 1] == 'Utilization':
-            print('GPU Utilization: {} %'.format(words[2]))
-            break
-" > /tmp/nvidia-gpu-$INDEX.info.dynamic
-        
-        cat /tmp/nvidia-gpu-$INDEX.info.dynamic
-    done
-}
-
-function cpu-usage() {
-    TYPE=$([[ -z $1 ]] && echo all || echo $1)
-    case $TYPE in
-        all)
-            echo "0.0 %"
-        ;;
-        p-cores)
-            echo "0.0 %"
-        ;;
-        e-cores)
-            echo "0.0 %"
-        ;;
-        *)
-            echo "Error: unknown argument $TYPE" > /dev/stderr
-            exit 1
-        ;;
-    esac
-}
-
-function nvidia-smi-perf() {
-    WAIT=$1
-    DURATION=$2
-    INTERVAL=1
-    CSV_NAME=/tmp/nvidia-smi-perf.csv
-    
-    if [[ -z $WAIT ]]; then
-        WAIT=0
-    fi
-    
-    while [[ $WAIT > 0 ]]; do
-        sleep 1
-        WAIT=$(($WAIT - 1))
-    done
-    
-    if [[ -z $DURATION ]]; then
-        DURATION=20
-    fi
-    
-    if [[ -f $CSV_NAME ]]; then
-        rm -rf $CSV_NAME
-    fi
-    
-    which mpstat > /dev/null || sudo apt install -y sysstat
-    
-    echo "GPU Usage,CPU Usage" > $CSV_NAME
-    
-    for i in `seq 0 $INTERVAL $DURATION`; do
-        nvidia-smi-dynamic > /dev/null
-        CPU_USAGE=$(cpu-usage | awk '{ print $1 }')
-        python3 -c "
-import sys
-GPU_Usage = 0.0
-with open(\"/tmp/nvidia-gpu-0.info.dynamic\", 'r') as file:
-    for line in [ line.strip() for line in file.readlines() ]:
-        words = line.split()
-        if line.startswith('GPU Utilization:'):
-            GPU_Usage = float(words[2])
-            break
-CPU_Usage = $CPU_USAGE
-with open(\"$CSV_NAME\", 'a') as file:
-    file.write('{},{}\n'.format(GPU_Usage, CPU_Usage))
-"
-        sleep $INTERVAL
+        nvidia-smi --query --id=$INDEX --display=UTILIZATION | grep "Gpu" | awk '{ print "GPU Usage: " $3 $4 }'
+        nvidia-smi --query --id=$INDEX --display=POWER | grep "Current Power Limit" | awk '{ print "Current Power Limit: " $5 $6 }'
+        nvidia-smi --query --id=$INDEX --display=MEMORY | grep "Total" | head -n1 | awk '{ print "Total VRAM: " $3 $4 }'
+        nvidia-smi --query --id=$INDEX --display=CLOCK | grep "Graphics" | awk 'NR==4{ print "Max Graphics Clock: " $3 $4 }'
     done
 }
 
@@ -263,6 +141,25 @@ function display() {
     fi
     
     echo "DISPLAY: $([[ -n $DISPLAY ]] && echo $DISPLAY || echo '[NULL]')"
+}
+
+function perf() {
+    PID=$1
+    
+    echo "GPU Usage, CPU Usage, CPU Affinity"
+    
+    while [[ 1 ]]; do
+        GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 $4 }')
+        CPU_USAGE=$(cpu-usage "$PID")
+        if [[ -z $PID ]]; then
+            CPU_AFFINITY="-"
+        else
+            CPU_AFFINITY=$(taskset -pc $PID)
+        fi
+        
+        echo "$GPU_USAGE, $CPU_USAGE, $CPU_AFFINITY"
+        sleep 1
+    done
 }
 
 function info() {
@@ -681,16 +578,10 @@ function talos() {
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     
-    nvidia-smi-perf 25 20 &
-    
     for i in `seq 1 $ROUNDS`; do
-        if [[ $VERBOSE == 1 ]]; then
-            ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua
-        else
-            ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
+        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
             
-            cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
-        fi
+        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
     done
     
     popd > /dev/null
@@ -700,10 +591,6 @@ function talos() {
     if [[ $ROUNDS > 1 ]]; then
         echo -ne "Average FPS: "
         average /tmp/zhujie-talos-$ROUNDS-rounds.fps
-    fi
-    
-    if [[ -f /tmp/nvidia-smi-perf.csv ]]; then
-        average /tmp/nvidia-smi-perf.csv
     fi
 }
 
@@ -1169,12 +1056,12 @@ function apex() {
     fi
     
     ROUNDS=1
-    VERBOSE=0
+    DIRECT=0
     
     while [[ -n $1 ]]; do
         case $1 in
             [0-9]*) ROUNDS=$1 ;;
-            -v|--verbose) VERBOSE=1 ;;
+            -d|--direct) DIRECT=1 ;;
         esac
         shift
     done
@@ -1184,26 +1071,14 @@ function apex() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    DIRECT_CALL=1
-    if [[ $DIRECT_CALL == 0 ]]; then
-        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
-        PERF_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.perf
-    else
+    if [[ $DIRECT == 1 ]]; then
         check-display
         FPS_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.fps
-        PERF_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.perf
-    fi
-    
-    if [[ -f $FPS_FILE ]]; then
-        rm -rf $FPS_FILE
-    fi
-    
-    if [[ -f $PERF_FILE ]]; then
-        rm -rf $PERF_FILE
+    else
+        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
     fi
     
     echo "FPS" > $FPS_FILE
-    echo "GPU Usage,CPU Usage" > $PERF_FILE
     
     SECONDS=0
     
@@ -1218,11 +1093,8 @@ function apex() {
                 cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
             )
         else
-            nvidia-smi-perf 2 10 &
-            
             cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
                 cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
-                average --inline /tmp/nvidia-smi-perf.csv | tee -a $PERF_FILE
             ) || (
                 cat $HOME/Apex_Legends.log
                 cat $HOME/Apex_Legends.error
@@ -1235,7 +1107,6 @@ function apex() {
     
     if [[ $ROUNDS > 1 ]]; then
         average $FPS_FILE
-        average $PERF_FILE
     fi
 }
     
@@ -1245,24 +1116,45 @@ function catia() {
         exit 1
     fi
     
+    ROUNDS=1
+    
+    while [[ -n $1 ]]; do
+        case $1 in
+            [0-9]*) ROUNDS=$1 ;;
+        esac
+        shift
+    done
+    
     check-display
+    echo "FPS" > $HOME/catia_3840x2160.fps
+    
+    if [[ $(has-nvidia-gpu) == 0 ]]; then
+        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        unset NVTEST_DRIVER_DIR
+    fi
     
     pushd /root/nvt/tests/viewperf2020v3/viewperf2020 > /dev/null
+    SECONDS=0
     
-    if [[ $1 == -v ]]; then
-        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160
-    else
+    for i in `seq 1 $ROUNDS`; do
         viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 \
         1> $HOME/catia_3840x2160.log \
         2> $HOME/catia_3840x2160.error && (
-            cat $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}'
+            cat $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee $HOME/catia_3840x2160.fps
         ) || (
             cat $HOME/catia_3840x2160.log
             cat $HOME/catia_3840x2160.error
         )
-    fi
+    done
     
     popd > /dev/null
+    
+    echo ""
+    echo "Finished $ROUNDS rounds in $SECONDS seconds"
+    
+    if [[ $ROUNDS > 1 ]]; then
+        average $HOME/catia_3840x2160.fps
+    fi
 }
 
 function prime-run() {
@@ -1297,6 +1189,19 @@ function cpu-online() {
     for i in `seq 1 $(($(cpu-count) - 1))`; do
         echo 1 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
     done
+}
+
+function cpu-usage() {
+    PID=$1
+    
+    if [[ -n $PID ]]; then
+        RANGE=$(parse-range $(taskset -pc $PID))
+        for i in `seq $RANGE`; do 
+            echo CPU$i
+        done
+    else
+        echo "0.0 %"
+    fi
 }
 
 function pull-transient() {
@@ -1337,6 +1242,8 @@ function push() {
 }
 
 function vpn() {
+    which openconnect > /dev/null || sudo apt install -y openconnect
+    
     if [[ $1 == off ]]; then
         sudo pkill -9 `pidof openconnect` 
         return
@@ -1850,6 +1757,10 @@ case $1 in
         shift
         gpu "$@"
     ;;
+    perf)
+        shift
+        perf "$@"
+    ;;
     viz|visualize)
         shift
         visualize "$@"
@@ -1867,14 +1778,15 @@ case $1 in
         done
         scp "$@" zhujie@$(find-mac-ip):~/Downloads/
     ;;
-    save-htop-config)
+    sh|save-htop-config)
         cp $HOME/.config/htop/htoprc $(dirname $0)
         echo "Saved to $(dirname $0)/htoprc"
     ;;
-    reset-htop-config)
+    rh|reset-htop-config)
         if [[ -f $(dirname $0)/htoprc ]]; then
-            cp -f $(dirname $0)/htoprc $HOME/.config/htop/htoprc
-            echo "Updated $HOME/.config/htop/htoprc"
+            cp -f $(dirname $0)/htoprc $HOME/.config/htop/htoprc && (
+                echo "Updated $HOME/.config/htop/htoprc"
+            )
         else
             echo "Template doesn't exist" > /dev/stderr
         fi
