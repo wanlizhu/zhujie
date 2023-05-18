@@ -149,7 +149,7 @@ function perf() {
     echo "GPU Usage, CPU Usage, CPU Affinity"
     
     while [[ 1 ]]; do
-        GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print "$3 %" }')
+        GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 " %" }')
         CPU_USAGE=$(cpu-usage "$PID")
         if [[ -z $PID ]]; then
             CPU_AFFINITY="-"
@@ -1199,7 +1199,7 @@ function cpu-usage() {
         for i in `seq $RANGE`; do 
             echo $i > /dev/null
         done
-        ps up $PID | awk 'NR==2{ print "$3 %" }' 
+        ps up $PID | awk 'NR==2{ print $3 " %" }' 
     else
         echo "0.0 %"
     fi
