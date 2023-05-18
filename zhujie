@@ -114,9 +114,6 @@ function nvidia-smi-static() {
         cat /proc/driver/nvidia/version | head -n 1
     fi
     
-    GPU_COUNT=$(nvidia-smi -L | wc -l)
-    echo "Attached NVIDIA GPUs:"
-    
     for INDEX in `seq 0 $(($GPU_COUNT-1))`; do
         if [[ $INDEX > 0 ]]; then
             echo ""
