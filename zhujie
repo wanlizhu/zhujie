@@ -148,13 +148,19 @@ function perf() {
     
     echo "GPU Usage, CPU Usage, CPU Affinity"
     
-    while [[ 1 ]]; do
+    VALID=1
+    while [[ $VALID == 1 ]]; do
+        taskset -pc $PID 1> /dev/null 2> /dev/null || (
+            VALID=0
+            continue
+        )
+        
         GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 " %" }')
         CPU_USAGE=$(cpu-usage "$PID")
         if [[ -z $PID ]]; then
             CPU_AFFINITY="-"
         else
-            CPU_AFFINITY=$(taskset -pc $PID  | awk '{ print $6 }')
+            CPU_AFFINITY=$(taskset -pc $PID 2> /dev/null | awk '{ print $6 }')
         fi
         
         echo "$GPU_USAGE, $CPU_USAGE, $CPU_AFFINITY"
