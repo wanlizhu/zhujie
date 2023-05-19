@@ -150,7 +150,7 @@ function perf() {
         *) PID=`pidof $1` ;;
     esac
     
-    echo "GPU Usage, CPU Usage, CPU Affinity"
+    echo "GPU Usage, CPU Affinity, CPU Usage"
     
     CONTINUE=1
     while [[ $CONTINUE == 1 ]]; do
