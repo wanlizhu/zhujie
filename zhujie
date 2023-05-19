@@ -479,121 +479,6 @@ function nvidia-version-installed() {
     fi
 }
 
-function ddnet() {
-    # 2560x1440
-    # Fullscreen
-    # Vulkan
-    # Default
-    # RaiNyMore2 -- GPU-intensive 
-
-    check-display
-
-    (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
-}
-
-function click-talos-message-window() {
-    which xdotool > /dev/null || sudo apt install -y xdotool
-    sleep 3
-    
-    VALID=1
-    while [[ $VALID == 1 ]]; do
-        WINDOW_ID=$(xdotool getactivewindow)
-        WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
-        if [[ $WINDOW_NAME == Message ]]; then
-            POSITION=$(xdotool getwindowgeometry $WINDOW_ID | grep Position: | awk '{print $2}')
-            EXTENT=$(xdotool getwindowgeometry $WINDOW_ID | grep Geometry: | awk '{print $2}')
-            X=${POSITION%,*}; Y=${POSITION#*,}
-            W=${EXTENT%x*};   H=${EXTENT#*x}
-            xdotool mousemove $((X+W-50)) $((Y+H-70))
-            xdotool click 1
-        else #elif [[ $WINDOW_NAME == "Talos - Linux - 64bit" ]]; then
-            sleep 10
-        fi
-        
-        if [[ -z $(pidof Talos) ]]; then
-            VALID=0
-        fi
-    done
-}
-
-function kill-talos-later() {
-    sleep 30
-
-    STOP=0
-    SECONDS=0
-    while [[ $STOP == 0 ]]; do
-        if [[ ! -f $HOME/zhujie-talos.log ]]; then
-            STOP=1
-            continue
-        fi
-
-        LINE=$(cat $HOME/zhujie-talos.error | grep "corrupted size vs. prev_size")
-        if [[ -n $LINE ]]; then
-            pkill -9 Talos 
-            STOP=1
-            sleep 2
-        else
-            if [[ -z $(pidof Talos) ]]; then
-                STOP=1
-            fi
-            sleep 2
-        fi
-    done
-}
-
-function talos() {
-    # Vulkan
-    # 2560x1440
-
-    check-display
-    
-    ROUNDS=1
-    VERBOSE=0
-    
-    while [[ -n $1 ]]; do
-        case $1 in
-            [0-9]*) ROUNDS=$1 ;;
-            -v|--verbose) VERBOSE=1 ;;
-        esac
-        shift
-    done
-
-    # Launch steam if it's not currently running
-    pgrep -x steam >/dev/null || (
-        steam &
-        sleep 20
-    )
-
-    if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
-        echo "Error: install 'Talos Principle' in steam's window and try again" > /dev/stderr
-        exit 1
-    fi
-
-    click-talos-message-window &
-    kill-talos-later &
-
-    if [[ $ROUNDS > 1  && -f /tmp/zhujie-talos-$ROUNDS-rounds.fps ]]; then
-        rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
-    fi
-    
-    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
-    
-    for i in `seq 1 $ROUNDS`; do
-        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
-            
-        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
-    done
-    
-    popd > /dev/null
-    
-    echo ""
-    
-    if [[ $ROUNDS > 1 ]]; then
-        echo -ne "Average FPS: "
-        average /tmp/zhujie-talos-$ROUNDS-rounds.fps
-    fi
-}
-
 function install-dvs-driver() {
     TYPE=Release
     BRANCH=""
@@ -1049,6 +934,121 @@ function vnc() {
     esac
 }
     
+function ddnet() {
+    # 2560x1440
+    # Fullscreen
+    # Vulkan
+    # Default
+    # RaiNyMore2 -- GPU-intensive 
+
+    check-display
+
+    (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
+}
+
+function click-talos-message-window() {
+    which xdotool > /dev/null || sudo apt install -y xdotool
+    sleep 3
+    
+    VALID=1
+    while [[ $VALID == 1 ]]; do
+        WINDOW_ID=$(xdotool getactivewindow)
+        WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
+        if [[ $WINDOW_NAME == Message ]]; then
+            POSITION=$(xdotool getwindowgeometry $WINDOW_ID | grep Position: | awk '{print $2}')
+            EXTENT=$(xdotool getwindowgeometry $WINDOW_ID | grep Geometry: | awk '{print $2}')
+            X=${POSITION%,*}; Y=${POSITION#*,}
+            W=${EXTENT%x*};   H=${EXTENT#*x}
+            xdotool mousemove $((X+W-50)) $((Y+H-70))
+            xdotool click 1
+        else #elif [[ $WINDOW_NAME == "Talos - Linux - 64bit" ]]; then
+            sleep 10
+        fi
+        
+        if [[ -z $(pidof Talos) ]]; then
+            VALID=0
+        fi
+    done
+}
+
+function kill-talos-later() {
+    sleep 30
+
+    STOP=0
+    SECONDS=0
+    while [[ $STOP == 0 ]]; do
+        if [[ ! -f $HOME/zhujie-talos.log ]]; then
+            STOP=1
+            continue
+        fi
+
+        LINE=$(cat $HOME/zhujie-talos.error | grep "corrupted size vs. prev_size")
+        if [[ -n $LINE ]]; then
+            pkill -9 Talos 
+            STOP=1
+            sleep 2
+        else
+            if [[ -z $(pidof Talos) ]]; then
+                STOP=1
+            fi
+            sleep 2
+        fi
+    done
+}
+
+function talos() {
+    # Vulkan
+    # 2560x1440
+
+    check-display
+    
+    ROUNDS=1
+    VERBOSE=0
+    
+    while [[ -n $1 ]]; do
+        case $1 in
+            [0-9]*) ROUNDS=$1 ;;
+            -v|--verbose) VERBOSE=1 ;;
+        esac
+        shift
+    done
+
+    # Launch steam if it's not currently running
+    pgrep -x steam >/dev/null || (
+        steam &
+        sleep 20
+    )
+
+    if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
+        echo "Error: install 'Talos Principle' in steam's window and try again" > /dev/stderr
+        exit 1
+    fi
+
+    click-talos-message-window &
+    kill-talos-later &
+
+    if [[ $ROUNDS > 1  && -f /tmp/zhujie-talos-$ROUNDS-rounds.fps ]]; then
+        rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    fi
+    
+    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
+    
+    for i in `seq 1 $ROUNDS`; do
+        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
+            
+        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    done
+    
+    popd > /dev/null
+    
+    echo ""
+    
+    if [[ $ROUNDS > 1 ]]; then
+        echo -ne "Average FPS: "
+        average /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    fi
+}
+
 function apex() {
     if [[ $EUID != 0 ]]; then
         echo "Error: please run as root" > /dev/stderr
@@ -1630,6 +1630,54 @@ function z() {
     zhujie "$@"
 }
 
+function filesys() {
+    which gtlfs > /dev/null || (
+        sudo wget https://gtlfs.nvidia.com/client/linux -O /usr/local/bin/gtlfs &&
+        sudo chmod +x /usr/local/bin/gtlfs
+    )
+    
+    which gtlfs > /dev/null || (
+        echo "Error: can't find gtlfs in PATH" > /dev/stderr
+        exit 1
+    )
+    
+    if [[ -f /tmp/gtlfs-password-cache ]]; then
+        PASSWD=$(cat /tmp/gtlfs-password-cache)
+    else
+        read -p "GTLFS Password: " PASSWD
+        echo $PASSWD > /tmp/gtlfs-password-cache
+    fi
+    
+    case $1 in 
+        push|up)
+            shift
+            gtlfs push --username=wanliz --password=$PASSWD "$@"
+        ;;
+        pull|down)
+            shift
+            gtlfs pull --username=wanliz --password=$PASSWD "$@"
+        ;;
+        pull-rm|pop)
+            shift
+            gtlfs pull --username=wanliz --password=$PASSWD "$@" && (
+                read -p "Remove it from server? (Y/n)" RSVP
+                case $RSVP in
+                    ""|y|Y|1)
+                        gtlfs rm --username=wanliz --password=$PASSWD "$@"
+                    ;;
+                    *)
+                        echo "Nothing removed"
+                    ;;
+                esac
+            )
+        ;;
+        *)
+            echo "Error: unknown argument '$1'" > /dev/stderr
+            exit 1
+        ;;
+    esac
+}
+
 
 
 
@@ -1774,6 +1822,11 @@ case $1 in
         shift
         image "$@"
     ;;
+    fs|filesys)
+        shift
+        filesys "$@"
+    ;;
+    
     mac)
         shift
         while [[ -z $(find-mac-ip) ]]; do
