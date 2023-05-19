@@ -154,16 +154,11 @@ function perf() {
             *) PID=`pidof $1` ;;
         esac
     
-        SECONDS=0
         GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 " %" }')
         CPU_USAGE=$(cpu-usage $1)
         CPU_AFFINITY=$([[ -n $PID ]] && (taskset -pc $PID 2> /dev/null | awk '{ print $6 }')) 
         CPU_AFFINITY=$([[ -z $CPU_AFFINITY ]] && echo "N/A" || echo $CPU_AFFINITY)
         echo "$GPU_USAGE,    $CPU_AFFINITY, $CPU_USAGE"
-        
-        while [[ $(($SECONDS < 1)) ]]; do
-            sleep 1
-        done 
     done
 }
 
