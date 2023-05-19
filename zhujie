@@ -1056,12 +1056,12 @@ function apex() {
     fi
     
     ROUNDS=1
-    DIRECT=0
+    CASE=0
     
     while [[ -n $1 ]]; do
         case $1 in
             [0-9]*) ROUNDS=$1 ;;
-            -d|--direct) DIRECT=1 ;;
+            -c|--case) shift; CASE=$1 ;;
         esac
         shift
     done
@@ -1071,11 +1071,11 @@ function apex() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    if [[ $DIRECT == 1 ]]; then
+    if [[ $CASE == 0 ]]; then
+        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
+    else
         check-display
         FPS_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.fps
-    else
-        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
     fi
     
     echo "FPS" > $FPS_FILE
@@ -1083,7 +1083,7 @@ function apex() {
     SECONDS=0
     
     for i in `seq 1 $ROUNDS`; do
-        if [[ $DIRECT_CALL == 0 ]]; then
+        if [[ $CASE == 0 ]]; then
             /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF \
             1> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log \
             2> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error && (
@@ -1092,8 +1092,15 @@ function apex() {
                 cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
                 cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
             )
-        else
+        elif [[ $CASE == 1 ]]; then
             cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
+                cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
+            ) || (
+                cat $HOME/Apex_Legends.log
+                cat $HOME/Apex_Legends.error
+            )
+        elif [[ $CASE == 2 ]]; then
+            cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  taskset 0xffff /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
                 cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
             ) || (
                 cat $HOME/Apex_Legends.log
@@ -1663,7 +1670,7 @@ function filesys() {
                 read -p "Remove it from server? (Y/n)" RSVP
                 case $RSVP in
                     ""|y|Y|1)
-                        gtlfs rm --username=wanliz --password=$PASSWD "$@"
+                        echo y | gtlfs rm --username=wanliz --password=$PASSWD "$@"
                     ;;
                     *)
                         echo "Nothing removed"
