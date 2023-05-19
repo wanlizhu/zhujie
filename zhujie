@@ -144,19 +144,19 @@ function display() {
 }
 
 function perf() {
-    case $1 in
-        "") PID="" ;;
-        [0-9]*) PID=$1 ;;
-        *) PID=`pidof $1` ;;
-    esac
-    
     echo "GPU Usage, CPU Affinity, CPU Usage"
     
     CONTINUE=1
     while [[ $CONTINUE == 1 ]]; do
+        case $1 in
+            "") PID="" ;;
+            [0-9]*) PID=$1 ;;
+            *) PID=`pidof $1` ;;
+        esac
+    
         GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 " %" }')
-        CPU_USAGE=$(cpu-usage $PID) || CONTINUE=0
-        CPU_AFFINITY=$([[ -n $PID ]] && (taskset -pc $PID 2> /dev/null | awk '{ print $6 }') || echo "N/A") || CONTINUE=0
+        CPU_USAGE=$(cpu-usage $1)
+        CPU_AFFINITY=$([[ -n $PID ]] && (taskset -pc $PID 2> /dev/null | awk '{ print $6 }') || echo "N/A") 
 
         echo "$GPU_USAGE,    $CPU_AFFINITY, $CPU_USAGE"
     done
@@ -1199,7 +1199,6 @@ function cpu-usage() {
     esac
     
     if [[ -n $PID ]]; then
-        taskset -pc $PID 1> /dev/null 2> dev/null || return 0 
         RANGE=$(parse-range $(taskset -pc $PID | awk '{ print $6 }'))
         for i in `seq $RANGE`; do 
             echo $i > /dev/null
