@@ -873,78 +873,75 @@ function fake-display() {
         /mnt/linuxqa/nvt.sh runcmd --cmd 'sleep 100000000'
     fi
 }
-    
-function vnc() {
-    CMD=$1
-    ACTUAL_DISPLAY=$2
-    VNCCMD=""
-    VNCPORT="5900"
-    RESOLUTION=""
-    
-    if [[ -z $CMD ]]; then
-        echo "Usage: vnc <start|stop|restart|status> [ACTUAL_DISPLAY] [RESOLUTION]" > /dev/stderr
-        echo "    ACTUAL_DISPLAY: work on the actual display" > /dev/stderr
-        echo "    RESOLUTION: like 3840x2160, only required when create a new virtual display" > /dev/stderr
-        echo "" > /dev/stderr
 
-        echo "/usr/bin/x0vncserver, where x0 means X session at display :0, is a simplified version of the standard /usr/bin/vncserver, x0vncserver doesn't create a virtual display, instead it just shares the actual X session at display :0 or an actual display you specified. The default port is $RFBPORT. If you want to change it, just define environment variable VNCPORT=xxx to whatever port you want the VNC server to listen to. Xvnc is started by vncserver/x0vncserver, Xvnc is actually two things together because it's an X server for local application and a VNC server for remote application." > /dev/stderr
-        echo "" > /dev/stderr
-
-        exit 1
-    fi
-    
-    if [[ -z $ACTUAL_DISPLAY ]]; then
-        VNCCMD=vncserver
-        if [[ -z $RESOLUTION && $CMD == start ]]; then
-            read -p "Virtual display resolution: (empty for 3840x2160) " RSVP
-            case $RSVP in 
-                "") RESOLUTION="-geometry 3840x2160" ;;
-                 *) RESOLUTION="-geometry $RSVP" ;;
-            esac
-        fi
-    else
-        VNCCMD=x0vncserver
-        RESOLUTION=""
-    fi
-    
-    which vncserver   > /dev/null || sudo apt install -y tigervnc-standalone-server 
+# Share a running display 
+function x0vnc() {
     which x0vncserver > /dev/null || sudo apt install -y tigervnc-scraping-server 
-    
-    if [[ ! -d $HOME/.vnc ]]; then
-        mkdir -p $HOME/.vnc
+
+    if [[ -z $VNCPORT ]]; then
+        VNCPORT=5900
     fi
     
-    if [[ ! -f $HOME/.vnc/passwd && $CMD == start ]]; then
-        echo "Creating ~/.vnc/passwd file..."
-        vncpasswd || (
-            echo "Error: can't generate VNC password at $HOME/.vnc/passwd" > /dev/stderr
-            exit 1
-        )
-    fi
+    while [[ -n $1 ]]; do
+        case $1 in
+            status)
+                shift
+                x0vncserver -list "$@"
+            ;;
+            stop)
+                shift
+                x0vncserver -kill "$@"
+            ;;
+            *) 
+                if [[ -z $1 ]]; then
+                    read -p "Input the display to share: (empty for :0) " RSVP
+                    case $RSVP in
+                        "")
+                            SHARED_DISPLAY=:0
+                        ;;
+                        *)
+                            SHARED_DISPLAY=$RSVP
+                        ;;
+                    esac
+                else
+                    SHARED_DISPLAY=$1
+                fi
+                
+                x0vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT $SHARED_DISPLAY
+            ;;
+        esac
+    done
+}
     
-    if [[ -n $VNCPORT ]]; then
-        RFBPORT="-rfbport $VNCPORT"
-    fi
+# Create a virtual display
+function vnc() {
+    which vncserver > /dev/null || sudo apt install -y tigervnc-standalone-server 
     
-    case $CMD in
-        start)
-            $VNCCMD -localhost no -PasswordFile $HOME/.vnc/passwd $RFBPORT $RESOLUTION $ACTUAL_DISPLAY
-        ;;
-        stop)
-            $VNCCMD -kill $ACTUAL_DISPLAY
-        ;;
-        restart)
-            vnc stop  $ACTUAL_DISPLAY
-            vnc start $ACTUAL_DISPLAY
-        ;;
-        status)
-            $VNCCMD -list $ACTUAL_DISPLAY
-        ;;
-        *)
-            vnc
-            exit 1
-        ;;
-    esac
+    if [[ -z $VNCPORT ]]; then
+        VNCPORT=5900
+    fi
+
+    while [[ -n $1 ]]; do
+        case $1 in
+            status) 
+                shift
+                vncserver -list "$@"
+            ;;
+            stop) 
+                shift
+                vncserver -kill "$@"
+            ;;
+            *)
+                read -p "Virtual display resolution: (empty for 3840x2160) " RSVP
+                case $RSVP in 
+                    "") GEOMETRY=3840x2160 ;;
+                     *) GEOMETRY=$RSVP ;;
+                esac
+                
+                vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
+            ;;
+        esac
+    done
 }
     
 function ddnet() {
