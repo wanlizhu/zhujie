@@ -893,20 +893,7 @@ function x0vnc() {
                 x0vncserver -kill "$@"
             ;;
             *) 
-                if [[ -z $1 ]]; then
-                    read -p "Input the display to share: (empty for :0) " RSVP
-                    case $RSVP in
-                        "")
-                            SHARED_DISPLAY=:0
-                        ;;
-                        *)
-                            SHARED_DISPLAY=$RSVP
-                        ;;
-                    esac
-                else
-                    SHARED_DISPLAY=$1
-                fi
-                
+                SHARED_DISPLAY=$1
                 x0vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT $SHARED_DISPLAY
             ;;
         esac
