@@ -158,8 +158,7 @@ function perf() {
         CPU_USAGE=$(cpu-usage $PID) || CONTINUE=0
         CPU_AFFINITY=$([[ -n $PID ]] && (taskset -pc $PID 2> /dev/null | awk '{ print $6 }') || echo "N/A") || CONTINUE=0
 
-        echo "$GPU_USAGE, $CPU_USAGE, $CPU_AFFINITY"
-        sleep 1
+        echo "$GPU_USAGE,    $CPU_AFFINITY, $CPU_USAGE"
     done
 }
 
