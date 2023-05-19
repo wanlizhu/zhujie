@@ -144,20 +144,25 @@ function display() {
 }
 
 function perf() {
-    PID=$1
+    case $1 in
+        "") PID="" ;;
+        [0-9]*) PID=$1 ;;
+        *) PID=`pidof $1` ;;
+    esac
+    
+    if [[ -z $PID ]]; then
+        echo "Error: can't find process $1" > /dev/stderr
+        exit 1
+    fi
     
     echo "GPU Usage, CPU Usage, CPU Affinity"
     
-    VALID=1
-    while [[ $VALID == 1 ]]; do
+    CONTINUE=1
+    while [[ $CONTINUE == 1 ]]; do
         GPU_USAGE=$(nvidia-smi --query --id=0 --display=UTILIZATION | grep "Gpu" | awk '{ print $3 " %" }')
-        CPU_USAGE=$(cpu-usage "$PID")
-        if [[ -z $PID ]]; then
-            CPU_AFFINITY="-"
-        else
-            CPU_AFFINITY=$(taskset -pc $PID 2> /dev/null | awk '{ print $6 }')
-        fi
-        
+        CPU_USAGE=$(cpu-usage $PID) || CONTINUE=0
+        CPU_AFFINITY=$([[ -n $PID ]] && (taskset -pc $PID 2> /dev/null | awk '{ print $6 }') || echo "N/A") || CONTINUE=0
+
         echo "$GPU_USAGE, $CPU_USAGE, $CPU_AFFINITY"
         sleep 1
     done
@@ -1193,16 +1198,21 @@ function cpu-online() {
 }
 
 function cpu-usage() {
-    PID=$1
+    case $1 in
+        "") PID="" ;;
+        [0-9]*) PID=$1 ;;
+        *) PID=$(pidof $1) ;;
+    esac
     
     if [[ -n $PID ]]; then
+        taskset -pc $PID 1> /dev/null 2> dev/null || return 0 
         RANGE=$(parse-range $(taskset -pc $PID | awk '{ print $6 }'))
         for i in `seq $RANGE`; do 
             echo $i > /dev/null
         done
         ps up $PID | awk 'NR==2{ print $3 " %" }' 
     else
-        echo "0.0 %"
+        top -bn2 | grep '%Cpu' | tail -1 | grep -P '(....|...) id,'|awk '{print 100-$8 " %"}'
     fi
 }
 
