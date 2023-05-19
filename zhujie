@@ -150,11 +150,6 @@ function perf() {
         *) PID=`pidof $1` ;;
     esac
     
-    if [[ -z $PID ]]; then
-        echo "Error: can't find process $1" > /dev/stderr
-        exit 1
-    fi
-    
     echo "GPU Usage, CPU Usage, CPU Affinity"
     
     CONTINUE=1
