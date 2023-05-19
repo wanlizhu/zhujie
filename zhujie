@@ -220,7 +220,7 @@ function nvmake() {
             return 0
         ;;
         *)
-            echo "Error: NVIDIA module '$MODULE' is not supported" > /dev/stderr
+            echo "Error: NVIDIA module $MODULE is not supported" > /dev/stderr
             exit 1
         ;;
     esac
@@ -275,7 +275,7 @@ function build() {
                             sweep) nvmake sweep * *; return ;;
                               ppp) nvmake ppp * *; return ;;   
             *)
-                echo "Error: unknown argument '$1'" > /dev/stderr
+                echo "Error: unknown argument $1" > /dev/stderr
                 build
                 exit 1
             ;;
@@ -347,7 +347,7 @@ function install() {
             if [[ -f $1 || -L $1 ]]; then
                 run-nvidia-installer "$1"
             else
-                echo "Error: '$1' doesn't exist" > /dev/stderr
+                echo "Error: $1 doesn't exist" > /dev/stderr
                 exit 1
             fi
         ;;
@@ -373,7 +373,7 @@ function remove() {
             rm -rf ~/gtlfs
         ;;
         *)
-            echo "Error: can't remove '$1'" > /dev/stderr
+            echo "Error: can't remove $1" > /dev/stderr
             exit 1
         ;;
     esac
@@ -387,7 +387,7 @@ function run-nvidia-installer() {
     fi
 
     if [[ ! -f $INSTALLER ]]; then
-        echo "Error: NVIDIA installer '$INSTALLER' doesn't exist" > /dev/stderr
+        echo "Error: NVIDIA installer $INSTALLER doesn't exist" > /dev/stderr
         exit 1
     fi
 
@@ -453,7 +453,7 @@ function update-nvidia-libs() {
                     fi
                     sudo cp -f $OUTDIR/$BASENAME $TARGETNAME
                 else
-                    echo "Error: '$TARGETNAME' is missing" > /dev/stderr
+                    echo "Error: $TARGETNAME is missing" > /dev/stderr
                     exit 1
                 fi
 
@@ -461,7 +461,7 @@ function update-nvidia-libs() {
             done
         ;;
         *)
-            echo "Error: NVIDIA module '$MODULE' is not supported" > /dev/stderr
+            echo "Error: NVIDIA module $MODULE is not supported" > /dev/stderr
             exit 1
         ;;
     esac 
@@ -504,7 +504,7 @@ function install-dvs-driver() {
               dev_a)  shift; BRANCH=dev_a; CL=$1 ;;
              public)  shift; BRANCH=public; CL=$1 ;;
             *)
-                echo "Error: unknown argument '$1'" > /dev/stderr
+                echo "Error: unknown argument $1" > /dev/stderr
                 exit 1
             ;;
         esac
@@ -647,7 +647,7 @@ function flamegraph() {
     sudo chmod 777 "$PERF_DATA"
 
     if [[ ! -f $PERF_DATA ]]; then
-        echo "Error: '$PERF_DATA' is missing" > /dev/stderr
+        echo "Error: $PERF_DATA is missing" > /dev/stderr
         exit 1
     fi
     
@@ -714,7 +714,7 @@ function p4bisect() {
          dev_a) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a" ;;
         opengl) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL" ;;
         *)
-            echo "Error: NVIDIA module '$1' is not supported" > /dev/stderr
+            echo "Error: NVIDIA module $1 is not supported" > /dev/stderr
             exit 1
         ;;
     esac 
@@ -829,7 +829,7 @@ function choose-kernel() {
     done
     
     if [[ $INVALID == 1 ]]; then
-        echo "Error: kernel '$KNAME' is invalid" > /dev/stderr
+        echo "Error: kernel $KNAME is invalid" > /dev/stderr
         exit 1
     fi
     
@@ -1016,12 +1016,12 @@ function talos() {
     check-display
     
     ROUNDS=1
-    VERBOSE=0
+    CASE=0
     
     while [[ -n $1 ]]; do
         case $1 in
             [0-9]*) ROUNDS=$1 ;;
-            -v|--verbose) VERBOSE=1 ;;
+            -c|--case) shift; CASE=$1 ;;
         esac
         shift
     done
@@ -1047,9 +1047,48 @@ function talos() {
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     
     for i in `seq 1 $ROUNDS`; do
-        ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error 
-            
-        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        case $CASE in
+            0) # Run inside container
+                echo "Run inside container is disabled" > /dev/stderr
+                exit 1
+            ;;
+            1) # Run directly
+                TASKSET=""
+                TASKSET_OPTIONS=""
+                CPU_LIST=""
+            ;;
+            2) # Run on all P-cores
+                CPU_MODEL=$(lscpu | grep "^CPU(s):" | awk '{print $2}' | awk '{ print $8 }')
+                if [[ $CPU_MODEL != "i9-12900K" ]]; then
+                    echo "Error: this case is designed for i9-12900K" > /dev/stderr
+                    exit 1
+                fi
+                
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+                CPU_LIST="0-15"
+            ;;
+            3) # Run with specified CPU affinity
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+                if [[ -z $CPU_LIST ]]; then
+                    echo "Error: Please define APEX_CPU_LIST" > /dev/stderr
+                    exit 1
+                fi
+            ;;
+            *)
+                echo "Error: unknown case number $CASE" > /dev/stderr
+                exit 1
+            ;;
+        esac
+        
+        $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
+            cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        ) || (
+            cat $HOME/zhujie-talos.log
+            cat $HOME/zhujie-talos.error
+            exit 1
+        )
     done
     
     popd > /dev/null
@@ -1096,42 +1135,56 @@ function apex() {
     SECONDS=0
     
     for i in `seq 1 $ROUNDS`; do
-        if [[ $CASE == 0 ]]; then
-            /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF \
-            1> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log \
-            2> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error && (
-                cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
-            ) || (
-                cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
-                cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
-            )
-        elif [[ $CASE == 1 ]]; then
-            cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
-                cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
-            ) || (
-                cat $HOME/Apex_Legends.log
-                cat $HOME/Apex_Legends.error
-            )
-        elif [[ $CASE == 2 ]]; then
-            cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  taskset 0xffff /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
-                cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
-            ) || (
-                cat $HOME/Apex_Legends.log
-                cat $HOME/Apex_Legends.error
-            )
-        elif [[ $CASE == 3 ]]; then
-            if [[ -z $APEX_CPU_LIST ]]; then
-                echo "Error: Please define APEX_CPU_LIST" > /dev/stderr
+        case $CASE in
+            0) # Run inside container
+                /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF \
+                1> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log \
+                2> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error && (
+                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
+                ) || (
+                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
+                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
+                    exit 1
+                )
+                continue
+            ;;
+            1) # Run directly
+                TASKSET="taskset"
+                TASKSET_OPTIONS=""
+                CPU_LIST=""
+            ;;
+            2) # Run on all P-cores
+                CPU_MODEL=$(lscpu | grep "^CPU(s):" | awk '{print $2}' | awk '{ print $8 }')
+                if [[ $CPU_MODEL != "i9-12900K" ]]; then
+                    echo "Error: this case is designed for i9-12900K" > /dev/stderr
+                    exit 1
+                fi
+                
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+                CPU_LIST="0-15"
+            ;;
+            3) # Run with specified CPU affinity
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+                if [[ -z $CPU_LIST ]]; then
+                    echo "Error: please define APEX_CPU_LIST" > /dev/stderr
+                    exit 1
+                fi
+            ;;
+            *)
+                echo "Error: unknown case number $CASE" > /dev/stderr
                 exit 1
-            fi
-            
-            cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  taskset --cpu-list $APEX_CPU_LIST /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
-                cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
-            ) || (
-                cat $HOME/Apex_Legends.log
-                cat $HOME/Apex_Legends.error
-            )
-        fi
+            ;;
+        esac
+        
+        cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  $TASKSET $TASKSET_OPTIONS $CPU_LIST /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
+            cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
+        ) || (
+            cat $HOME/Apex_Legends.log
+            cat $HOME/Apex_Legends.error
+            exit 1
+        )
     done
     
     echo ""
@@ -1266,7 +1319,7 @@ function pull() {
 function push() {
     GIT_REPO=$(dirname $0)
     if [[ ! -d $GIT_REPO/.git ]]; then
-        echo "Error: '$GIT_REPO' is not a Git repository" > /dev/stderr
+        echo "Error: $GIT_REPO is not a Git repository" > /dev/stderr
         exit 1
     fi
     
@@ -1313,7 +1366,7 @@ function mean() {
     done
     
     if [[ ! -f $FILE ]]; then
-        echo "Error: '$FILE' doesn't exist" > /dev/stderr
+        echo "Error: $FILE doesn't exist" > /dev/stderr
         exit 1
     fi
     
@@ -1357,7 +1410,7 @@ function mean2() {
     done
     
     if [[ ! -f $FILE ]]; then
-        echo "Error: '$FILE' doesn't exist" > /dev/stderr
+        echo "Error: $FILE doesn't exist" > /dev/stderr
         exit 1
     fi
     
@@ -1704,7 +1757,7 @@ function filesys() {
             )
         ;;
         *)
-            echo "Error: unknown argument '$1'" > /dev/stderr
+            echo "Error: unknown argument $1" > /dev/stderr
             exit 1
         ;;
     esac
