@@ -1781,6 +1781,7 @@ function active-resolution() {
         case $1 in
             -d|--default) DEFAULT=$1 ;;
         esac
+        shift
     done
     
     RESOLUTION=""
