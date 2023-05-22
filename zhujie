@@ -88,7 +88,15 @@ function check-display() {
 }
 
 function has-nvidia-gpu() { 
-    [[ -n $(lspci | grep NVIDIA) ]] && echo 1 || echo 0
+    [[ -n $(lshw -class display | grep NVIDIA) ]] && echo 1 || echo 0
+}
+
+function has-amd-gpu() {
+    [[ -n $(lshw -class display | grep 'vendor: Advanced Micro Devices') ]] && echo 1 || echo 0
+}
+
+function has-intel-gpu() {
+    [[ -n $(lshw -class display | grep 'vendor: Intel') ]] && echo 1 || echo 0
 }
 
 function cpu() {
@@ -100,12 +108,21 @@ function cpu() {
 }
 
 function gpu() {
-    # NVIDIA GPU(s)
-    nvidia-smi-static
+    if [[ $(has-nvidia-gpu) == 1 ]]; then
+        echo "NVIDIA GPU Attached"
+        nvidia-smi-static
+    elif [[ $(has-amd-gpu) == 1 ]]; then
+        echo "AMD GPU Attached"
+    elif [[ $(has-intel-gpu) == 1 ]]; then
+        echo "Intel GPU Attached"
+    fi
 }
 
 function nvidia-smi-static() {
-    which nvidia-smi > /dev/null || echo "Info: can't find nvidia-smi in PATH"
+    which nvidia-smi > /dev/null || (
+        echo "Info: can't find nvidia-smi in PATH"
+        exit 1
+    )
     
     nvidia-smi --query | grep "Driver Version" | awk -F ":" '{print "NVIDIA Driver Version:" $2}'
     
