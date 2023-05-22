@@ -101,15 +101,15 @@ function check-display() {
 }
 
 function has-nvidia-gpu() { 
-    [[ -n $(lshw -class display | grep NVIDIA) ]] && echo 1 || echo 0
+    [[ -n $(sudo lshw -class display | grep NVIDIA) ]] && echo 1 || echo 0
 }
 
 function has-amd-gpu() {
-    [[ -n $(lshw -class display | grep 'vendor: Advanced Micro Devices') ]] && echo 1 || echo 0
+    [[ -n $(sudo lshw -class display | grep 'vendor: Advanced Micro Devices') ]] && echo 1 || echo 0
 }
 
 function has-intel-gpu() {
-    [[ -n $(lshw -class display | grep 'vendor: Intel') ]] && echo 1 || echo 0
+    [[ -n $(sudo lshw -class display | grep 'vendor: Intel') ]] && echo 1 || echo 0
 }
 
 function cpu() {
