@@ -1153,7 +1153,7 @@ function list-viewperf-resolutions() {
         echo "Error: $(pwd)/viewsets/$TEST_NAME/config.xml doesn't exist" > /dev/stderr
         exit 1
     else
-        RESOLUTIONS=$(cat viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}')
+        cat viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}'
     fi
     
     popd > /dev/null
@@ -1209,7 +1209,7 @@ function catia() {
 function creo() {
     if [[ $EUID != 0 ]]; then
         echo "Error: please run as root" > /dev/stderr
-        # exit 1
+        exit 1
     fi
     
     check-display
