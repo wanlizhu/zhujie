@@ -1213,7 +1213,7 @@ function catia() {
 function creo() {
     if [[ $EUID != 0 ]]; then
         echo "Error: please run as root" > /dev/stderr
-        exit 1
+        # exit 1
     fi
     
     check-display
