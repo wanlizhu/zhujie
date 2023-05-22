@@ -7,7 +7,7 @@ export _1080P=1920x1080
 export _1K=1280x1024
 export _2K=2560x1440
 export _4K=3840x2160
-alias mysudo='sudo env "PATH=$PATH"'
+alias mysudo='sudo env "PATH=$PATH" "DISPLAY=$DISPLAY"'
 
 # Add zhujie to PATH
 which zhujie > /dev/null || (
