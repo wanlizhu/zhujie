@@ -3,6 +3,7 @@
 # System
 export __GL_SYNC_TO_VBLANK=0
 export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$PATH"
+export _1080P=1920x1080
 export _1K=1280x1024
 export _2K=2560x1440
 export _4K=3840x2160
@@ -1792,6 +1793,7 @@ function active-resolution() {
         esac 
         
         case $RESOLUTION in
+            1080|1080p|1080P) RESOLUTION=$_1080P ;;
             1k|1K) RESOLUTION=$_1K ;;
             2k|2K) RESOLUTION=$_2K ;;
             4k|4K) RESOLUTION=$_4K ;; 
