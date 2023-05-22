@@ -1295,41 +1295,38 @@ function cpu-usage() {
     fi
 }
 
-function pull-transient() {
-    if [[ ! -d /tmp/zhujie ]]; then 
-        git clone https://github.com/wanlizhu/zhujie /tmp/zhujie
-    fi 
-    
-    cd /tmp/zhujie
-    git pull
-    cp -f /tmp/zhujie/zhujie $0
-}
-
-function pull() {
-    GIT_REPO=$(dirname $0)
-    if [[ ! -d $GIT_REPO/.git ]]; then
-        pull-transient
-        return
+function sync() {
+    USE_TMP_GIT=0
+    BASEDIR=$(dirname $0)
+    if [[ ! -d $BASEDIR/.git ]]; then
+        read -p "Force update/overwrite $0? (Y/n): " RSVP
+        case $RSVP in
+            ""|y|Y|1) USE_TMP_GIT=1 ;;
+            *) echo "Nothing updated"; exit 1 ;;
+        esac
     fi
     
-    pushd $GIT_REPO > /dev/null
-    git pull https://github.com/wanlizhu/zhujie master
-    popd > /dev/null 
-}
-
-function push() {
-    GIT_REPO=$(dirname $0)
-    if [[ ! -d $GIT_REPO/.git ]]; then
-        echo "Error: $GIT_REPO is not a Git repository" > /dev/stderr
-        exit 1
+    if [[ $USE_TMP_GIT == 1 ]]; then
+        if [[ ! -d /tmp/zhujie ]]; then 
+            git clone https://github.com/wanlizhu/zhujie /tmp/zhujie
+        fi 
+        
+        pushd /tmp/zhujie > /dev/null
+        cp -f $0 /tmp/zhujie/zhujie
+        git add .
+        git commit -m "$(date)"
+        git pull
+        git push --set-upstream https://github.com/wanlizhu/zhujie master
+        cp -f /tmp/zhujie/zhujie $0
+        popd > /dev/null
+    else
+        pushd "$BASEDIR" > /dev/null
+        git add .
+        git commit -m "$(date)"
+        git pull
+        git push --set-upstream https://github.com/wanlizhu/zhujie master
+        popd > /dev/null
     fi
-    
-    echo "Info: push git repo from $GIT_REPO"
-    pushd "$GIT_REPO" > /dev/null
-    git add .
-    git commit -m "$(date)"
-    git push --set-upstream https://github.com/wanlizhu/zhujie master
-    popd > /dev/null
 }
 
 function vpn() {
@@ -1716,7 +1713,7 @@ function z() {
     zhujie "$@"
 }
 
-function filesys() {
+function files() {
     which gtlfs > /dev/null || (
         sudo wget https://gtlfs.nvidia.com/client/linux -O /usr/local/bin/gtlfs &&
         sudo chmod +x /usr/local/bin/gtlfs
@@ -1780,13 +1777,9 @@ case $1 in
         shift
         ip "$@"
     ;;
-    pull)
+    sync)
         shift
-        pull "$@"
-    ;;
-    push)
-        shift
-        push "$@"
+        sync "$@"
     ;;
     build)
         shift
@@ -1912,9 +1905,21 @@ case $1 in
         shift
         image "$@"
     ;;
-    fs|filesys)
+    fs|files)
         shift
-        filesys "$@"
+        files "$@"
+    ;;
+    pull)
+        shift
+        files pull "$@"
+    ;;
+    push)
+        shift
+        files push "$@"
+    ;;
+    fetch)
+        shift
+        files pull-rm "$@"
     ;;
     
     mac)
