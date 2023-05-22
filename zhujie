@@ -1136,16 +1136,12 @@ function apex() {
 }
 
 function viewperf-home() {
-    if [[ -d /root/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
-        echo /root/nvt/tests/viewperf2020v3/viewperf2020
-    elif [[ -d /home/nvidia/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
-        echo /home/nvidia/nvt/tests/viewperf2020v3/viewperf2020
-    elif [[ -d /home/zhujie/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
-        echo /home/zhujie/nvt/tests/viewperf2020v3/viewperf2020
-    elif [[ -d /home/zhujie/viewperf2020v3/viewperf2020 ]]; then
-        echo /home/zhujie/viewperf2020v3/viewperf2020
+    if [[ -d $HOME/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
+        echo $HOME/nvt/tests/viewperf2020v3/viewperf2020
+    elif [[ -d $HOME/viewperf2020 ]]; then
+        echo $HOME/viewperf2020
     else
-        echo "Error: can't find viewperf2020v3 folder" > /dev/stderr
+        echo "Error: can't find viewperf2020 folder" > /dev/stderr
         exit 1
     fi
 }
