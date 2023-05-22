@@ -352,6 +352,7 @@ function install() {
             chmod +x ~/gtlfs
         ;;
         terminus)
+            which make > /dev/null || sudo apt install -y build-essential
             wget https://sourceforge.net/projects/terminus-font/files/terminus-font-4.49/terminus-font-4.49.1.tar.gz/download -O /tmp/terminus-font-4.49.1.tar.gz
             cd /tmp
             tar -xvf terminus-font-4.49.1.tar.gz
@@ -1761,6 +1762,65 @@ function files() {
     esac
 }
 
+function average-fps() {
+    CPU_CLOCK=""
+    GPU_CLOCK=""
+    RESOLUTION=""
+    SUFFIX=""
+    LOOP=1
+    SHOW_CONFIG=0
+    
+    while [[ -n $1 ]]; do
+        case $1 in
+             --cpu-clock) shift;  CPU_CLOCK=$1; SUFFIX="-cpu-clock-$1" ;;
+             --gpu-clock) shift;  GPU_CLOCK=$1; SUFFIX="-gpu-clock-$1" ;;
+            --resolution) shift; RESOLUTION=$1; SUFFIX="-$1" ;;
+               -l|--loop) shift; LOOP=$1 ;;
+               -s|--show-config) SHOW_CONFIG=1 ;;
+        esac
+    done
+    
+    if [[ -f /tmp/average-fps$SUFFIX ]]; then
+        rm -rf /tmp/average-fps$SUFFIX
+    fi
+    
+    for i in `seq 1 $COUNT`; do
+        "$@" >> /tmp/average-fps$SUFFIX
+    done
+    
+    FPS=$(average --inline /tmp/average-fps$SUFFIX)
+    
+    if [[ $SHOW_CONFIG == 1 ]]; then
+        printf "%7.2f FPS    :: CPU Clock: $-4d, GPU Clock: $-4d, Resolution: %s\n" $FPS $CPU_CLOCK $GPU_CLOCK $RESOLUTION
+    else
+        echo $FPS
+    fi
+}
+
+function is-cpu-limited() {
+    LOOP=1
+    CPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOP --cpu-clock min "$@" | awk '{ print $1 }')
+    CPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOP --cpu-clock cur "$@" | awk '{ print $1 }')
+    CPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOP --cpu-clock max "$@" | awk '{ print $1 }')
+    if [[ $(has-nvidia-gpu) == 1 ]]; then
+        GPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOP --gpu-clock min "$@" | awk '{ print $1 }')
+        GPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOP --gpu-clock cur "$@" | awk '{ print $1 }')
+        GPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOP --gpu-clock max "$@" | awk '{ print $1 }')
+    else
+        GPU_CLOCK_MIN=0
+        GPU_CLOCK_CUR=0
+        GPU_CLOCK_MAX=0
+    fi
+    RESOLUTION_1K=$(average-fps --show-config --loop $LOOP --resolution 1280x1024 "$@" | awk '{ print $1 }')
+    RESOLUTION_2K=$(average-fps --show-config --loop $LOOP --resolution 2560x1440 "$@" | awk '{ print $1 }')
+    RESOLUTION_4K=$(average-fps --show-config --loop $LOOP --resolution 3840x2160 "$@" | awk '{ print $1 }')
+    
+    printf "Game: %s"
+    printf "CPU Clock Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $CPU_CLOCK_MIN $CPU_CLOCK_CUR $CPU_CLOCK_MAX
+    printf "GPU Clock Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $GPU_CLOCK_MIN $GPU_CLOCK_CUR $GPU_CLOCK_MAX
+    printf "     Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
+}
+
 
 
 
@@ -1921,6 +1981,11 @@ case $1 in
         shift
         files pull-rm "$@"
     ;;
+    is-cpu-limited)
+        shift
+        is-cpu-limited "$@"
+    ;;
+    
     
     mac)
         shift
