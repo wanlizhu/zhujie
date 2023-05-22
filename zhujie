@@ -3,6 +3,9 @@
 # System
 export __GL_SYNC_TO_VBLANK=0
 export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$PATH"
+export _1K=1280x1024
+export _2K=2560x1440
+export _4K=3840x2160
 
 # Add zhujie to PATH
 which zhujie > /dev/null || (
@@ -57,8 +60,8 @@ function on-user-cancel() {
 
 function combine-file-lines() {
     INFILE=$1
-    tr -d '\r' < "$INFILE" > /tmp/combine-lines
-    sed ':a;N;$!ba;s/\n/, /g' /tmp/combine-lines | sed 's/\n$//g'
+    tr -d '\r' < "$INFILE" > /tmp/zhujie-combine-lines
+    sed ':a;N;$!ba;s/\n/, /g' /tmp/zhujie-combine-lines | sed 's/\n$//g'
 }
 
 function check-display() {
@@ -656,10 +659,10 @@ function flamegraph() {
     sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS \
         --output="$PERF_DATA" \
         --sleep $PERF_RECORD_SECONDS \
-        2> /tmp/$(basename $PERF_DATA).error \
+        2> /tmp/zhujie-$(basename $PERF_DATA).error \
         && echo "[OK]" || (
             echo "[FAILED]"
-            cat /tmp/$PERF_DATA.error
+            cat /tmp/zhujie-$(basename $PERF_DATA).error
             exit 1
         )
     sudo chmod 777 "$PERF_DATA"
@@ -673,41 +676,41 @@ function flamegraph() {
     
     echo -ne "Info: perf script\t"
     sudo perf script --input="$PERF_DATA" \
-        1> "/tmp/$BASENAME.perf" \
-        2> "/tmp/$BASENAME.perf.error" \
+        1> "/tmp/zhujie-$BASENAME.perf" \
+        2> "/tmp/zhujie-$BASENAME.perf.error" \
         && echo "[OK]" || (
             echo "[FAILED]"
-            cat "/tmp/$BASENAME.perf.error"
+            cat "/tmp/zhujie-$BASENAME.perf.error"
             exit 1
         ) 
     
     echo -ne "Info: stackcollapse-perf.pl\t"
-    sudo stackcollapse-perf.pl "/tmp/$BASENAME.perf" \
-        1> "/tmp/$BASENAME.perf.folded" \
-        2> "/tmp/$BASENAME.perf.folded.error" \
+    sudo stackcollapse-perf.pl "/tmp/zhujie-$BASENAME.perf" \
+        1> "/tmp/zhujie-$BASENAME.perf.folded" \
+        2> "/tmp/zhujie-$BASENAME.perf.folded.error" \
         && echo "[OK]" || (\
             echo "[FAILED]"
-            cat "/tmp/$BASENAME.perf.folded.error"
+            cat "/tmp/zhujie-$BASENAME.perf.folded.error"
             exit 1
         )
     
     echo -ne "Info: stackcollapse-recursive.pl\t"
-    sudo stackcollapse-recursive.pl "/tmp/$BASENAME.perf.folded" \
-        1> "/tmp/$BASENAME.perf.folded.recursive" \
-        2> "/tmp/$BASENAME.perf.folded.recursive.error" \
+    sudo stackcollapse-recursive.pl "/tmp/zhujie-$BASENAME.perf.folded" \
+        1> "/tmp/zhujie-$BASENAME.perf.folded.recursive" \
+        2> "/tmp/zhujie-$BASENAME.perf.folded.recursive.error" \
         && echo "[OK]" || (\
             echo "[FAILED]"
-            cat "/tmp/$BASENAME.perf.folded.recursive.error"
+            cat "/tmp/zhujie-$BASENAME.perf.folded.recursive.error"
             exit 1
         )
     
     echo -ne "Info: flamegraph.pl\t"
-    sudo flamegraph.pl "/tmp/$BASENAME.perf.folded.recursive" \
+    sudo flamegraph.pl "/tmp/zhujie-$BASENAME.perf.folded.recursive" \
         1> "$SVG_FILE" \
-        2> "/tmp/$BASENAME.perf.folded.recursive.error" \
+        2> "/tmp/zhujie-$BASENAME.perf.folded.recursive.error" \
         && echo "[OK]" || (\
             echo "[FAILED]"
-            cat "/tmp/$BASENAME.perf.folded.recursive.error"
+            cat "/tmp/zhujie-$BASENAME.perf.folded.recursive.error"
             exit 1
         )
 }
@@ -851,16 +854,16 @@ function choose-kernel() {
         exit 1
     fi
     
-    rm -rf /tmp/grub.tmp
+    rm -rf /tmp/zhujie-grub.tmp
     while read -r LINE; do
         if [[ $LINE == *"GRUB_DEFAULT"* ]]; then
-            echo "GRUB_DEFAULT=\"Advanced options for Ubuntu>Ubuntu, with Linux $KNAME\"" >> "/tmp/grub.tmp"
+            echo "GRUB_DEFAULT=\"Advanced options for Ubuntu>Ubuntu, with Linux $KNAME\"" >> "/tmp/zhujie-grub.tmp"
         else
-            echo "$LINE" >> /tmp/grub.tmp
+            echo "$LINE" >> /tmp/zhujie-grub.tmp
         fi
     done < /etc/default/grub
     
-    sudo cp /tmp/grub.tmp /etc/default/grub
+    sudo cp /tmp/zhujie-grub.tmp /etc/default/grub
     sudo update-grub
 }
     
@@ -874,9 +877,9 @@ function fake-display() {
     if [[ $(has-nvidia-gpu) == 1 ]]; then
         if [[ -z $RESOLUTION ]]; then
             echo "Usage: fake-display [RESOLUTION]" > /dev/stderr
-            read -p "Use the default resolution, 3840x2160? (Y/n): " RSVP
+            read -p "Use the default resolution, $_4K? (Y/n): " RSVP
             case $RSVP in
-                ""|y|Y|1) RESOLUTION=3840x2160 ;;
+                ""|y|Y|1) RESOLUTION=$_4K ;;
                        *) RESOLUTION=$RSVP ;;
             esac
         fi
@@ -937,9 +940,9 @@ function vnc() {
                 vncserver -kill "$@"
             ;;
             *)
-                read -p "Virtual display resolution: (empty for 3840x2160) " RSVP
+                read -p "Virtual display resolution: (empty for $_4K) " RSVP
                 case $RSVP in 
-                    "") GEOMETRY=3840x2160 ;;
+                    "") GEOMETRY=$_4K ;;
                      *) GEOMETRY=$RSVP ;;
                 esac
                 
@@ -1126,7 +1129,7 @@ function apex() {
     fi
     
     if [[ $CASE == 0 ]]; then
-        FPS_FILE=$HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.${ROUNDS}-rounds.fps
+        FPS_FILE=$HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.${ROUNDS}-rounds.fps
     else
         check-display
         FPS_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.fps
@@ -1139,13 +1142,13 @@ function apex() {
     for i in `seq 1 $ROUNDS`; do
         case $CASE in
             0) # Run inside container
-                /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_3840x2160_1xAA_16xAF \
-                1> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log \
-                2> $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error && (
-                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
+                /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_${_4K}_1xAA_16xAF \
+                1> $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log \
+                2> $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.error && (
+                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
                 ) || (
-                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.log
-                    cat $HOME/Apex_Legends_Ultra_3840x2160_1xAA_16xAF.error
+                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log
+                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.error
                     exit 1
                 )
                 continue
@@ -1213,7 +1216,7 @@ function catia() {
     done
     
     check-display
-    echo "FPS" > $HOME/catia_3840x2160.fps
+    echo "FPS" > $HOME/catia_${_4K}.fps
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
@@ -1224,13 +1227,13 @@ function catia() {
     SECONDS=0
     
     for i in `seq 1 $ROUNDS`; do
-        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution 3840x2160 \
-        1> $HOME/catia_3840x2160.log \
-        2> $HOME/catia_3840x2160.error && (
-            cat $HOME/catia_3840x2160.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee $HOME/catia_3840x2160.fps
+        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $_4K \
+        1> $HOME/catia_${_4K}.log \
+        2> $HOME/catia_${_4K}.error && (
+            cat $HOME/catia_${_4K}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee $HOME/catia_${_4K}.fps
         ) || (
-            cat $HOME/catia_3840x2160.log
-            cat $HOME/catia_3840x2160.error
+            cat $HOME/catia_${_4K}.log
+            cat $HOME/catia_${_4K}.error
         )
     done
     
@@ -1240,7 +1243,7 @@ function catia() {
     echo "Finished $ROUNDS rounds in $SECONDS seconds"
     
     if [[ $ROUNDS > 1 ]]; then
-        average $HOME/catia_3840x2160.fps
+        average $HOME/catia_${_4K}.fps
     fi
 }
 
@@ -1725,11 +1728,11 @@ function files() {
         exit 1
     )
     
-    if [[ -f /tmp/gtlfs-password-cache ]]; then
-        PASSWD=$(cat /tmp/gtlfs-password-cache)
+    if [[ -f /tmp/zhujie-gtlfs-password-cache ]]; then
+        PASSWD=$(cat /tmp/zhujie-gtlfs-password-cache)
     else
         read -p "GTLFS Password: " PASSWD
-        echo $PASSWD > /tmp/gtlfs-password-cache
+        echo $PASSWD > /tmp/zhujie-gtlfs-password-cache
     fi
     
     case $1 in 
@@ -1762,9 +1765,65 @@ function files() {
     esac
 }
 
+function active-resolution() {
+    DEFAULT=""
+    while [[ -n $1 ]]; do
+        case $1 in
+            -d|--default) DEFAULT=$1 ;;
+        esac
+    done
+    
+    RESOLUTION=""
+    if [[ -f /tmp/zhujie-active-resolution ]]; then
+        RESOLUTION=$(cat /tmp/zhujie-active-resolution)
+    fi
+    
+    if [[ -z $RESOLUTION ]]; then
+        if [[ -n $DEFAULT ]]; then
+            RESOLUTION=$DEFAULT
+        fi
+    fi
+    
+    while [[ -z $RESOLUTION ]]; do
+        read -p "What resolution to run in? (empty for $_4K): " RSVP
+        case $RSVP in
+            "") RESOLUTION=$_4K ;;
+             *) RESOLUTION=$1 ;;
+        esac 
+        
+        case $RESOLUTION in
+            1k|1K) RESOLUTION=$_1K ;;
+            2k|2K) RESOLUTION=$_2K ;;
+            4k|4K) RESOLUTION=$_4K ;; 
+        esac
+        
+        if [[ -n $RESOLUTION ]]; then
+            break
+        fi
+    done
+    
+    echo $RESOLUTION
+}
+
+function push-cpu-freq() {
+    echo
+}
+
+function pop-cpu-freq() {
+    echo
+}
+
+function push-gpu-freq() {
+    echo
+}
+
+function pop-gpu-freq() {
+    echo
+}
+
 function average-fps() {
-    CPU_CLOCK=""
-    GPU_CLOCK=""
+    CPU_FREQ=""
+    GPU_FREQ=""
     RESOLUTION=""
     SUFFIX=""
     LOOP=1
@@ -1772,26 +1831,38 @@ function average-fps() {
     
     while [[ -n $1 ]]; do
         case $1 in
-             --cpu-clock) shift;  CPU_CLOCK=$1; SUFFIX="-cpu-clock-$1" ;;
-             --gpu-clock) shift;  GPU_CLOCK=$1; SUFFIX="-gpu-clock-$1" ;;
+             --cpu-freq) shift;  CPU_FREQ=$1; SUFFIX="-cpu-freq-$1" ;;
+             --gpu-freq) shift;  GPU_FREQ=$1; SUFFIX="-gpu-freq-$1" ;;
             --resolution) shift; RESOLUTION=$1; SUFFIX="-$1" ;;
                -l|--loop) shift; LOOP=$1 ;;
                -s|--show-config) SHOW_CONFIG=1 ;;
         esac
     done
     
-    if [[ -f /tmp/average-fps$SUFFIX ]]; then
-        rm -rf /tmp/average-fps$SUFFIX
+    if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
+        rm -rf /tmp/zhujie-average-fps$SUFFIX
+    fi
+    
+    push-cpu-freq $CPU_FREQ > /dev/null
+    push-gpu-freq $GPU_FREQ > /dev/null
+    if [[ -n $RESOLUTION ]]; then
+        echo $RESOLUTION > /tmp/zhujie-active-resolution
     fi
     
     for i in `seq 1 $COUNT`; do
-        "$@" >> /tmp/average-fps$SUFFIX
+        "$@" >> /tmp/zhujie-average-fps$SUFFIX
     done
     
-    FPS=$(average --inline /tmp/average-fps$SUFFIX)
+    if [[ -f $RESOLUTION ]]; then
+        rm -rf /tmp/zhujie-active-resolution
+    fi
+    pop-gpu-freq > /dev/null
+    pop-cpu-freq > /dev/null
+    
+    FPS=$(average --inline /tmp/zhujie-average-fps$SUFFIX)
     
     if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%7.2f FPS    :: CPU Clock: $-4d, GPU Clock: $-4d, Resolution: %s\n" $FPS $CPU_CLOCK $GPU_CLOCK $RESOLUTION
+        printf "%7.2f FPS    :: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" $FPS $CPU_CLOCK $GPU_CLOCK $RESOLUTION
     else
         echo $FPS
     fi
@@ -1799,26 +1870,26 @@ function average-fps() {
 
 function is-cpu-limited() {
     LOOP=1
-    CPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOP --cpu-clock min "$@" | awk '{ print $1 }')
-    CPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOP --cpu-clock cur "$@" | awk '{ print $1 }')
-    CPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOP --cpu-clock max "$@" | awk '{ print $1 }')
+    CPU_FREQ_MIN=$(average-fps --show-config --loop $LOOP --cpu-freq min "$@" | awk '{ print $1 }')
+    CPU_FREQ_CUR=$(average-fps --show-config --loop $LOOP --cpu-freq cur "$@" | awk '{ print $1 }')
+    CPU_FREQ_MAX=$(average-fps --show-config --loop $LOOP --cpu-freq max "$@" | awk '{ print $1 }')
     if [[ $(has-nvidia-gpu) == 1 ]]; then
-        GPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOP --gpu-clock min "$@" | awk '{ print $1 }')
-        GPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOP --gpu-clock cur "$@" | awk '{ print $1 }')
-        GPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOP --gpu-clock max "$@" | awk '{ print $1 }')
+        GPU_FREQ_MIN=$(average-fps --show-config --loop $LOOP --gpu-freq min "$@" | awk '{ print $1 }')
+        GPU_FREQ_CUR=$(average-fps --show-config --loop $LOOP --gpu-freq cur "$@" | awk '{ print $1 }')
+        GPU_FREQ_MAX=$(average-fps --show-config --loop $LOOP --gpu-freq max "$@" | awk '{ print $1 }')
     else
-        GPU_CLOCK_MIN=0
-        GPU_CLOCK_CUR=0
-        GPU_CLOCK_MAX=0
+        GPU_FREQ_MIN=0
+        GPU_FREQ_CUR=0
+        GPU_FREQ_MAX=0
     fi
-    RESOLUTION_1K=$(average-fps --show-config --loop $LOOP --resolution 1280x1024 "$@" | awk '{ print $1 }')
-    RESOLUTION_2K=$(average-fps --show-config --loop $LOOP --resolution 2560x1440 "$@" | awk '{ print $1 }')
-    RESOLUTION_4K=$(average-fps --show-config --loop $LOOP --resolution 3840x2160 "$@" | awk '{ print $1 }')
+    RESOLUTION_1K=$(average-fps --show-config --loop $LOOP --resolution ${_1K} "$@" | awk '{ print $1 }')
+    RESOLUTION_2K=$(average-fps --show-config --loop $LOOP --resolution ${_2K} "$@" | awk '{ print $1 }')
+    RESOLUTION_4K=$(average-fps --show-config --loop $LOOP --resolution ${_4K} "$@" | awk '{ print $1 }')
     
     printf "Game: %s"
-    printf "CPU Clock Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $CPU_CLOCK_MIN $CPU_CLOCK_CUR $CPU_CLOCK_MAX
-    printf "GPU Clock Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $GPU_CLOCK_MIN $GPU_CLOCK_CUR $GPU_CLOCK_MAX
-    printf "     Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
+    printf "CPU Freq Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $CPU_FREQ_MIN $CPU_FREQ_CUR $CPU_FREQ_MAX
+    printf "GPU Freq Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $GPU_FREQ_MIN $GPU_FREQ_CUR $GPU_FREQ_MAX
+    printf "    Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
 }
 
 
