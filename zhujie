@@ -2007,6 +2007,10 @@ case $1 in
         shift
         catia "$@"
     ;;
+    creo)
+        shift
+        creo "$@"
+    ;;
     dp|display)
         shift
         display "$@"
