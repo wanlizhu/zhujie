@@ -1779,7 +1779,7 @@ function active-resolution() {
     DEFAULT=""
     while [[ -n $1 ]]; do
         case $1 in
-            -d|--default) DEFAULT=$1 ;;
+            -d|--default) shift; DEFAULT=$1 ;;
         esac
         shift
     done
