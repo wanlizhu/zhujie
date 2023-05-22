@@ -2,7 +2,7 @@
 
 # System
 export __GL_SYNC_TO_VBLANK=0
-export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$PATH"
+export PATH="$HOME:$HOME/bin:$HOME/.local/bin:$HOME/zhujie:$PATH"
 export _1080P=1920x1080
 export _1K=1280x1024
 export _2K=2560x1440
@@ -357,7 +357,7 @@ function install() {
         ;;
         terminus)
             which make > /dev/null || sudo apt install -y build-essential
-            wget https://sourceforge.net/projects/terminus-font/files/terminus-font-4.49/terminus-font-4.49.1.tar.gz/download -O /tmp/terminus-font-4.49.1.tar.gz
+            wget https://sourceforge.net/projects/terminus-font/files/terminus-font-4.49/terminus-font-4.49.1.tar.gz/download -O $HOME/Downloads/terminus-font-4.49.1.tar.gz
             cd /tmp
             tar -xvf terminus-font-4.49.1.tar.gz
             cd terminus-font-4.49.1
@@ -605,8 +605,8 @@ function flamegraph() {
     )
 
     NAME=Perf-NoName
-    SVG_FILE=$HOME/$NAME.svg
-    PERF_DATA=$HOME/$NAME.data
+    SVG_FILE=$HOME/zhujie-$NAME.svg
+    PERF_DATA=$HOME/zhujie-$NAME.data
     PERF_RECORD_SYSTEM_WIDE=1
     PERF_RECORD_PID=" -a "
     PERF_RECORD_SECONDS=10
@@ -617,8 +617,8 @@ function flamegraph() {
             -n|--name)
                 shift
                 NAME=$1
-                SVG_FILE=$HOME/$NAME.svg
-                PERF_DATA=$HOME/$NAME.data
+                SVG_FILE=$HOME/zhujie-$NAME.svg
+                PERF_DATA=$HOME/zhujie-$NAME.data
             ;;
             -p|--pid)
                 shift
@@ -632,8 +632,8 @@ function flamegraph() {
             *)
 	            if [[ -n $(pidof $1) ]]; then
 	                NAME=$([[ $NAME == Perf-NoName ]] && echo $1 || echo $NAME)
-	                SVG_FILE=$HOME/$NAME.svg
-                    PERF_DATA=$HOME/$NAME.data
+	                SVG_FILE=$HOME/zhujie-$NAME.svg
+                    PERF_DATA=$HOME/zhujie-$NAME.data
                     PERF_RECORD_SYSTEM_WIDE=0
                     PERF_RECORD_PID=" --pid=$(pidof $NAME) "
 	            else
@@ -730,7 +730,7 @@ function p4bisect() {
     MODULE=$1
     DATE_OLD=$2
     DATE_NEW=$3
-    CHANGES="$HOME/p4-changes-on-$MODULE"
+    CHANGES="$HOME/zhujie-p4-changes-on-$MODULE"
     
     case $MODULE in
          dev_a) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a" ;;
@@ -878,11 +878,7 @@ function fake-display() {
     if [[ $(has-nvidia-gpu) == 1 ]]; then
         if [[ -z $RESOLUTION ]]; then
             echo "Usage: fake-display [RESOLUTION]" > /dev/stderr
-            read -p "Use the default resolution, $_4K? (Y/n): " RSVP
-            case $RSVP in
-                ""|y|Y|1) RESOLUTION=$_4K ;;
-                       *) RESOLUTION=$RSVP ;;
-            esac
+            RESOLUTION=$(active-resolution --default $_4K)
         fi
     else
         RESOLUTION=""
@@ -941,12 +937,7 @@ function vnc() {
                 vncserver -kill "$@"
             ;;
             *)
-                read -p "Virtual display resolution: (empty for $_4K) " RSVP
-                case $RSVP in 
-                    "") GEOMETRY=$_4K ;;
-                     *) GEOMETRY=$RSVP ;;
-                esac
-                
+                GEOMETRY=$(active-resolution --default $_4K)
                 vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
             ;;
         esac
@@ -1016,18 +1007,12 @@ function kill-talos-later() {
 }
 
 function talos() {
-    # Vulkan
-    # 2560x1440
-
     check-display
     
-    ROUNDS=1
-    CASE=0
-    
+    DIRECT_CALL=0
     while [[ -n $1 ]]; do
         case $1 in
-            [0-9]*) ROUNDS=$1 ;;
-            -c|--case) shift; CASE=$1 ;;
+            -d|--direct) shift; DIRECT_CALL=1 ;;
         esac
         shift
     done
@@ -1050,61 +1035,36 @@ function talos() {
         rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
     
-    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
-    
-    for i in `seq 1 $ROUNDS`; do
-        case $CASE in
-            0) # Run inside container
-                echo "Run inside container is disabled" > /dev/stderr
-                exit 1
-            ;;
-            1) # Run directly
+    TASKSET="taskset"
+    TASKSET_OPTIONS="--cpu-list"
+    if [[ -n $CPU_LIST ]]; then
+        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        case $RSVP in
+            ""|y|Y|1) ;;
+            *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
                 CPU_LIST=""
+                echo "CPU affinity is ignored"
             ;;
-            2) # Run on all P-cores
-                CPU_MODEL=$(lscpu | grep "^CPU(s):" | awk '{print $2}' | awk '{ print $8 }')
-                if [[ $CPU_MODEL != "i9-12900K" ]]; then
-                    echo "Error: this case is designed for i9-12900K" > /dev/stderr
-                    exit 1
-                fi
-                
-                TASKSET="taskset"
-                TASKSET_OPTIONS="--cpu-list"
-                CPU_LIST="0-15"
-            ;;
-            3) # Run with specified CPU affinity
-                TASKSET="taskset"
-                TASKSET_OPTIONS="--cpu-list"
-                if [[ -z $CPU_LIST ]]; then
-                    echo "Error: Please define APEX_CPU_LIST" > /dev/stderr
-                    exit 1
-                fi
-            ;;
-            *)
-                echo "Error: unknown case number $CASE" > /dev/stderr
-                exit 1
-            ;;
-        esac
-        
-        $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth 2560 +gfx_pixResHeight 1440 +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
-            cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
-        ) || (
-            cat $HOME/zhujie-talos.log
-            cat $HOME/zhujie-talos.error
-            exit 1
-        )
-    done
-    
-    popd > /dev/null
-    
-    echo ""
-    
-    if [[ $ROUNDS > 1 ]]; then
-        echo -ne "Average FPS: "
-        average /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        esac 
+    else
+        TASKSET=""
+        TASKSET_OPTIONS=""
     fi
+    RESOLUTION=$(active-resolution --default $_2K)
+    WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
+    HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
+    
+    pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
+        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+    ) || (
+        cat $HOME/zhujie-talos.log
+        cat $HOME/zhujie-talos.error
+        exit 1
+    )
+    popd > /dev/null
 }
 
 function apex() {
@@ -1113,13 +1073,10 @@ function apex() {
         exit 1
     fi
     
-    ROUNDS=1
-    CASE=0
-    
+    DIRECT_CALL=0
     while [[ -n $1 ]]; do
         case $1 in
-            [0-9]*) ROUNDS=$1 ;;
-            -c|--case) shift; CASE=$1 ;;
+            -d|--direct) DIRECT_CALL=1 ;;
         esac
         shift
     done
@@ -1129,76 +1086,80 @@ function apex() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    if [[ $CASE == 0 ]]; then
-        FPS_FILE=$HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.${ROUNDS}-rounds.fps
+    RESOLUTION=$(active-resolution --default $_4K)
+    
+    if [[ $DIRECT_CALL == 0 ]]; then
+        FPS_FILE=$HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.${ROUNDS}-rounds.fps
     else
         check-display
-        FPS_FILE=$HOME/Apex_Legends.${ROUNDS}-rounds.fps
+        FPS_FILE=$HOME/zhujie-Apex_Legends.${ROUNDS}-rounds.fps
     fi
     
-    echo "FPS" > $FPS_FILE
-    
-    SECONDS=0
-    
-    for i in `seq 1 $ROUNDS`; do
-        case $CASE in
-            0) # Run inside container
-                /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_${_4K}_1xAA_16xAF \
-                1> $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log \
-                2> $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.error && (
-                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
-                ) || (
-                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.log
-                    cat $HOME/Apex_Legends_Ultra_${_4K}_1xAA_16xAF.error
-                    exit 1
-                )
-                continue
-            ;;
-            1) # Run directly
-                TASKSET="taskset"
-                TASKSET_OPTIONS=""
-                CPU_LIST=""
-            ;;
-            2) # Run on all P-cores
-                CPU_MODEL=$(lscpu | grep "^CPU(s):" | awk '{print $2}' | awk '{ print $8 }')
-                if [[ $CPU_MODEL != "i9-12900K" ]]; then
-                    echo "Error: this case is designed for i9-12900K" > /dev/stderr
-                    exit 1
-                fi
-                
-                TASKSET="taskset"
-                TASKSET_OPTIONS="--cpu-list"
-                CPU_LIST="0-15"
-            ;;
-            3) # Run with specified CPU affinity
-                TASKSET="taskset"
-                TASKSET_OPTIONS="--cpu-list"
-                if [[ -z $CPU_LIST ]]; then
-                    echo "Error: please define APEX_CPU_LIST" > /dev/stderr
-                    exit 1
-                fi
-            ;;
-            *)
-                echo "Error: unknown case number $CASE" > /dev/stderr
-                exit 1
-            ;;
-        esac
-        
-        cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  $TASKSET $TASKSET_OPTIONS $CPU_LIST /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/Apex_Legends.log 2> $HOME/Apex_Legends.error && (
-            cat $HOME/Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
+    if [[ $DIRECT_CALL == 0 ]]; then
+        /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF \
+        1> $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log \
+        2> $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.error && (
+            cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
         ) || (
-            cat $HOME/Apex_Legends.log
-            cat $HOME/Apex_Legends.error
+            cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log
+            cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.error
             exit 1
         )
-    done
-    
-    echo ""
-    echo "Finished $ROUNDS rounds in $SECONDS seconds"
-    
-    if [[ $ROUNDS > 1 ]]; then
-        average $FPS_FILE
+    else
+        TASKSET="taskset"
+        TASKSET_OPTIONS="--cpu-list"
+        if [[ -n $CPU_LIST ]]; then
+            read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+            case $RSVP in
+                ""|y|Y|1) ;;
+                *) 
+                    TASKSET=""
+                    TASKSET_OPTIONS=""
+                    CPU_LIST=""
+                    echo "CPU affinity is ignored"
+                ;;
+            esac 
+        else
+            TASKSET=""
+            TASKSET_OPTIONS=""
+        fi
+        
+        cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  $TASKSET $TASKSET_OPTIONS $CPU_LIST /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/zhujie-Apex_Legends.log 2> $HOME/zhujie-Apex_Legends.error && (
+            cat $HOME/zhujie-Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
+        ) || (
+            cat $HOME/zhujie-Apex_Legends.log
+            cat $HOME/zhujie-Apex_Legends.error
+            exit 1
+        )
     fi
+}
+
+function viewperf-home() {
+    if [[ -d /root/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
+        echo /root/nvt/tests/viewperf2020v3/viewperf2020
+    elif [[ -d /home/nvidia/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
+        echo /home/nvidia/nvt/tests/viewperf2020v3/viewperf2020
+    elif [[ -d /home/zhujie/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
+        echo /home/zhujie/nvt/tests/viewperf2020v3/viewperf2020
+    elif [[ -d /home/zhujie/viewperf2020v3/viewperf2020 ]]; then
+        echo /home/zhujie/viewperf2020v3/viewperf2020
+    else
+        echo "Error: can't find viewperf2020v3 folder" > /dev/stderr
+        exit 1
+    fi
+}
+
+function list-viewperf-resolutions() {
+    pushd $(viewperf-home) > /dev/null
+    
+    if [[ -z $1 ]]; then
+        echo "Error: $(pwd)/viewsets/$TEST_NAME/config.xml doesn't exist" > /dev/stderr
+        exit 1
+    else
+        RESOLUTIONS=$(cat viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}')
+    fi
+    
+    popd > /dev/null
 }
     
 function catia() {
@@ -1207,45 +1168,92 @@ function catia() {
         exit 1
     fi
     
-    ROUNDS=1
-    
-    while [[ -n $1 ]]; do
-        case $1 in
-            [0-9]*) ROUNDS=$1 ;;
-        esac
-        shift
-    done
-    
     check-display
-    echo "FPS" > $HOME/catia_${_4K}.fps
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
         echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
-    pushd /root/nvt/tests/viewperf2020v3/viewperf2020 > /dev/null
-    SECONDS=0
-    
-    for i in `seq 1 $ROUNDS`; do
-        viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $_4K \
-        1> $HOME/catia_${_4K}.log \
-        2> $HOME/catia_${_4K}.error && (
-            cat $HOME/catia_${_4K}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee $HOME/catia_${_4K}.fps
-        ) || (
-            cat $HOME/catia_${_4K}.log
-            cat $HOME/catia_${_4K}.error
-        )
-    done
-    
-    popd > /dev/null
-    
-    echo ""
-    echo "Finished $ROUNDS rounds in $SECONDS seconds"
-    
-    if [[ $ROUNDS > 1 ]]; then
-        average $HOME/catia_${_4K}.fps
+    RESOLUTION=$(active-resolution --default $_4K)
+    TASKSET="taskset"
+    TASKSET_OPTIONS="--cpu-list"
+    if [[ -n $CPU_LIST ]]; then
+        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        case $RSVP in
+            ""|y|Y|1) ;;
+            *) 
+                TASKSET=""
+                TASKSET_OPTIONS=""
+                CPU_LIST=""
+                echo "CPU affinity is ignored"
+            ;;
+        esac 
+    else
+        TASKSET=""
+        TASKSET_OPTIONS=""
     fi
+        
+    pushd $(viewperf-home) > /dev/null
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
+    1> $HOME/zhujie-catia_${RESOLUTION}.log \
+    2> $HOME/zhujie-catia_${RESOLUTION}.error && (
+        cat $HOME/zhujie-catia_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-catia_${RESOLUTION}.fps
+    ) || (
+        cat $HOME/zhujie-catia_${RESOLUTION}.log
+        cat $HOME/zhujie-catia_${RESOLUTION}.error
+        echo ""
+        echo "Available resolutions: "
+        list-viewperf-resolutions catia
+    )
+    popd > /dev/null
+}
+
+function creo() {
+    if [[ $EUID != 0 ]]; then
+        echo "Error: please run as root" > /dev/stderr
+        exit 1
+    fi
+    
+    check-display
+    
+    if [[ $(has-nvidia-gpu) == 0 ]]; then
+        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        unset NVTEST_DRIVER_DIR
+    fi
+    
+    RESOLUTION=$(active-resolution --default $_4K)
+    TASKSET="taskset"
+    TASKSET_OPTIONS="--cpu-list"
+    if [[ -n $CPU_LIST ]]; then
+        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        case $RSVP in
+            ""|y|Y|1) ;;
+            *) 
+                TASKSET=""
+                TASKSET_OPTIONS=""
+                CPU_LIST=""
+                echo "CPU affinity is ignored"
+            ;;
+        esac 
+    else
+        TASKSET=""
+        TASKSET_OPTIONS=""
+    fi
+        
+    pushd $(viewperf-home) > /dev/null
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
+    1> $HOME/zhujie-creo_${RESOLUTION}.log \
+    2> $HOME/zhujie-creo_${RESOLUTION}.error && (
+        cat $HOME/zhujie-creo_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-creo_${RESOLUTION}.fps
+    ) || (
+        cat $HOME/zhujie-creo_${RESOLUTION}.log
+        cat $HOME/zhujie-creo_${RESOLUTION}.error
+        echo ""
+        echo "Available resolutions: "
+        list-viewperf-resolutions creo
+    )
+    popd > /dev/null
 }
 
 function prime-run() {
@@ -1700,8 +1708,8 @@ function check-ssh() {
 }
 
 function find-mac-ip() {
-    if [[ -f $HOME/.zhujie/mac-ip ]]; then
-        MAC_IP=$(cat $HOME/.zhujie/mac-ip)
+    if [[ -f /tmp/zhujie-mac-ip ]]; then
+        MAC_IP=$(cat /tmp/zhujie-mac-ip)
         if [[ $(check-ssh $MAC_IP) == open ]]; then
             echo $MAC_IP && return
         else
@@ -1781,28 +1789,29 @@ function active-resolution() {
     
     if [[ -z $RESOLUTION ]]; then
         if [[ -n $DEFAULT ]]; then
-            RESOLUTION=$DEFAULT
+            read -p "Use the default resolution $DEFAULT? (Y/n): " RSVP
+            case $RSVP in
+                ""|y|Y|1) 
+                    RESOLUTION=$DEFAULT 
+                ;;
+            esac
         fi
     fi
     
-    while [[ -z $RESOLUTION ]]; do
-        read -p "What resolution to run in? (empty for $_4K): " RSVP
+    if [[ -z $RESOLUTION ]]; then
+        read -p "What resolution to use? (empty for $_4K): " RSVP
         case $RSVP in
             "") RESOLUTION=$_4K ;;
              *) RESOLUTION=$1 ;;
-        esac 
-        
-        case $RESOLUTION in
-            1080|1080p|1080P) RESOLUTION=$_1080P ;;
-            1k|1K) RESOLUTION=$_1K ;;
-            2k|2K) RESOLUTION=$_2K ;;
-            4k|4K) RESOLUTION=$_4K ;; 
         esac
-        
-        if [[ -n $RESOLUTION ]]; then
-            break
-        fi
-    done
+    fi
+    
+    case $RESOLUTION in
+        1080|1080p|1080P) RESOLUTION=$_1080P ;;
+        1k|1K) RESOLUTION=$_1K ;;
+        2k|2K) RESOLUTION=$_2K ;;
+        4k|4K) RESOLUTION=$_4K ;; 
+    esac
     
     echo $RESOLUTION
 }
@@ -2064,8 +2073,7 @@ case $1 in
         shift
         while [[ -z $(find-mac-ip) ]]; do
             read -p "Mac's IP: " MAC_IP
-            mkdir -p $HOME/.zhujie
-            echo $MAC_IP > $HOME/.zhujie/mac-ip
+            echo $MAC_IP > /tmp/zhujie-mac-ip
         done
         scp "$@" zhujie@$(find-mac-ip):~/Downloads/
     ;;
@@ -2084,10 +2092,10 @@ case $1 in
     ;;
     hh|html-htop-screen)
         which aha > /dev/null || sudo apt install -y aha
-        FILE=$HOME/htop-screen.html
+        FILE=$HOME/zhujie-htop-screen.html
         INDEX=1
         while [[ -f $FILE ]]; do
-            FILE=$HOME/htop-screen-$INDEX.html
+            FILE=$HOME/zhujie-htop-screen-$INDEX.html
             INDEX=$(($INDEX+1))
         done
         echo q | htop | aha --black --line-fix > $FILE
