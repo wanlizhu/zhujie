@@ -67,18 +67,18 @@ function combine-file-lines() {
 }
 
 function check-display() {
-    if [[ -z $(ps aux | grep [X]org) ]]; then
-        echo "Xorg is not running" > /dev/stderr
-        read -p "Do you want to run a fake display? (Y/n): " RSVP
-        case $RSVP in
-            ""|y|Y|1)
-                fake-display &
-                echo "Sleep for 10 seconds waiting for fake display..."
-                sleep 10
-            ;;
-            *) exit 1 ;;
-        esac
-    fi
+    # if [[ -z $(ps aux | grep [X]org) ]]; then
+    #     echo "Xorg is not running" > /dev/stderr
+    #     read -p "Do you want to run a fake display? (Y/n): " RSVP
+    #     case $RSVP in
+    #         ""|y|Y|1)
+    #             fake-display &
+    #             echo "Sleep for 10 seconds waiting for fake display..."
+    #             sleep 10
+    #         ;;
+    #         *) exit 1 ;;
+    #     esac
+    # fi
 
     NEEDS_DISPLAY=0
     if [[ -z $DISPLAY ]]; then
