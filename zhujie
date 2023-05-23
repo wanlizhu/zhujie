@@ -1824,21 +1824,12 @@ function active-resolution() {
     
     if [[ -z $RESOLUTION ]]; then
         if [[ -n $DEFAULT ]]; then
-            read -p "Use the default resolution $DEFAULT? (Y/n): " RSVP
+            read -p "Name a resolution to use (empty for $DEFAULT): " RSVP
             case $RSVP in
-                ""|y|Y|1) 
-                    RESOLUTION=$DEFAULT 
-                ;;
+                "") RESOLUTION=$DEFAULT ;;
+                 *) RESOLUTION=$RSVP ;;
             esac
         fi
-    fi
-    
-    if [[ -z $RESOLUTION ]]; then
-        read -p "What resolution to use? (empty for $_4K): " RSVP
-        case $RSVP in
-            "") RESOLUTION=$_4K ;;
-             *) RESOLUTION=$1 ;;
-        esac
     fi
     
     case $RESOLUTION in
