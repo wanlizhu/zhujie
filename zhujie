@@ -1933,13 +1933,14 @@ function config-ssh() {
     mkdir -p $HOME/.ssh
     
     # On the client side
-    if [[ -z $(cat $HOME/.ssh/config | grep 'ForwardX11 yes') ]]; then
+    if [[ -z $(cat $HOME/.ssh/config | grep '[[blank::]]ForwardX11[[blank::]]yes') ]]; then
         echo "ForwardX11 yes" >> $HOME/.ssh/config
     fi
     
     # On the server side
-    echo 'X11Forwarding no' | sudo tee -a /etc/ssh/sshd_config > /dev/null
-    echo 'X11DisplayOffset 10' | sudo tee -a /etc/ssh/sshd_config > /dev/null
+    if [[ -z $(cat $HOME/.ssh/config | grep '[[blank::]]X11Forwarding[[blank::]]yes') ]]; then
+        echo 'X11Forwarding yes' | sudo tee -a /etc/ssh/sshd_config > /dev/null
+    fi
 }
 
 
