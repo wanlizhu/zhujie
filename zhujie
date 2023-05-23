@@ -390,6 +390,7 @@ function install() {
                 check-display
                 echo "Continue in SPECviewperf GUI"
                 cd $HOME/Downloads/SPECviewperf2020v3.0
+                chmod 777 ./viewperf2020_3.0_amd64.deb
                 sudo apt install ./viewperf2020_3.0_amd64.deb
             fi
         ;;
