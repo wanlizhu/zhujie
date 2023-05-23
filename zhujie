@@ -910,27 +910,24 @@ function x0vnc() {
         )
     fi
     
-    while [[ -n $1 ]]; do
-        case $1 in
-            status)
-                shift
-                x0vncserver -list "$@"
-            ;;
-            stop)
-                shift
-                x0vncserver -kill "$@"
-            ;;
-            :[0-9]) 
-                SHARED_DISPLAY=$1
-                x0vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT $SHARED_DISPLAY
-            ;;
-            *)
-                echo "Error: unexpected argument $1" > /dev/stderr
-                exit 1
-            ;;
-        esac
-        shift
-    done
+    case $1 in
+        status)
+            shift
+            x0vncserver -list "$@"
+        ;;
+        stop)
+            shift
+            x0vncserver -kill "$@"
+        ;;
+        :[0-9]) 
+            SHARED_DISPLAY=$1
+            x0vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT $SHARED_DISPLAY
+        ;;
+        *)
+            echo "Error: unexpected argument $1" > /dev/stderr
+            exit 1
+        ;;
+    esac
 }
     
 # Create a virtual display
@@ -956,23 +953,24 @@ function vnc() {
         )
     fi
 
-    while [[ -n $1 ]]; do
-        case $1 in
-            status) 
-                shift
-                vncserver -list "$@"
-            ;;
-            stop) 
-                shift
-                vncserver -kill "$@"
-            ;;
-            "")
-                GEOMETRY=$(active-resolution --default $_4K)
-                vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
-            ;;
-        esac
-        shift
-    done
+    case $1 in
+        status) 
+            shift
+            vncserver -list "$@"
+        ;;
+        stop) 
+            shift
+            vncserver -kill "$@"
+        ;;
+        "")
+            GEOMETRY=$(active-resolution --default $_4K)
+            vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
+        ;;
+        *)
+            echo "Error: unexpected argument $1" > /dev/stderr
+            exit 1
+        ;;
+    esac
 }
     
 function ddnet() {
