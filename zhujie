@@ -1092,12 +1092,17 @@ function talos() {
         rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
     
-    TASKSET="taskset"
-    TASKSET_OPTIONS="--cpu-list"
+    RESOLUTION=$(active-resolution --default $_2K)
+    WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
+    HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
+    
     if [[ -n $CPU_LIST ]]; then
         read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            yes|y|"") ;;
+            yes|y|"") 
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+            ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
@@ -1109,9 +1114,6 @@ function talos() {
         TASKSET=""
         TASKSET_OPTIONS=""
     fi
-    RESOLUTION=$(active-resolution --default $_2K)
-    WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
-    HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
@@ -1163,12 +1165,13 @@ function apex() {
             exit 1
         )
     else
-        TASKSET="taskset"
-        TASKSET_OPTIONS="--cpu-list"
         if [[ -n $CPU_LIST ]]; then
             read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
             case $RSVP in
-                yes|y|"") ;;
+                yes|y|"") 
+                    TASKSET="taskset"
+                    TASKSET_OPTIONS="--cpu-list"
+                ;;
                 *) 
                     TASKSET=""
                     TASKSET_OPTIONS=""
@@ -1234,12 +1237,14 @@ function catia() {
     
     list-viewperf-resolutions catia
     RESOLUTION=$(active-resolution --default $_4K)
-    TASKSET="taskset"
-    TASKSET_OPTIONS="--cpu-list"
+    
     if [[ -n $CPU_LIST ]]; then
         read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            yes|y|"") ;;
+            yes|y|"") 
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+            ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
@@ -1279,12 +1284,14 @@ function creo() {
     
     list-viewperf-resolutions creo
     RESOLUTION=$(active-resolution --default $_4K)
-    TASKSET="taskset"
-    TASKSET_OPTIONS="--cpu-list"
+    
     if [[ -n $CPU_LIST ]]; then
         read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            yes|y|"") ;;
+            yes|y|"") 
+                TASKSET="taskset"
+                TASKSET_OPTIONS="--cpu-list"
+            ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
