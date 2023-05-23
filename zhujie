@@ -2110,6 +2110,10 @@ case $1 in
         shift
         is-cpu-limited "$@"
     ;;
+    config-ssh)
+        shift
+        config-ssh "$@"
+    ;;
     
     
     mac)
