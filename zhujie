@@ -1191,33 +1191,37 @@ function apex() {
     fi
 }
 
-function viewperf-home() {
-    if [[ -d $HOME/nvt/tests/viewperf2020v3/viewperf2020 ]]; then
+function find-viewperf-home() {
+    if [[ -f $HOME/nvt/tests/viewperf2020v3/viewperf2020/viewperf/bin/viewperf ]]; then
         echo $HOME/nvt/tests/viewperf2020v3/viewperf2020
-    elif [[ -d $HOME/viewperf2020 ]]; then
+    elif [[ -f $HOME/viewperf2020/viewperf/bin/viewperf ]]; then
         echo $HOME/viewperf2020
+    elif [[ -f /opt/SPEC/SPECviewperf2020/viewperf/bin/viewperf ]]; then
+        echo /opt/SPEC/SPECviewperf2020
     else
-        echo "Error: can't find viewperf2020 folder" > /dev/stderr
+        echo "NOT-FOUND"
         exit 1
     fi
 }
 
 function list-viewperf-resolutions() {
-    pushd $(viewperf-home) > /dev/null
-    
-    if [[ -z $1 ]]; then
-        echo "Error: $(pwd)/viewsets/$TEST_NAME/config.xml doesn't exist" > /dev/stderr
+    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+        echo "Error: can't find viewperf" > /dev/stderr
         exit 1
-    else
-        cat viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}'
     fi
     
-    popd > /dev/null
+    if [[ -f $(find-viewperf-home)/viewsets/$1/config/$1.xml ]]; then
+        echo "Available resolutions for $1:"
+        cat $(find-viewperf-home)/viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}' | awk -F '"' '{ print $2 }'
+    else
+        echo "Usage: list-viewperf-resolutions <TEST_NAME>" > /dev/stderr
+        exit 1
+    fi
 }
     
 function catia() {
-    if [[ $EUID != 0 ]]; then
-        echo "Error: please run as root" > /dev/stderr
+    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+        echo "Error: can't find viewperf" > /dev/stderr
         exit 1
     fi
     
@@ -1228,6 +1232,7 @@ function catia() {
         unset NVTEST_DRIVER_DIR
     fi
     
+    list-viewperf-resolutions catia
     RESOLUTION=$(active-resolution --default $_4K)
     TASKSET="taskset"
     TASKSET_OPTIONS="--cpu-list"
@@ -1247,7 +1252,7 @@ function catia() {
         TASKSET_OPTIONS=""
     fi
         
-    pushd $(viewperf-home) > /dev/null
+    pushd $(find-viewperf-home) > /dev/null
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-catia_${RESOLUTION}.log \
     2> $HOME/zhujie-catia_${RESOLUTION}.error && (
@@ -1255,16 +1260,13 @@ function catia() {
     ) || (
         cat $HOME/zhujie-catia_${RESOLUTION}.log
         cat $HOME/zhujie-catia_${RESOLUTION}.error
-        echo ""
-        echo "Available resolutions: "
-        list-viewperf-resolutions catia
     )
     popd > /dev/null
 }
 
 function creo() {
-    if [[ $EUID != 0 ]]; then
-        echo "Error: please run as root" > /dev/stderr
+    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+        echo "Error: can't find viewperf" > /dev/stderr
         exit 1
     fi
     
@@ -1275,6 +1277,7 @@ function creo() {
         unset NVTEST_DRIVER_DIR
     fi
     
+    list-viewperf-resolutions creo
     RESOLUTION=$(active-resolution --default $_4K)
     TASKSET="taskset"
     TASKSET_OPTIONS="--cpu-list"
@@ -1294,7 +1297,7 @@ function creo() {
         TASKSET_OPTIONS=""
     fi
         
-    pushd $(viewperf-home) > /dev/null
+    pushd $(find-viewperf-home) > /dev/null
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-creo_${RESOLUTION}.log \
     2> $HOME/zhujie-creo_${RESOLUTION}.error && (
@@ -1302,9 +1305,6 @@ function creo() {
     ) || (
         cat $HOME/zhujie-creo_${RESOLUTION}.log
         cat $HOME/zhujie-creo_${RESOLUTION}.error
-        echo ""
-        echo "Available resolutions: "
-        list-viewperf-resolutions creo
     )
     popd > /dev/null
 }
