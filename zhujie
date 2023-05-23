@@ -386,15 +386,11 @@ function install() {
                 fi
             fi
             
-            if [[ -f $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z ]]; then
-                mkdir -p $HOME/viewperf2020
-                cd $HOME/viewperf2020/
-                cp $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z -t $HOME/viewperf2020/
-                p7zip -d SPECviewperf2020.ux.3.0.7z
-                
+            if [[ -f $HOME/Downloads/SPECviewperf2020v3.0/viewperf2020_3.0_amd64.deb ]]; then
                 check-display
-                echo "Continue in ManageViewsets GUI"
-                ./ManageViewsets
+                echo "Continue in SPECviewperf GUI"
+                cd $HOME/Downloads/SPECviewperf2020v3.0
+                sudo apt install ./viewperf2020_3.0_amd64.deb
             fi
         ;;
         *)
