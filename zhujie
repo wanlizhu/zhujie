@@ -1929,6 +1929,19 @@ function is-cpu-limited() {
     printf "    Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
 }
 
+function config-ssh() {
+    mkdir -p $HOME/.ssh
+    
+    # On the client side
+    if [[ -z $(cat $HOME/.ssh/config | grep 'ForwardX11 yes') ]]; then
+        echo "ForwardX11 yes" >> $HOME/.ssh/config
+    fi
+    
+    # On the server side
+    echo 'X11Forwarding no' >> /etc/ssh/sshd_config
+    echo 'X11DisplayOffset 10' >> /etc/ssh/sshd_config
+}
+
 
 
 
