@@ -924,6 +924,12 @@ function x0vnc() {
     
 # Create a virtual display
 function vnc() {
+    if [[ $1 =~ ^:[0-9]+$ ]]; then
+        echo "Switch to x0vnc to share a running display $1"
+        x0vnc "$@"
+        return
+    fi
+    
     which vncserver > /dev/null || sudo apt install -y tigervnc-standalone-server 
     
     if [[ -z $VNCPORT ]]; then
@@ -939,10 +945,6 @@ function vnc() {
             stop) 
                 shift
                 vncserver -kill "$@"
-            ;;
-            :[0-9])
-                echo "Switch to x0vnc to share a running display"
-                x0vnc "$@"
             ;;
             "")
                 GEOMETRY=$(active-resolution --default $_4K)
