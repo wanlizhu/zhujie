@@ -1929,6 +1929,21 @@ function is-cpu-limited() {
     printf "    Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
 }
 
+function config-htop() {
+    if [[ $1 == save ]]; then
+        cp $HOME/.config/htop/htoprc $(dirname $0)
+        echo "Saved to $(dirname $0)/htoprc"
+    else
+        if [[ -f $(dirname $0)/htoprc ]]; then
+            cp -f $(dirname $0)/htoprc $HOME/.config/htop/htoprc && (
+                echo "Updated $HOME/.config/htop/htoprc"
+            )
+        else
+            echo "Template doesn't exist" > /dev/stderr
+        fi
+    fi
+}
+
 function config-ssh() {
     mkdir -p $HOME/.ssh
     
@@ -1941,6 +1956,10 @@ function config-ssh() {
     if [[ -z $(cat /etc/ssh/sshd_config | grep '[[:blank:]]X11Forwarding[[:blank:]]yes') ]]; then
         echo 'X11Forwarding yes' | sudo tee -a /etc/ssh/sshd_config > /dev/null
     fi
+}
+
+function reboot-and-run() {
+    echo TODO
 }
 
 
@@ -2115,39 +2134,13 @@ case $1 in
         shift
         config-ssh "$@"
     ;;
-    
-    
-    mac)
+    config-htop)
         shift
-        while [[ -z $(find-mac-ip) ]]; do
-            read -p "Mac's IP: " MAC_IP
-            echo $MAC_IP > /tmp/zhujie-mac-ip
-        done
-        scp "$@" zhujie@$(find-mac-ip):~/Downloads/
+        config-htop "$@"
     ;;
-    sh|save-htop-config)
-        cp $HOME/.config/htop/htoprc $(dirname $0)
-        echo "Saved to $(dirname $0)/htoprc"
-    ;;
-    rh|reset-htop-config)
-        if [[ -f $(dirname $0)/htoprc ]]; then
-            cp -f $(dirname $0)/htoprc $HOME/.config/htop/htoprc && (
-                echo "Updated $HOME/.config/htop/htoprc"
-            )
-        else
-            echo "Template doesn't exist" > /dev/stderr
-        fi
-    ;;
-    hh|html-htop-screen)
-        which aha > /dev/null || sudo apt install -y aha
-        FILE=$HOME/zhujie-htop-screen.html
-        INDEX=1
-        while [[ -f $FILE ]]; do
-            FILE=$HOME/zhujie-htop-screen-$INDEX.html
-            INDEX=$(($INDEX+1))
-        done
-        echo q | htop | aha --black --line-fix > $FILE
-        echo "Saved to $FILE"
+    reboot-and-run)
+        shift
+        reboot-and-run "$@"
     ;;
     test)
         for i in `seq 1 20`; do
