@@ -1938,8 +1938,8 @@ function config-ssh() {
     fi
     
     # On the server side
-    echo 'X11Forwarding no' >> /etc/ssh/sshd_config
-    echo 'X11DisplayOffset 10' >> /etc/ssh/sshd_config
+    echo 'X11Forwarding no' | sudo tee -a /etc/ssh/sshd_config > /dev/null
+    echo 'X11DisplayOffset 10' | sudo tee -a /etc/ssh/sshd_config > /dev/null
 }
 
 
