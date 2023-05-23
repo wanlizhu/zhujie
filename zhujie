@@ -910,9 +910,13 @@ function x0vnc() {
                 shift
                 x0vncserver -kill "$@"
             ;;
-            *) 
+            :[0-9]) 
                 SHARED_DISPLAY=$1
                 x0vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT $SHARED_DISPLAY
+            ;;
+            *)
+                echo "Error: unexpected argument $1" > /dev/stderr
+                exit 1
             ;;
         esac
     done
@@ -936,7 +940,11 @@ function vnc() {
                 shift
                 vncserver -kill "$@"
             ;;
-            *)
+            :[0-9])
+                echo "Switch to x0vnc to share a running display"
+                x0vnc "$@"
+            ;;
+            "")
                 GEOMETRY=$(active-resolution --default $_4K)
                 vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
             ;;
@@ -1733,6 +1741,11 @@ function files() {
         exit 1
     )
     
+    if [[ -z $1 || -z $2 ]]; then
+        echo "Usage: files <SUBCMD> <FILES...>" > /dev/stderr
+        exit 1
+    fi
+    
     if [[ -f /tmp/zhujie-gtlfs-password-cache ]]; then
         PASSWD=$(cat /tmp/zhujie-gtlfs-password-cache)
     else
@@ -1748,6 +1761,10 @@ function files() {
         pull|down)
             shift
             gtlfs pull --username=wanliz --password=$PASSWD "$@"
+        ;;
+        rm|remove)
+            shift
+            gtlfs rm --username=wanliz --password=$PASSWD "$@"
         ;;
         pull-rm|pop)
             shift
