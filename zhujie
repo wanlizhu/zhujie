@@ -1962,6 +1962,34 @@ function reboot-and-run() {
     echo TODO
 }
 
+function mount-windows-folder() {
+    which mount.cifs > /dev/null || sudo apt install -y cifs-utils
+    
+    while [[ -n $1 ]]; do
+        case $1 in
+            -n|--name) shift; NAME=$1 ;;
+            *) URL=$1 ;;
+        esac
+        shift
+    done
+    
+    URL="${URL//\\/\/}"
+    
+    if [[ -z $NAME ]]; then
+        NAME=$(basename "$URL")
+        NAME="${NAME//[^[:alnum:]]/_}"
+    fi
+    
+    if [[ -d /mnt/$NAME ]]; then
+        echo "Error: /mnt/$NAME already exist" > /dev/stderr
+        exit 1
+    else
+        sudo mkdir /mnt/$NAME
+    fi
+    
+    sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME
+}
+
 
 
 
@@ -2141,6 +2169,10 @@ case $1 in
     reboot-and-run)
         shift
         reboot-and-run "$@"
+    ;;
+    mount-windows-folder)
+        shift
+        mount-windows-folder "$@"
     ;;
     test)
         for i in `seq 1 20`; do
