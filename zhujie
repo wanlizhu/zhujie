@@ -1933,7 +1933,7 @@ function config-ssh() {
     mkdir -p $HOME/.ssh
     
     # On the client side
-    if [[ -z $(cat $HOME/.ssh/config | grep '[[blank::]]ForwardX11[[blank::]]yes') ]]; then
+    if [[ ! -f $HOME/.ssh/config || -z $(cat $HOME/.ssh/config | grep '[[blank::]]ForwardX11[[blank::]]yes') ]]; then
         echo "ForwardX11 yes" >> $HOME/.ssh/config
     fi
     
