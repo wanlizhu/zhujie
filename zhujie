@@ -80,19 +80,8 @@ function check-display() {
     #     esac
     # fi
 
-    NEEDS_DISPLAY=0
     if [[ -z $DISPLAY ]]; then
-        echo "Error: DISPLAY is not set" > /dev/stderr
-        NEEDS_DISPLAY=1
-    fi
-
-    glxinfo 1> /dev/null 2> /dev/null || (
-        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
-        NEEDS_DISPLAY=1
-    )
-
-    if [[ $NEEDS_DISPLAY == 1 ]]; then
-        read -p "What do you want to set to DISPLAY? (empty for :0) " RSVP
+        read -p "Name a DISPLAY to continue (empty for :0) " RSVP
         case $RSVP in
             "") export DISPLAY=:0 ;;
              *) export DISPLAY=$RSVP ;;
@@ -100,7 +89,7 @@ function check-display() {
     fi
 
     glxinfo 1> /dev/null 2> /dev/null || (
-        echo "Error: Unable to open display $DISPLAY" > /dev/stderr
+        echo "Error: can't open display $DISPLAY" > /dev/stderr
         exit 1
     )
 }
@@ -365,6 +354,20 @@ function install() {
             ./configure
             make -j8
             sudo make install fontdir
+        ;;
+        viewperf)
+            which p7zip > /dev/null || sudo apt install -y p7zip-full
+            
+            mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' 
+            cp -f -R /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 || exit 1
+            
+            mkdir -p $HOME/viewperf2020
+            cd $HOME/viewperf2020/
+            cp $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z -t $HOME/viewperf2020/
+            p7zip -d SPECviewperf2020.ux.3.0.7z
+            
+            check-display
+            ./ManageViewsets
         ;;
         *)
             if [[ -f $1 || -L $1 ]]; then
@@ -1824,7 +1827,7 @@ function active-resolution() {
     
     if [[ -z $RESOLUTION ]]; then
         if [[ -n $DEFAULT ]]; then
-            read -p "Name a resolution to use (empty for $DEFAULT): " RSVP
+            read -p "Name a resolution to continue (empty for $DEFAULT): " RSVP
             case $RSVP in
                 "") RESOLUTION=$DEFAULT ;;
                  *) RESOLUTION=$RSVP ;;
@@ -1973,7 +1976,12 @@ function mount-windows-folder() {
         shift
     done
     
-    URL="${URL//\\/\/}"
+    if [[ -z $URL ]]; then
+        echo "Usage: mount-windows-folder <URL> [--name NAME]" > /dev/stderr
+        exit 1
+    else
+        URL="${URL//\\/\/}"
+    fi
     
     if [[ -z $NAME ]]; then
         NAME=$(basename "$URL")
@@ -1981,13 +1989,16 @@ function mount-windows-folder() {
     fi
     
     if [[ -d /mnt/$NAME ]]; then
-        echo "Error: /mnt/$NAME already exist" > /dev/stderr
-        exit 1
+        read -p "Mount point exists, reuse /mnt/$NAME? (Y/n): " RSVP
+        case $RSVP in
+            ""|y|Y|1) ;;
+            *) echo "Cancelled"; exit 1 ;;
+        esac
     else
         sudo mkdir /mnt/$NAME
     fi
     
-    sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME
+    sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME || exit 1
 }
 
 
