@@ -69,9 +69,9 @@ function combine-file-lines() {
 function check-display() {
     # if [[ -z $(ps aux | grep [X]org) ]]; then
     #     echo "Xorg is not running" > /dev/stderr
-    #     read -p "Do you want to run a fake display? (Y/n): " RSVP
+    #     read -p "Do you wanna run a fake display? (empty for Yes): " RSVP
     #     case $RSVP in
-    #         ""|y|Y|1)
+    #         yes|y|"")
     #             fake-display &
     #             echo "Sleep for 10 seconds waiting for fake display..."
     #             sleep 10
@@ -127,7 +127,7 @@ function gpu() {
 
 function nvidia-smi-static() {
     which nvidia-smi > /dev/null || (
-        echo "Info: can't find nvidia-smi in PATH"
+        echo "Error: can't find nvidia-smi in PATH"
         exit 1
     )
     
@@ -358,8 +358,17 @@ function install() {
         viewperf)
             which p7zip > /dev/null || sudo apt install -y p7zip-full
             
-            mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' 
-            cp -f -R /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 || exit 1
+            DOWNLOAD=1
+            if [[ -f $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z ]]; then
+                read -p "Do you wanna reuse $HOME/Downloads/SPECviewperf2020v3.0? (empty for Yes): " RSVP
+                DOWNLOAD=$([[ -z $RSVP ]] && echo 0 || echo 1)
+            fi
+            
+            if [[ $DOWNLOAD == 1 ]]; then
+                mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' || exit 1
+                rm -r -f $HOME/Downloads/SPECviewperf2020v3.0 
+                cp -r -f /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 || exit 1
+            fi
             
             mkdir -p $HOME/viewperf2020
             cd $HOME/viewperf2020/
@@ -367,6 +376,7 @@ function install() {
             p7zip -d SPECviewperf2020.ux.3.0.7z
             
             check-display
+            echo "Continue in ManageViewsets GUI"
             ./ManageViewsets
         ;;
         *)
@@ -461,7 +471,7 @@ function update-nvidia-libs() {
         exit 1
     fi
 
-    echo "Info: update NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
+    echo "Update NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
     case $MODULE in
         opengl)
             FOLDER="Linux_"$ARCH"_$BUILD_TYPE"
@@ -568,9 +578,9 @@ function install-dvs-driver() {
     fi
 
     if [[ -f $OUT ]]; then
-        read -p "Do you want to install now? (Y/n) " RSVP
+        read -p "Do you wanna install now? (empty for Yes) " RSVP
         case $RSVP in
-            ""|y|Y|1)
+            yes|y|"")
                 echo "Installing $OUT"
                 install "$OUT"
             ;;
@@ -660,7 +670,7 @@ function flamegraph() {
         rm -rf "$PERF_DATA"
     fi
 
-    echo -ne "Info: perf record for $PERF_RECORD_SECONDS seconds\t"
+    echo -ne "Running perf record for $PERF_RECORD_SECONDS seconds\t"
     sudo perf record $PERF_RECORD_PID $PERF_RECORD_ARGS \
         --output="$PERF_DATA" \
         --sleep $PERF_RECORD_SECONDS \
@@ -679,7 +689,7 @@ function flamegraph() {
     
     BASENAME=$(basename "$PERF_DATA")
     
-    echo -ne "Info: perf script\t"
+    echo -ne "Running perf script\t"
     sudo perf script --input="$PERF_DATA" \
         1> "/tmp/zhujie-$BASENAME.perf" \
         2> "/tmp/zhujie-$BASENAME.perf.error" \
@@ -689,7 +699,7 @@ function flamegraph() {
             exit 1
         ) 
     
-    echo -ne "Info: stackcollapse-perf.pl\t"
+    echo -ne "Running stackcollapse-perf.pl\t"
     sudo stackcollapse-perf.pl "/tmp/zhujie-$BASENAME.perf" \
         1> "/tmp/zhujie-$BASENAME.perf.folded" \
         2> "/tmp/zhujie-$BASENAME.perf.folded.error" \
@@ -699,7 +709,7 @@ function flamegraph() {
             exit 1
         )
     
-    echo -ne "Info: stackcollapse-recursive.pl\t"
+    echo -ne "Running stackcollapse-recursive.pl\t"
     sudo stackcollapse-recursive.pl "/tmp/zhujie-$BASENAME.perf.folded" \
         1> "/tmp/zhujie-$BASENAME.perf.folded.recursive" \
         2> "/tmp/zhujie-$BASENAME.perf.folded.recursive.error" \
@@ -709,7 +719,7 @@ function flamegraph() {
             exit 1
         )
     
-    echo -ne "Info: flamegraph.pl\t"
+    echo -ne "Running flamegraph.pl\t"
     sudo flamegraph.pl "/tmp/zhujie-$BASENAME.perf.folded.recursive" \
         1> "$SVG_FILE" \
         2> "/tmp/zhujie-$BASENAME.perf.folded.recursive.error" \
@@ -762,15 +772,15 @@ function p4bisect() {
     
         echo "Testing change $CL @$DATE (out of $LINE_COUNT changes):"
     
-        read -p "Download from DVS build? (Y/n): " RSVP
+        read -p "Download from DVS build? (empty for Yes): " RSVP
         case $RSVP in
-            y|Y|1) drivers dev_a $CL ;;
+            yes|y|"") drivers dev_a $CL ;;
         esac
     
-        read -p "Is this change new? (y/n): " RSVP 
+        read -p "Is this change new? (empty for Yes): " RSVP 
         case $RSVP in
-            y|Y|1) DATE_NEW="$DATE" ;;
-            n|N|0) DATE_OLD="$DATE" ;;
+            yes|y|"") DATE_NEW="$DATE" ;;
+            no|n) DATE_OLD="$DATE" ;;
         esac
     
         p4 changes -s submitted $FOLDER/...@$DATE_OLD,@$DATE_NEW > $CHANGES
@@ -1070,9 +1080,9 @@ function talos() {
     TASKSET="taskset"
     TASKSET_OPTIONS="--cpu-list"
     if [[ -n $CPU_LIST ]]; then
-        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            ""|y|Y|1) ;;
+            yes|y|"") ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
@@ -1114,7 +1124,7 @@ function apex() {
     done
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
-        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        echo "Unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
@@ -1141,9 +1151,9 @@ function apex() {
         TASKSET="taskset"
         TASKSET_OPTIONS="--cpu-list"
         if [[ -n $CPU_LIST ]]; then
-            read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+            read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
             case $RSVP in
-                ""|y|Y|1) ;;
+                yes|y|"") ;;
                 *) 
                     TASKSET=""
                     TASKSET_OPTIONS=""
@@ -1199,7 +1209,7 @@ function catia() {
     check-display
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
-        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        echo "Unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
@@ -1207,9 +1217,9 @@ function catia() {
     TASKSET="taskset"
     TASKSET_OPTIONS="--cpu-list"
     if [[ -n $CPU_LIST ]]; then
-        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            ""|y|Y|1) ;;
+            yes|y|"") ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
@@ -1246,7 +1256,7 @@ function creo() {
     check-display
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
-        echo "Info: unset NVTEST_DRIVER_DIR for mesa driver"
+        echo "Unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
@@ -1254,9 +1264,9 @@ function creo() {
     TASKSET="taskset"
     TASKSET_OPTIONS="--cpu-list"
     if [[ -n $CPU_LIST ]]; then
-        read -p "Run with CPU affinity $CPU_LIST? (Y/n): " RSVP
+        read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
         case $RSVP in
-            ""|y|Y|1) ;;
+            yes|y|"") ;;
             *) 
                 TASKSET=""
                 TASKSET_OPTIONS=""
@@ -1340,9 +1350,9 @@ function sync() {
     USE_TMP_GIT=0
     BASEDIR=$(dirname $0)
     if [[ ! -d $BASEDIR/.git ]]; then
-        read -p "Force update/overwrite $0? (Y/n): " RSVP
+        read -p "Force update/overwrite $0? (empty for Yes): " RSVP
         case $RSVP in
-            ""|y|Y|1) USE_TMP_GIT=1 ;;
+            yes|y|"") USE_TMP_GIT=1 ;;
             *) echo "Nothing updated"; exit 1 ;;
         esac
     fi
@@ -1741,7 +1751,7 @@ function find-mac-ip() {
         if [[ $(check-ssh $MAC_IP) == open ]]; then
             echo $MAC_IP && return
         else
-            echo "Info: SSH server ($MAC_IP:22) is not available"
+            echo "SSH server ($MAC_IP:22) is not available"
         fi
     fi
 }
@@ -1793,9 +1803,9 @@ function files() {
         pull-rm|pop)
             shift
             gtlfs pull --username=wanliz --password=$PASSWD "$@" && (
-                read -p "Remove it from server? (Y/n)" RSVP
+                read -p "Remove it from server? (empty for Yes)" RSVP
                 case $RSVP in
-                    ""|y|Y|1)
+                    yes|y|"")
                         echo y | gtlfs rm --username=wanliz --password=$PASSWD "$@"
                     ;;
                     *)
@@ -1989,9 +1999,9 @@ function mount-windows-folder() {
     fi
     
     if [[ -d /mnt/$NAME ]]; then
-        read -p "Mount point exists, reuse /mnt/$NAME? (Y/n): " RSVP
+        read -p "Mount point exists, reuse /mnt/$NAME? (empty for Yes): " RSVP
         case $RSVP in
-            ""|y|Y|1) ;;
+            yes|y|"") ;;
             *) echo "Cancelled"; exit 1 ;;
         esac
     else
