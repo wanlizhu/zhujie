@@ -365,19 +365,37 @@ function install() {
             fi
             
             if [[ $DOWNLOAD == 1 ]]; then
-                mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' || exit 1
-                rm -r -f $HOME/Downloads/SPECviewperf2020v3.0 
-                cp -r -f /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 || exit 1
+                cd $HOME/Downloads
+                read -p "Download from [1] GTL or [2] wsapps02? (empty for 1): " RSVP
+                if [[ -z $RSVP || $RSVP == 1 ]]; then
+                    cd $HOME/Downloads
+                    if [[ -f SPECviewperf2020v3.0.zip ]]; then
+                        echo "Reuse cache: $HOME/Downloads/SPECviewperf2020v3.0.zip"
+                    else
+                        files pull 40651860-8AC9-4C0D-9813-CA80EAF325DE
+                    fi
+                elif [[ $RSVP == 2 ]]; then
+                    mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' || exit 1
+                    rm -r -f $HOME/Downloads/SPECviewperf2020v3.0 
+                    cp -r -f /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 
+                    umount /mnt/ViewPerf
+                    rm -rf /mnt/ViewPerf
+                else
+                    echo "Error: unexpected argument $RSVP" > /dev/stderr
+                    exit 1
+                fi
             fi
             
-            mkdir -p $HOME/viewperf2020
-            cd $HOME/viewperf2020/
-            cp $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z -t $HOME/viewperf2020/
-            p7zip -d SPECviewperf2020.ux.3.0.7z
-            
-            check-display
-            echo "Continue in ManageViewsets GUI"
-            ./ManageViewsets
+            if [[ -f $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z ]]; then
+                mkdir -p $HOME/viewperf2020
+                cd $HOME/viewperf2020/
+                cp $HOME/Downloads/SPECviewperf2020v3.0/SPECviewperf2020.ux.3.0.7z -t $HOME/viewperf2020/
+                p7zip -d SPECviewperf2020.ux.3.0.7z
+                
+                check-display
+                echo "Continue in ManageViewsets GUI"
+                ./ManageViewsets
+            fi
         ;;
         *)
             if [[ -f $1 || -L $1 ]]; then
