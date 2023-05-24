@@ -334,7 +334,7 @@ function install() {
         mesa)
             sudo add-apt-repository ppa:kisak/kisak-mesa
             sudo apt update
-            sudo apt install mesa
+            sudo apt upgrade
             glxinfo | grep "OpenGL renderer string"
             glxinfo | grep Mesa
         ;;
