@@ -338,6 +338,13 @@ function install() {
             glxinfo | grep "OpenGL renderer string"
             glxinfo | grep Mesa
         ;;
+        pts|phoronix-test-suite)
+            wget https://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_10.8.4_all.deb -O $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb
+            
+            if [[ -f $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb ]]; then
+                sudo apt install -y $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb
+            fi
+        ;;
         mainline)
             sudo add-apt-repository ppa:cappelikan/ppa
             sudo apt update
@@ -1080,8 +1087,14 @@ function talos() {
         esac
         shift
     done
-
-    # Launch steam if it's not currently running
+    
+    which steam > /dev/null || (
+        sudo apt install -y steam
+        steam &
+        echo "Continue in Steam GUI to log in"
+        return 0
+    )
+    
     pgrep -x steam >/dev/null || (
         steam &
         sleep 20
