@@ -1201,7 +1201,7 @@ function apex() {
     fi
 }
 
-function find-viewperf-home() {
+function get-viewperf-home() {
     if [[ -f $HOME/nvt/tests/viewperf2020v3/viewperf2020/viewperf/bin/viewperf ]]; then
         echo $HOME/nvt/tests/viewperf2020v3/viewperf2020
     elif [[ -f $HOME/viewperf2020/viewperf/bin/viewperf ]]; then
@@ -1215,14 +1215,14 @@ function find-viewperf-home() {
 }
 
 function list-viewperf-resolutions() {
-    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+    if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
         exit 1
     fi
     
-    if [[ -f $(find-viewperf-home)/viewsets/$1/config/$1.xml ]]; then
+    if [[ -f $(get-viewperf-home)/viewsets/$1/config/$1.xml ]]; then
         echo "Available resolutions for $1:"
-        cat $(find-viewperf-home)/viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}' | awk -F '"' '{ print $2 }'
+        cat $(get-viewperf-home)/viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}' | awk -F '"' '{ print $2 }'
     else
         echo "Usage: list-viewperf-resolutions <TEST_NAME>" > /dev/stderr
         exit 1
@@ -1230,7 +1230,7 @@ function list-viewperf-resolutions() {
 }
     
 function catia() {
-    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+    if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
         exit 1
     fi
@@ -1264,7 +1264,7 @@ function catia() {
         TASKSET_OPTIONS=""
     fi
         
-    pushd $(find-viewperf-home) > /dev/null
+    pushd $(get-viewperf-home) > /dev/null
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-catia_${RESOLUTION}.log \
     2> $HOME/zhujie-catia_${RESOLUTION}.error && (
@@ -1277,7 +1277,7 @@ function catia() {
 }
 
 function creo() {
-    if [[ $(find-viewperf-home) == NOT-FOUND ]]; then
+    if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
         exit 1
     fi
@@ -1311,7 +1311,7 @@ function creo() {
         TASKSET_OPTIONS=""
     fi
         
-    pushd $(find-viewperf-home) > /dev/null
+    pushd $(get-viewperf-home) > /dev/null
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-creo_${RESOLUTION}.log \
     2> $HOME/zhujie-creo_${RESOLUTION}.error && (
@@ -1610,41 +1610,6 @@ function average() {
     mean2 "$@"
 }
 
-function loop() {
-    if [[ -z $1 ]]; then
-        echo "Usage: loop <TIMES> <CMD>" > /dev/stderr
-        exit 1
-    fi
-        
-    rm -rf $HOME/zhujie-loop.records
-    for i in `seq 1 $1`; do
-        $2 | tee -a $HOME/zhujie-loop.records
-    done
-        
-    if [[ -f "$HOME/zhujie-loop.records" ]]; then
-        echo ""
-        average $HOME/zhujie-loop.records
-    fi
-}
-
-function loop-v() {
-    if [[ -z $1 ]]; then
-        echo "Usage: loop <TIMES> <CMD>" > /dev/stderr
-        exit 1
-    fi
-        
-    rm -rf $HOME/zhujie-loop.records
-    for i in `seq 1 $1`; do
-        $2 | tee -a $HOME/zhujie-loop.records
-    done
-        
-    if [[ -f "$HOME/zhujie-loop.records" ]]; then
-        echo ""
-        average $HOME/zhujie-loop.records
-        visualize $HOME/zhujie-loop.records
-    fi
-}
-
 function parse-range() {
     if [[ $1 == *"-"* ]]; then
         echo "${1/-/ }"
@@ -1858,7 +1823,7 @@ function check-ssh() {
     nmap $1 -Pn -p ssh | egrep -io 'open|closed|filtered'
 }
 
-function find-mac-ip() {
+function get-mac-ip() {
     if [[ -f /tmp/zhujie-mac-ip ]]; then
         MAC_IP=$(cat /tmp/zhujie-mac-ip)
         if [[ $(check-ssh $MAC_IP) == open ]]; then
@@ -1934,7 +1899,7 @@ function files() {
     esac
 }
 
-function active-resolution() {
+function get-active-resolution() {
     DEFAULT=""
     while [[ -n $1 ]]; do
         case $1 in
@@ -1965,7 +1930,7 @@ function active-resolution() {
         4k|4K|3840|2160) RESOLUTION=$_4K ;; 
     esac
     
-    echo $RESOLUTION
+    echo $RESOLUTION | tee /tmp/zhujie-active-resolution
 }
 
 function push-cpu-freq() {
@@ -1985,22 +1950,24 @@ function pop-gpu-freq() {
 }
 
 function average-fps() {
-    CPU_FREQ=""
-    GPU_FREQ=""
+    CPU_FREQ=0
+    GPU_FREQ=0
     RESOLUTION=""
-    SUFFIX=""
     LOOP=1
     SHOW_CONFIG=0
+    SUFFIX=""
     
     while [[ -n $1 ]]; do
         case $1 in
-             --cpu-freq) shift;  CPU_FREQ=$1; SUFFIX="-cpu-freq-$1" ;;
-             --gpu-freq) shift;  GPU_FREQ=$1; SUFFIX="-gpu-freq-$1" ;;
-            --resolution) shift; RESOLUTION=$1; SUFFIX="-$1" ;;
-               -l|--loop) shift; LOOP=$1 ;;
-               -s|--show-config) SHOW_CONFIG=1 ;;
+               -c|--cpu-freq) shift; CPU_FREQ=$1; SUFFIX="$SUFFIX-cpu-freq-$1" ;;
+               -g|--gpu-freq) shift; GPU_FREQ=$1; SUFFIX="$SUFFIX-gpu-freq-$1" ;;
+             -r|--resolution) shift; RESOLUTION=$1; SUFFIX="$SUFFIX-$1" ;;
+                   -l|--loop) shift; LOOP=$1; SUFFIX="$SUFFIX-loop-$1" ;;
+            -s|--show-config) SHOW_CONFIG=1 ;;
         esac
     done
+    
+    SUFFIX="$1$SUFFIX"
     
     if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
         rm -rf /tmp/zhujie-average-fps$SUFFIX
@@ -2008,17 +1975,13 @@ function average-fps() {
     
     push-cpu-freq $CPU_FREQ > /dev/null
     push-gpu-freq $GPU_FREQ > /dev/null
-    if [[ -n $RESOLUTION ]]; then
-        echo $RESOLUTION > /tmp/zhujie-active-resolution
-    fi
+    echo $RESOLUTION > /tmp/zhujie-active-resolution
     
     for i in `seq 1 $COUNT`; do
         "$@" >> /tmp/zhujie-average-fps$SUFFIX
     done
     
-    if [[ -f $RESOLUTION ]]; then
-        rm -rf /tmp/zhujie-active-resolution
-    fi
+    rm -rf /tmp/zhujie-active-resolution
     pop-gpu-freq > /dev/null
     pop-cpu-freq > /dev/null
     
@@ -2236,13 +2199,9 @@ case $1 in
         shift
         display "$@"
     ;;
-    loop)
+    average-fps)
         shift
-        loop "$@"
-    ;;
-    loop-v)
-        shift
-        loop-v "$@"
+        average-fps "$@"
     ;;
     cpu-offline)
         shift
