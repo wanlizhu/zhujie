@@ -917,6 +917,7 @@ function fake-display() {
         fi
     else
         RESOLUTION=""
+        echo "Unset NVTEST_DRIVER_DIR for mesa driver"
         unset NVTEST_DRIVER_DIR
     fi
     
