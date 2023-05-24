@@ -1431,11 +1431,24 @@ function sync-on-LAN() {
     done
 }
 
+function validate-ip() {
+    RX='([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])'
+    if [[ $1 =~ ^$RX\.$RX\.$RX\.$RX$ ]]; then
+      echo 1
+   else
+      echo 0
+   fi
+}
+
 function sync-zhujie() {
-    if [[ -n $1 ]]; then
+    if [[ $(validate-ip $1) == 1 ]]; then
         REMOTE=$1
         sync-on-LAN $REMOTE $HOME/zhujie/ 
         return
+    fi
+    
+    if [[ $1 == 1 ]]; then
+        NO_PUSH=1
     fi
     
     USE_TMP_GIT=0
@@ -1458,7 +1471,9 @@ function sync-zhujie() {
         git add .
         git commit -m "$(date)"
         git pull
-        git push --set-upstream https://github.com/wanlizhu/zhujie master
+        if [[ -z $NO_PUSH ]]; then
+            git push --set-upstream https://github.com/wanlizhu/zhujie master
+        fi
         cp -f /tmp/zhujie/zhujie $0
         popd > /dev/null
     else
@@ -1466,7 +1481,9 @@ function sync-zhujie() {
         git add .
         git commit -m "$(date)"
         git pull
-        git push --set-upstream https://github.com/wanlizhu/zhujie master
+        if [[ -z $NO_PUSH ]]; then
+            git push --set-upstream https://github.com/wanlizhu/zhujie master
+        fi
         popd > /dev/null
     fi
 }
