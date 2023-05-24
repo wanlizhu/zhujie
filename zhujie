@@ -332,8 +332,11 @@ function install() {
             revert-nvidia-libs "$@"
         ;;
         mesa)
-            exit 1 #TODO
-            glxinfo | grep "OpenGL renderer"
+            sudo add-apt-repository ppa:kisak/kisak-mesa
+            sudo apt update
+            sudo apt install mesa
+            glxinfo | grep "OpenGL renderer string"
+            glxinfo | grep Mesa
         ;;
         mainline)
             sudo add-apt-repository ppa:cappelikan/ppa
@@ -414,7 +417,10 @@ function remove() {
 
     case $1 in
         mesa)
-            exit 1 #TODO
+            sudo apt install ppa-purge
+            sudo ppa-purge ppa:kisak/kisak-mesa
+            glxinfo | grep "OpenGL renderer string"
+            glxinfo | grep Mesa
         ;;
         mainline)
             sudo add-apt-repository --remove ppa:cappelikan/ppa
@@ -1368,7 +1374,70 @@ function cpu-usage() {
     fi
 }
 
-function sync() {
+function join-path() {
+    PARENT=$1
+    CHILD=$2
+    if [[ ${PARENT:-1} == '/' ]]; then
+        echo "$PARENT$CHILD"
+    else
+        echo "$PARENT/$CHILD"
+    fi
+}
+
+function myscp() {
+    REMOTE=$1
+    PASSWORD=$2
+    SRC=$(realpath $3)
+    
+    if [[ -z $REMOTE || -z $PASSWORD || -z $SRC ]]; then
+        echo "Usage: myscp <USER@IP> <PASSWORD> <PATH>" > /dev/stderr
+        exit 1
+    fi
+    
+    if [[ -d $SRC ]]; then
+        cd $SRC
+        for CHILD in `ls .`; do
+            SRC=$(join-path $(pwd) $CHILD)
+            myscp $REMOTE $PASSWORD $SRC
+        done
+        cd ..
+    else
+        if [[ $SRC =~ "/Users/"* ]]; then
+            DST=$REMOTE:'/home/'${SRC:7}
+        else
+            DST=$REMOTE:$SRC
+        fi
+        
+        echo $PASSWORD | scp $SRC $DST
+    fi
+}
+
+function sync-on-LAN() {
+    REMOTE=$1; shift 
+    FILES="$@"
+    
+    if [[ -z REMOTE || -z FILES ]]; then
+        echo "Usage: sync-on-LAN <USER@IP> <FILES...>" > /dev/stderr
+        exit 1
+    fi
+    
+    for SRC in $FILES; do
+        DST=$(dirname $SRC)
+        if [[ $DST =~ "/Users/"* ]]; then
+            DST='/home/'${DST:7}
+        fi
+        
+        scp -r $SRC $REMOTE:$DST
+    done
+}
+
+function sync-zhujie() {
+    if [[ -n $1 ]]; then
+        REMOTE=$1
+        sync-on-LAN $REMOTE $HOME/zhujie/ 
+        return
+    fi
+    
     USE_TMP_GIT=0
     BASEDIR=$(dirname $0)
     if [[ ! -d $BASEDIR/.git ]]; then
@@ -1400,6 +1469,10 @@ function sync() {
         git push --set-upstream https://github.com/wanlizhu/zhujie master
         popd > /dev/null
     fi
+}
+
+function sync() {
+    sync-zhujie "$@"
 }
 
 function vpn() {
