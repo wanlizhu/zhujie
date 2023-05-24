@@ -339,11 +339,18 @@ function install() {
             glxinfo | grep Mesa
         ;;
         pts|phoronix-test-suite)
-            wget https://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_10.8.4_all.deb -O $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb
+            pushd $HOME/Downloads > /dev/null
+            
+            if [[ ! -f phoronix-test-suite_10.8.4_all.deb ]]; then
+                wget https://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_10.8.4_all.deb -O $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb
+            fi
             
             if [[ -f $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb ]]; then
+                chmod 777 $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb 
                 sudo apt install -y $HOME/Downloads/phoronix-test-suite_10.8.4_all.deb
             fi
+            
+            popd > /dev/null
         ;;
         mainline)
             sudo add-apt-repository ppa:cappelikan/ppa
@@ -920,7 +927,7 @@ function fake-display() {
     if [[ $(has-nvidia-gpu) == 1 ]]; then
         if [[ -z $RESOLUTION ]]; then
             echo "Usage: fake-display [RESOLUTION]" > /dev/stderr
-            RESOLUTION=$(active-resolution --default $_4K)
+            RESOLUTION=$(get-active-resolution --default $_4K)
         fi
     else
         RESOLUTION=""
@@ -1005,7 +1012,7 @@ function vnc() {
             vncserver -kill "$@"
         ;;
         "")
-            GEOMETRY=$(active-resolution --default $_4K)
+            GEOMETRY=$(get-active-resolution --default $_4K)
             vncserver -localhost no -PasswordFile $HOME/.vnc/passwd -rfbport $VNCPORT -geometry $GEOMETRY
         ;;
         *)
@@ -1112,7 +1119,7 @@ function talos() {
         rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
     fi
     
-    RESOLUTION=$(active-resolution --default $_2K)
+    RESOLUTION=$(get-active-resolution --default $_2K)
     WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
     HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
     
@@ -1165,7 +1172,7 @@ function apex() {
         unset NVTEST_DRIVER_DIR
     fi
     
-    RESOLUTION=$(active-resolution --default $_4K)
+    RESOLUTION=$(get-active-resolution --default $_4K)
     
     if [[ $DIRECT_CALL == 0 ]]; then
         FPS_FILE=$HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.${ROUNDS}-rounds.fps
@@ -1256,7 +1263,7 @@ function catia() {
     fi
     
     list-viewperf-resolutions catia
-    RESOLUTION=$(active-resolution --default $_4K)
+    RESOLUTION=$(get-active-resolution --default $_4K)
     
     if [[ -n $CPU_LIST ]]; then
         read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
@@ -1303,7 +1310,7 @@ function creo() {
     fi
     
     list-viewperf-resolutions creo
-    RESOLUTION=$(active-resolution --default $_4K)
+    RESOLUTION=$(get-active-resolution --default $_4K)
     
     if [[ -n $CPU_LIST ]]; then
         read -p "Run with CPU affinity $CPU_LIST? (empty for Yes): " RSVP
@@ -1977,7 +1984,9 @@ function average-fps() {
              -r|--resolution) shift; RESOLUTION=$1; SUFFIX="$SUFFIX-$1" ;;
                    -l|--loop) shift; LOOP=$1; SUFFIX="$SUFFIX-loop-$1" ;;
             -s|--show-config) SHOW_CONFIG=1 ;;
+                           *) break ;;
         esac
+        shift
     done
     
     SUFFIX="$1$SUFFIX"
@@ -1991,7 +2000,7 @@ function average-fps() {
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     
     for i in `seq 1 $COUNT`; do
-        "$@" >> /tmp/zhujie-average-fps$SUFFIX
+        "$@" | tee -a /tmp/zhujie-average-fps$SUFFIX
     done
     
     rm -rf /tmp/zhujie-active-resolution
@@ -2098,6 +2107,10 @@ function mount-windows-folder() {
     fi
     
     sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME || exit 1
+}
+
+function ssh-key() {
+    echo TODO
 }
 
 
@@ -2279,6 +2292,10 @@ case $1 in
     mount-windows-folder)
         shift
         mount-windows-folder "$@"
+    ;;
+    ssh-key)
+        shift
+        ssh-key "$@"
     ;;
     test)
         for i in `seq 1 20`; do
