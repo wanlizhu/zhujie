@@ -1572,12 +1572,15 @@ with open(\"$FILE\", \"r\") as file:
                 columns[NW].append(float(word))
             else:
                 labels[NW] = word
-if lines_count >= 2:
-    for i in range(0, len(columns)):
-        if $INLINE:
-            print('{:.4f}'.format(stat.mean(columns[i])))
-        else:
-            print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
+try:
+    if lines_count >= 2:
+        for i in range(0, len(columns)):
+            if $INLINE:
+                print('{:.4f}'.format(stat.mean(columns[i])))
+            else:
+                print('{}: {:.4f}'.format(labels[i], stat.mean(columns[i])))
+except:
+    print('N/A')
 "
 }
 
@@ -1618,13 +1621,16 @@ with open(\"$FILE\", \"r\") as file:
             else:
                 labels[NW] = word
                 has_label_line = True
-if lines_count >= 2 + (1 if has_label_line else 0):
-    if $INLINE:
-        numbers = [ '{:.4f}'.format(stat.mean(column)) for column in columns ]
-        print(','.join(numbers))
-    else:
-        for i in range(0, len(columns)):
-            print('{}: {:.4f} (StdDev: {:.4f})'.format(labels[i], stat.mean(columns[i]), stat.stdev(columns[i])))
+try:
+    if lines_count >= 2 + (1 if has_label_line else 0):
+        if $INLINE:
+            numbers = [ '{:.4f}'.format(stat.mean(column)) for column in columns ]
+            print(','.join(numbers))
+        else:
+            for i in range(0, len(columns)):
+                print('{}: {:.4f} (StdDev: {:.4f})'.format(labels[i], stat.mean(columns[i]), stat.stdev(columns[i])))
+except:
+    print('N/A')
 "
 }
 
@@ -2083,7 +2089,7 @@ function average-fps() {
         echo ""
     done
     
-    printf "%s\t:: CPU Clock: $-4d KHz, GPU Clock: $-4d KHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
+    echo "$(average /tmp/zhujie-average-fps$SUFFIX)    :: CPU Clock: $(show-cpu-clock) KHz, GPU Clock: $(show-gpu-clock) KHz, Resolution: $RESOLUTION"
     
     rm -rf /tmp/zhujie-active-display
     rm -rf /tmp/zhujie-active-resolution
