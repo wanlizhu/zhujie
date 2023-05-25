@@ -249,7 +249,6 @@ function nvmake() {
     SECONDS=0
 
     echo "NVMake: linux $MODULE $ARCH $BUILD_TYPE"
-    mkdir -p $HOME/NVIDIA_OUT/Linux-$MODULE-$ARCH-$BUILD_TYPE
     pushd $P4ROOT/$NVBRANCH > /dev/null
     $P4ROOT/sw/misc/linux/unix-build $UNIX_BUILD_ARGS \
     --tools "$P4ROOT/sw/tools" \
@@ -596,7 +595,6 @@ function install-dvs-driver() {
             SUFFIX=$([[ $TYPE == Debug ]] && echo -internal || echo "") 
             URL="http://linuxqa.nvidia.com/dvsbuilds/gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver/SW_$CL.0_gpu_drv_dev_a_${TYPE}_Linux_AMD64_unix-build_Test_Driver.tgz/NVIDIA-Linux-x86_64-DVS${SUFFIX}.run"
             OUT=$HOME/Downloads/NVIDIA-dev_a-$TYPE-CL$CL.run
-
         ;;
         public)
             PATCH=$([[ $ID == Develop ]] && echo /develop || echo "")
