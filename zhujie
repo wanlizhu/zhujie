@@ -473,6 +473,10 @@ function run-nvidia-installer() {
     sudo chmod +x "$INSTALLER"
 
     who am i > /dev/null && (
+        if [[ -f /proc/driver/nvidia/version ]]; then 
+            cat /proc/driver/nvidia/version > $HOME/NVIDIA-Version
+        fi
+        
         sudo systemctl isolate multi-user
         sudo "$INSTALLER" -sb
         sudo systemctl isolate graphical
