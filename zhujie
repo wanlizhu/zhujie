@@ -368,7 +368,7 @@ function install() {
             cd /tmp
             tar -xvf terminus-font-4.49.1.tar.gz
             cd terminus-font-4.49.1
-            ./configure
+            configure
             make -j8
             sudo make install fontdir
         ;;
@@ -407,8 +407,8 @@ function install() {
                 check-display
                 echo "Continue in SPECviewperf GUI"
                 cd $HOME/Downloads/SPECviewperf2020v3.0
-                chmod 777 ./viewperf2020_3.0_amd64.deb
-                sudo apt install ./viewperf2020_3.0_amd64.deb
+                chmod 777 viewperf2020_3.0_amd64.deb
+                sudo apt install viewperf2020_3.0_amd64.deb
             fi
         ;;
         *)
@@ -838,7 +838,7 @@ function pic-v() {
     
     # Launch pic-v if it's not running
     pgrep -x pic-v >/dev/null || (
-        bash -c "cd $PIC_V && ./pic-v" &
+        bash -c "cd $PIC_V && pic-v" &
         sleep 3
     )
     
@@ -855,7 +855,7 @@ function pic-v() {
     "$@" && (
         # Launch http server if it's not running
         ps aux | grep "[p]ython3 -m http.server" || (
-            bash -c "cd $PIC_V/PerfInspector/output && ./launch-py3-server.sh" &
+            bash -c "cd $PIC_V/PerfInspector/output && launch-py3-server.sh" &
             sleep 1
         )
     
@@ -1282,7 +1282,7 @@ function catia() {
     fi
         
     pushd $(get-viewperf-home) > /dev/null
-    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-catia_${RESOLUTION}.log \
     2> $HOME/zhujie-catia_${RESOLUTION}.error && (
         cat $HOME/zhujie-catia_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-catia_${RESOLUTION}.fps
@@ -1329,7 +1329,7 @@ function creo() {
     fi
         
     pushd $(get-viewperf-home) > /dev/null
-    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-creo_${RESOLUTION}.log \
     2> $HOME/zhujie-creo_${RESOLUTION}.error && (
         cat $HOME/zhujie-creo_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-creo_${RESOLUTION}.fps
@@ -2170,6 +2170,23 @@ function ssh-key() {
     echo TODO
 }
 
+function build-kernel() {
+    sudo apt install -y git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison dwarves
+    cp -v /boot/config-$(uname -r) .config
+    scripts/config --disable SYSTEM_TRUSTED_KEYS
+    scripts/config --disable SYSTEM_REVOCATION_KEYS
+    make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+}
+
+function test() {
+    for i in `seq 1 20`; do
+        cpu-online
+        cpu-offline $(randoms 8 1 23)
+        talos >> talos-disable-random-8-cores.log
+    done
+    cpu-online 
+}
+
 
 
 
@@ -2354,12 +2371,12 @@ case $1 in
         shift
         ssh-key "$@"
     ;;
+    build-kernel)
+        shift
+        build-kernel "$@"
+    ;;
     test)
-        for i in `seq 1 20`; do
-            cpu-online
-            cpu-offline $(randoms 8 1 23)
-            talos >> talos-disable-random-8-cores.log
-        done
-        cpu-online 
+        shift
+        test "$@"
     ;;
 esac
