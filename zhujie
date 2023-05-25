@@ -1969,8 +1969,8 @@ function lock-cpu-clock() {
         return 0
     fi
     
-    CPU_LIST=$(lscpu | grep "On-line CPU(s) list:" | awk '{ print $4 }')
-    for INDEX in `seq $(expand-range $CPU_LIST)`; do
+    CPU_CORES=$(lscpu | grep "On-line CPU(s) list:" | awk '{ print $4 }')
+    for INDEX in `seq $(expand-range $CPU_CORES)`; do
         if [[ $SCALING_SETSPEED_SUPPORTED == 1 ]]; then
             MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
             if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
