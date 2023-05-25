@@ -2049,7 +2049,6 @@ function show-gpu-clock() {
 function average-fps() {
     RESOLUTION=""
     LOOPS=1
-    SHOW_CONFIG=0
     SUFFIX=""
     
     while [[ -n $1 ]]; do
@@ -2058,7 +2057,6 @@ function average-fps() {
                # -g|--gpu-clock) shift; GPU_CLOCK=$1; SUFFIX="$SUFFIX-gpu-clock-$1" ;;
              -r|--resolution) shift; RESOLUTION=$1; SUFFIX="$SUFFIX-$1" ;;
                    -l|--loop) shift; LOOPS=$1; SUFFIX="$SUFFIX-loop-$1" ;;
-            -s|--show-config) SHOW_CONFIG=1 ;;
                            *) break ;;
         esac
         shift
@@ -2078,23 +2076,19 @@ function average-fps() {
         echo ""
     done
     
-    if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%s\t:: CPU Clock: $-4d KHz, GPU Clock: $-4d KHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
-    else
-        average --inline /tmp/zhujie-average-fps$SUFFIX
-    fi
+    printf "%s\t:: CPU Clock: $-4d KHz, GPU Clock: $-4d KHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
     
     rm -rf /tmp/zhujie-active-resolution
-    unlock-gpu-clock 
+    unlock-gpu-clock
     unlock-cpu-clock 
 }
 
 function is-cpu-limited() {
     LOOS=1
     
-    FPS_RESOLUTION_1K=$(average-fps --show-config --loop $LOOPS --resolution ${_1K} "$@" | awk '{ print $1 }')
-    FPS_RESOLUTION_2K=$(average-fps --show-config --loop $LOOPS --resolution ${_2K} "$@" | awk '{ print $1 }')
-    FPS_RESOLUTION_4K=$(average-fps --show-config --loop $LOOPS --resolution ${_4K} "$@" | awk '{ print $1 }')
+    FPS_RESOLUTION_1K=$(average-fps --loop $LOOPS --resolution ${_1K} "$@" | awk '{ print $1 }')
+    FPS_RESOLUTION_2K=$(average-fps --loop $LOOPS --resolution ${_2K} "$@" | awk '{ print $1 }')
+    FPS_RESOLUTION_4K=$(average-fps --loop $LOOPS --resolution ${_4K} "$@" | awk '{ print $1 }')
     
     echo "Target Application: $1"
     echo "FPS @ $_1K: $FPS_RESOLUTION_1K"
