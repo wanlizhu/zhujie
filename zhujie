@@ -1146,7 +1146,9 @@ function talos() {
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     rm -rf /tmp/zhujie-talos.fps
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
-        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos.fps
+        FPS=$(cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}')
+        echo "$FPS :: "
+        echo "$FPS" >> /tmp/zhujie-talos.fps
     ) || (
         cat $HOME/zhujie-talos.log
         cat $HOME/zhujie-talos.error
@@ -1187,7 +1189,9 @@ function apex() {
         /mnt/linuxqa/nvt.sh DxvkApexLegends --traces Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF \
         1> $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log \
         2> $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.error && (
-            cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}' | tee -a $FPS_FILE
+            FPS=$(cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log | grep -o 'dxvk-v[0-9.]*-fps[[:blank:]]\+[0-9.]*' | awk '{print $2}')
+            echo "$FPS :: "
+            echo "$FPS" >> $FPS_FILE
         ) || (
             cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.log
             cat $HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.error
@@ -1214,7 +1218,9 @@ function apex() {
         fi
         
         cd /root/nvt/tests/dxvk/run_dir; DISPLAY=:0.0 DXVK_HUD=full DXVK_LOG_LEVEL=none DXVK_STATE_CACHE=0 LD_LIBRARY_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib:/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser/Linux_amd64 LIBC_FATAL_STDERR_=1 NODEVICE_SELECT=1 PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/root/NVIDIA_TOOLS:/root:/root/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin PROTON_VR_RUNTIME=1 STEAM_COMPAT_DATA_PATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json VK_INSTANCE_LAYERS=VK_LAYER_AEJS_DeviceChooserLayer VK_LAYER_PATH=/mnt/linuxqa/nvtest/pynv_files/vulkan_loader/sdk-1.1.114/Linux_amd64/explicit_layer.d:/mnt/linuxqa/nvtest/pynv_files/vkdevicechooser VR_OVERRIDE=1 VULKAN_DEVICE_INDEX=0 WINEDEBUG=-all WINEDLLOVERRIDES='steam.exe=b;d3d11=n;d3d10core=n;dxgi=n;d3d11x_42=n;d3d11x_43=n;d3d9=n;nvcuda=b;' WINEDLLPATH=/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib64/wine:/root/nvt/tests/dxvk/experimental-7.0-20230201/files/lib/wine WINEESYNC=1 WINEPREFIX=/root/nvt/tests/dxvk/experimental-7.0-20230201/prefix/pfx WINE_MONO_OVERRIDES='Microsoft.Xna.Framework.*,Gac=n' __GL_4718b=0x00000008 __GL_61807119=/root/nvt/log/loadmonitor/00057_run-in-soldier __GL_SHADER_DISK_CACHE=0 __GL_SYNC_TO_VBLANK=0  $TASKSET $TASKSET_OPTIONS $CPU_LIST /root/nvt/tests/dxvk/experimental-7.0-20230201/files/bin/wine /root/nvt/tests/dxvk/run_dir/r5apex.exe 1000 0 fps_log 1> $HOME/zhujie-Apex_Legends.log 2> $HOME/zhujie-Apex_Legends.error && (
-            cat $HOME/zhujie-Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}' | tee -a $FPS_FILE
+            FPS=$(cat $HOME/zhujie-Apex_Legends.log | grep -o 'average FPS: [0-9.]*' | awk '{print $3}')
+            echo "$FPS :: "
+            echo "$FPS" >> $FPS_FILE
         ) || (
             cat $HOME/zhujie-Apex_Legends.log
             cat $HOME/zhujie-Apex_Legends.error
@@ -1290,7 +1296,9 @@ function catia() {
     $TASKSET $TASKSET_OPTIONS $CPU_LIST viewperf/bin/viewperf viewsets/catia/config/catia.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-catia_${RESOLUTION}.log \
     2> $HOME/zhujie-catia_${RESOLUTION}.error && (
-        cat $HOME/zhujie-catia_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-catia_${RESOLUTION}.fps
+        FPS=$(cat $HOME/zhujie-catia_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}')
+        echo "$FPS :: " 
+        echo "$FPS" >> $HOME/zhujie-catia_${RESOLUTION}.fps
     ) || (
         cat $HOME/zhujie-catia_${RESOLUTION}.log
         cat $HOME/zhujie-catia_${RESOLUTION}.error
@@ -1337,7 +1345,9 @@ function creo() {
     $TASKSET $TASKSET_OPTIONS $CPU_LIST viewperf/bin/viewperf viewsets/creo/config/creo.xml -resolution $RESOLUTION \
     1> $HOME/zhujie-creo_${RESOLUTION}.log \
     2> $HOME/zhujie-creo_${RESOLUTION}.error && (
-        cat $HOME/zhujie-creo_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}' | tee -a $HOME/zhujie-creo_${RESOLUTION}.fps
+        FPS=$(cat $HOME/zhujie-creo_${RESOLUTION}.log | grep "<Composite Score=" | grep -o '".*"' | awk '{print substr($0, 2, length($0) - 2)}')
+        echo "$FPS :: "
+        echo "$FPS" >> $HOME/zhujie-creo_${RESOLUTION}.fps
     ) || (
         cat $HOME/zhujie-creo_${RESOLUTION}.log
         cat $HOME/zhujie-creo_${RESOLUTION}.error
@@ -2085,7 +2095,7 @@ function average-fps() {
     for i in `seq 1 $LOOPS`; do
         echo "Running $i out of $LOOPS iterations ..."
         echo "$@"
-        "$@" | tee -a /tmp/zhujie-average-fps$SUFFIX
+        "$@" | grep "::" | awk -F '::' '{ print $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
         echo ""
     done
     
