@@ -2112,24 +2112,11 @@ function is-cpu-limited() {
     FPS_RESOLUTION_2K=$(average-fps --show-config --loop $LOOPS --resolution ${_2K} "$@" | awk '{ print $1 }')
     FPS_RESOLUTION_4K=$(average-fps --show-config --loop $LOOPS --resolution ${_4K} "$@" | awk '{ print $1 }')
     
-    FPS_CPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOPS --cpu-clock min "$@" | awk '{ print $1 }')
-    FPS_CPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOPS --cpu-clock cur "$@" | awk '{ print $1 }')
-    FPS_CPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOPS --cpu-clock max "$@" | awk '{ print $1 }')
-    
-    if [[ $(has-nvidia-gpu) == 1 ]]; then
-        FPS_GPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOPS --gpu-clock min "$@" | awk '{ print $1 }')
-        FPS_GPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOPS --gpu-clock cur "$@" | awk '{ print $1 }')
-        FPS_GPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOPS --gpu-clock max "$@" | awk '{ print $1 }')
-    else
-        FPS_GPU_CLOCK_MIN=0
-        FPS_GPU_CLOCK_CUR=0
-        FPS_GPU_CLOCK_MAX=0
-    fi
-    
-    printf "Target Application: %s" $1
-    printf "FPS with Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $FPS_RESOLUTION_1K $FPS_RESOLUTION_2K $FPS_RESOLUTION_4K
-    printf " FPS with CPU Clocks: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $FPS_CPU_CLOCK_MIN $FPS_CPU_CLOCK_CUR $FPS_CPU_CLOCK_MAX
-    printf " FPS with GPU Clocks: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $FPS_GPU_CLOCK_MIN $FPS_GPU_CLOCK_CUR $FPS_GPU_CLOCK_MAX
+    echo "Target Application: $1"
+    echo "FPS @ $_1K: $FPS_RESOLUTION_1K"
+    echo "FPS @ $_2K: $FPS_RESOLUTION_2K"
+    echo "FPS @ $_3K: $FPS_RESOLUTION_4K"
+    echo ""
 }
 
 function config-htop() {
