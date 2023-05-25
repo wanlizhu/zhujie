@@ -2217,11 +2217,34 @@ function ssh-key() {
 }
 
 function build-kernel() {
+    if [[ ! -d $HOME/linux-src ]]; then
+        git clone https://github.com/torvalds/linux.git $HOME/linux-src
+    fi
+    
+    pushd $HOME/linux-src
     sudo apt install -y git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison dwarves
     cp -v /boot/config-$(uname -r) .config
     scripts/config --disable SYSTEM_TRUSTED_KEYS
     scripts/config --disable SYSTEM_REVOCATION_KEYS
     make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+    popd 
+}
+
+function build-gcc() {
+    if [[ ! -d $HOME/gcc-src ]]; then
+        git clone https://github.com/gcc-mirror/gcc.git $HOME/gcc-src
+    fi
+    
+    pushd $HOME/gcc-src
+    git checkout releases/gcc-12.3.0
+    ./contrib/download_prerequisites
+    cd ..
+    mkdir objdir
+    cd objdir
+    $PWD/../gcc-12.2.0/configure --prefix=$HOME/GCC-12.2.0 --enable-languages=c,c++,fortran,go
+    make -j$(($(nproc) - 2))
+    make install
+    popd
 }
 
 function test() {
@@ -2420,6 +2443,10 @@ case $1 in
     build-kernel)
         shift
         build-kernel "$@"
+    ;;
+    build-gcc)
+        shift
+        build-gcc "$@"
     ;;
     test)
         shift
