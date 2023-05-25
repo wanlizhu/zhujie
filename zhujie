@@ -9,6 +9,10 @@ export _2K=2560x1440
 export _4K=3840x2160
 alias ll='ls -alhF'
 
+if [[ -z $DISPLAY && $(uname) == Linux ]]; then
+    export DISPLAY=:0
+fi
+
 # Add zhujie to PATH
 which zhujie > /dev/null || (
     export PATH="$(dirname $0):$PATH"
