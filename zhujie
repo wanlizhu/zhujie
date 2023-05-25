@@ -1992,7 +1992,7 @@ function lock-cpu-clock() {
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
         
         NO_TURBO=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
-        echo "no_turbo $NO_TURBO" > $HOME/zhujie-no_turbo-backup
+        echo "$NO_TURBO" > $HOME/zhujie-no_turbo-backup
         echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     done
     
