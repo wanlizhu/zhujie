@@ -2010,9 +2010,9 @@ function average-fps() {
     FPS=$(average --inline /tmp/zhujie-average-fps$SUFFIX)
     
     if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%7.2f FPS    :: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" $FPS $CPU_CLOCK $GPU_CLOCK $RESOLUTION
+        printf "%s    :: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" $(average /tmp/zhujie-average-fps$SUFFIX) $CPU_CLOCK $GPU_CLOCK $RESOLUTION
     else
-        echo $FPS
+        average --inline /tmp/zhujie-average-fps$SUFFIX
     fi
 }
 
