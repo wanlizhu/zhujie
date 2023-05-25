@@ -1952,13 +1952,11 @@ function get-active-resolution() {
 
 function lock-cpu-clock() {
     NEW_CLOCK=$1
-    if [[ -z $NEW_CLOCK ]]; then
-        if [[ $(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed) == "<unsupported>" ]]; then
-            SCALING_SETSPEED_SUPPORTED=0
-            NEW_CLOCK=""
-        else 
-            SCALING_SETSPEED_SUPPORTED=1
-        fi
+    if [[ $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed) == "<unsupported>" ]]; then
+        SCALING_SETSPEED_SUPPORTED=0
+        NEW_CLOCK=""
+    else 
+        SCALING_SETSPEED_SUPPORTED=1
     fi
     
     if [[ -f $HOME/zhujie-lock-cpu-clock-backups ]]; then 
@@ -1973,17 +1971,17 @@ function lock-cpu-clock() {
     
     CPU_LIST=$(lscpu | grep "On-line CPU(s) list:" | awk '{ print $4 }')
     for INDEX in `seq $(expand-range $CPU_LIST)`; do
-        MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
-        if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
-            NEW_CLOCK=$MIN_FREQ
-        fi
-        
-        MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_max_freq)
-        if [[ $NEW_CLOCK > $MAX_FREQ ]]; then
-            NEW_CLOCK=$MAX_FREQ
-        fi
-        
         if [[ $SCALING_SETSPEED_SUPPORTED == 1 ]]; then
+            MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
+            if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
+                NEW_CLOCK=$MIN_FREQ
+            fi
+            
+            MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_max_freq)
+            if [[ $NEW_CLOCK > $MAX_FREQ ]]; then
+                NEW_CLOCK=$MAX_FREQ
+            fi
+        
             SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
             echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
             echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
@@ -1995,10 +1993,10 @@ function lock-cpu-clock() {
         
         NO_TURBO=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
         echo "no_turbo $NO_TURBO" > $HOME/zhujie-no_turbo-backup
-        echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+        echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     done
     
-    echo "Locked CPU clock ($CPU_LIST @ $NEW_CLOCK KHz)"
+    echo "Locked CPU clock ($CPU_LIST @ $(show-cpu-clock))"
 }
 
 function unlock-cpu-clock() {
@@ -2015,7 +2013,7 @@ function unlock-cpu-clock() {
     rm -rf $HOME/zhujie-lock-cpu-clock-backups
     
     if [[ -f $HOME/zhujie-no_turbo-backup ]]; then
-        echo "$(cat $HOME/zhujie-no_turbo-backup)" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+        echo "$(cat $HOME/zhujie-no_turbo-backup)" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
         rm -rf $HOME/zhujie-no_turbo-backup
     fi
     
