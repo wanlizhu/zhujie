@@ -2097,8 +2097,13 @@ function average-fps() {
     for i in `seq 1 $LOOPS`; do
         echo "Running $i out of $LOOPS iterations ..."
         echo "$@"
-        "$@" | grep "::" | awk -F '::' '{ print $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
-        echo ""
+        
+        "$@" 1>/tmp/zhujie-$1.log 2>/tmp/zhujie-$1.error && (
+            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
+        ) || (
+            cat /tmp/zhujie-$1.log
+            cat /tmp/zhujie-$1.error
+        )
     done
     
     echo "$(average /tmp/zhujie-average-fps$SUFFIX)    :: CPU Clock: $(show-cpu-clock), GPU Clock: $(show-gpu-clock), Resolution: $RESOLUTION"
