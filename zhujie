@@ -2242,7 +2242,12 @@ function build-gcc() {
     fi
     
     pushd $HOME/gcc-src
-    git checkout releases/gcc-$VERSION
+    git checkout releases/gcc-$VERSION || (
+        echo "Error: releases/gcc-$VERSION doesn't exist" > /dev/stderr
+        popd
+        exit 1    
+    )
+    
     ./contrib/download_prerequisites
     mkdir build-objdir
     cd build-objdir
