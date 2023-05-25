@@ -2231,17 +2231,23 @@ function build-kernel() {
 }
 
 function build-gcc() {
+    VERSION=$1
+    if [[ -z $VERSION ]]; then
+        echo "Usage: build-gcc <VERSION>" > /dev/stderr
+        exit 1
+    fi
+    
     if [[ ! -d $HOME/gcc-src ]]; then
         git clone https://github.com/gcc-mirror/gcc.git $HOME/gcc-src
     fi
     
     pushd $HOME/gcc-src
-    git checkout releases/gcc-12.3.0
+    git checkout releases/gcc-$VERSION
     ./contrib/download_prerequisites
     cd ..
     mkdir objdir
     cd objdir
-    $PWD/../gcc-12.2.0/configure --prefix=$HOME/GCC-12.2.0 --enable-languages=c,c++,fortran,go
+    $PWD/../gcc-$VERSION/configure --prefix=$HOME/GCC-$VERSION --enable-languages=c,c++,fortran,go
     make -j$(($(nproc) - 2))
     make install
     popd
