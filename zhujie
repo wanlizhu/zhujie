@@ -2115,6 +2115,7 @@ function average-fps() {
         ) || (
             cat /tmp/zhujie-$1.log
             cat /tmp/zhujie-$1.error
+            break
         )
     done
     
