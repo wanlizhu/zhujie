@@ -1987,6 +1987,16 @@ function lock-cpu-clock() {
             echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
         fi
         
+        BASE_CLOCK=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/base_frequency)
+        
+        SCALING_MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq)
+        echo "$INDEX scaling_max_freq $SCALING_MAX_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+        echo $BASE_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq > /dev/null
+        
+        SCALING_MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq)
+        echo "$INDEX scaling_min_freq $SCALING_MIN_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+        echo $BASE_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq > /dev/null
+            
         SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
         echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
