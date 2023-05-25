@@ -1115,10 +1115,6 @@ function talos() {
     click-talos-message-window &
     kill-talos-later &
 
-    if [[ $ROUNDS > 1  && -f /tmp/zhujie-talos-$ROUNDS-rounds.fps ]]; then
-        rm -rf /tmp/zhujie-talos-$ROUNDS-rounds.fps
-    fi
-    
     RESOLUTION=$(get-active-resolution --default $_2K)
     WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
     HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
@@ -1143,8 +1139,9 @@ function talos() {
     fi
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
+    rm -rf /tmp/zhujie-talos.fps
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> $HOME/zhujie-talos.log 2> $HOME/zhujie-talos.error && (   
-        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos-$ROUNDS-rounds.fps
+        cat "$HOME/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}' | tee -a /tmp/zhujie-talos.fps
     ) || (
         cat $HOME/zhujie-talos.log
         cat $HOME/zhujie-talos.error
@@ -1175,10 +1172,10 @@ function apex() {
     RESOLUTION=$(get-active-resolution --default $_4K)
     
     if [[ $DIRECT_CALL == 0 ]]; then
-        FPS_FILE=$HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.${ROUNDS}-rounds.fps
+        FPS_FILE=$HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.fps
     else
         check-display
-        FPS_FILE=$HOME/zhujie-Apex_Legends.${ROUNDS}-rounds.fps
+        FPS_FILE=$HOME/zhujie-Apex_Legends.fps
     fi
     
     if [[ $DIRECT_CALL == 0 ]]; then
@@ -1365,7 +1362,7 @@ function cpu-offline() {
     fi
     
     for RANGE in $@; do
-        for i in `seq $(parse-range $RANGE)`; do
+        for i in `seq $(expand-range $RANGE)`; do
             echo 0 | sudo tee /sys/devices/system/cpu/cpu$i/online > /dev/null
         done
     done
@@ -1385,7 +1382,7 @@ function cpu-usage() {
     esac
     
     if [[ -n $PID ]]; then
-        RANGE=$(parse-range $(taskset -pc $PID | awk '{ print $6 }'))
+        RANGE=$(expand-range $(taskset -pc $PID | awk '{ print $6 }'))
         for i in `seq $RANGE`; do 
             echo $i > /dev/null
         done
@@ -1630,7 +1627,7 @@ function average() {
     mean2 "$@"
 }
 
-function parse-range() {
+function expand-range() {
     if [[ $1 == *"-"* ]]; then
         echo "${1/-/ }"
     else
@@ -1953,36 +1950,111 @@ function get-active-resolution() {
     echo $RESOLUTION | tee /tmp/zhujie-active-resolution
 }
 
-function push-cpu-freq() {
-    echo
+function lock-cpu-clock() {
+    NEW_CLOCK=$1
+    if [[ -z $NEW_CLOCK ]]; then
+        echo "Usage: lock-cpu-clock <NEW_CLOCK in KHz>" > /dev/stderr
+        exit 1
+    fi
+    
+    if [[ -f $HOME/zhujie-lock-cpu-clock-backups ]]; then 
+        echo "Error: $HOME/zhujie-lock-cpu-clock-backups already exists" > /dev/stderr
+        exit 1
+    fi
+    
+    if [[ $NEW_CLOCK == 0 ]]; then
+        echo "Keep current CPU clock"
+        return 0
+    fi
+    
+    CPU_LIST=$(lscpu | grep "On-line CPU(s) list:" | awk '{ print $4 }')
+    for INDEX in `seq $(expand-range $CPU_LIST)`; do
+        MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
+        if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
+            NEW_CLOCK=$MIN_FREQ
+        fi
+        
+        MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_max_freq)
+        if [[ $NEW_CLOCK > $MAX_FREQ ]]; then
+            NEW_CLOCK=$MAX_FREQ
+        fi
+        
+        SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
+        SCALING_MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq)
+        SCALING_MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq)
+        SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
+        echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
+        echo "$INDEX scaling_max_freq $SCALING_MAX_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+        echo "$INDEX scaling_min_freq $SCALING_MIN_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+        echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
+        
+        echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
+        echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
+    done
+    
+    echo "Locked CPU clock ($CPU_LIST @ $NEW_CLOCK KHz)"
 }
 
-function pop-cpu-freq() {
-    echo
+function unlock-cpu-clock() {
+    if [[ ! -f $HOME/zhujie-lock-cpu-clock-backups ]]; then 
+        return 0
+    fi
+    
+    while read -r LINE; do
+        IFS=" " read -a WORDS <<< "$LINE"
+        echo ${WORDS[2]} | sudo tee /sys/devices/system/cpu/cpu${WORDS[0]}/cpufreq/${WORDS[1]} > /dev/nullI
+    done < $HOME/zhujie-lock-cpu-clock-backups
+    rm -rf $HOME/zhujie-lock-cpu-clock-backups
+    
+    echo "Unlocked CPU clock"
 }
 
-function push-gpu-freq() {
-    echo
+function show-cpu-clock() {
+    echo "$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq) KHz"
 }
 
-function pop-gpu-freq() {
-    echo
+function lock-gpu-clock() {
+    NEW_CLOCK=$1
+    if [[ -z $NEW_CLOCK ]]; then
+        echo "Usage: lock-gpu-clock <NEW_CLOCK in KHz>" > /dev/stderr
+        exit 1
+    fi
+    
+    if [[ -f $HOME/zhujie-lock-gpu-clock-backups ]]; then 
+        echo "Error: $HOME/zhujie-lock-gpu-clock-backups already exists" > /dev/stderr
+        exit 1
+    fi
+    
+    if [[ $NEW_CLOCK == 0 ]]; then
+        echo "Keep current GPU clock"
+        return 0
+    fi
+}
+
+function unlock-gpu-clock() {
+    if [[ ! -f $HOME/zhujie-lock-gpu-clock-backups ]]; then 
+        return 0
+    fi
+}
+
+function show-gpu-clock() {
+    echo 0
 }
 
 function average-fps() {
-    CPU_FREQ=0
-    GPU_FREQ=0
+    CPU_CLOCK=0
+    GPU_CLOCK=0
     RESOLUTION=""
-    LOOP=1
+    LOOPS=1
     SHOW_CONFIG=0
     SUFFIX=""
     
     while [[ -n $1 ]]; do
         case $1 in
-               -c|--cpu-freq) shift; CPU_FREQ=$1; SUFFIX="$SUFFIX-cpu-freq-$1" ;;
-               -g|--gpu-freq) shift; GPU_FREQ=$1; SUFFIX="$SUFFIX-gpu-freq-$1" ;;
+               -c|--cpu-clock) shift; CPU_CLOCK=$1; SUFFIX="$SUFFIX-cpu-clock-$1" ;;
+               -g|--gpu-clock) shift; GPU_CLOCK=$1; SUFFIX="$SUFFIX-gpu-clock-$1" ;;
              -r|--resolution) shift; RESOLUTION=$1; SUFFIX="$SUFFIX-$1" ;;
-                   -l|--loop) shift; LOOP=$1; SUFFIX="$SUFFIX-loop-$1" ;;
+                   -l|--loop) shift; LOOPS=$1; SUFFIX="$SUFFIX-loop-$1" ;;
             -s|--show-config) SHOW_CONFIG=1 ;;
                            *) break ;;
         esac
@@ -1991,54 +2063,54 @@ function average-fps() {
     
     SUFFIX="$1$SUFFIX"
     
-    if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
-        rm -rf /tmp/zhujie-average-fps$SUFFIX
-    fi
-    
-    push-cpu-freq $CPU_FREQ > /dev/null
-    push-gpu-freq $GPU_FREQ > /dev/null
+    lock-cpu-clock $CPU_CLOCK 
+    lock-gpu-clock $GPU_CLOCK 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     
-    for i in `seq 1 $LOOP`; do
+    rm -rf /tmp/zhujie-average-fps$SUFFIX
+    for i in `seq 1 $LOOPS`; do
+        echo "Running $i out of $LOOPS iterations ..."
+        echo "$@"
         "$@" | tee -a /tmp/zhujie-average-fps$SUFFIX
         echo ""
     done
     
-    rm -rf /tmp/zhujie-active-resolution
-    pop-gpu-freq > /dev/null
-    pop-cpu-freq > /dev/null
-    
-    FPS=$(average --inline /tmp/zhujie-average-fps$SUFFIX)
-    
     if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%s\t\t:: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" $CPU_CLOCK $GPU_CLOCK $RESOLUTION
+        printf "%s\t:: CPU Clock: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
     else
         average --inline /tmp/zhujie-average-fps$SUFFIX
     fi
+    
+    rm -rf /tmp/zhujie-active-resolution
+    unlock-gpu-clock 
+    unlock-cpu-clock 
 }
 
 function is-cpu-limited() {
-    LOOP=1
-    CPU_FREQ_MIN=$(average-fps --show-config --loop $LOOP --cpu-freq min "$@" | awk '{ print $1 }')
-    CPU_FREQ_CUR=$(average-fps --show-config --loop $LOOP --cpu-freq cur "$@" | awk '{ print $1 }')
-    CPU_FREQ_MAX=$(average-fps --show-config --loop $LOOP --cpu-freq max "$@" | awk '{ print $1 }')
-    if [[ $(has-nvidia-gpu) == 1 ]]; then
-        GPU_FREQ_MIN=$(average-fps --show-config --loop $LOOP --gpu-freq min "$@" | awk '{ print $1 }')
-        GPU_FREQ_CUR=$(average-fps --show-config --loop $LOOP --gpu-freq cur "$@" | awk '{ print $1 }')
-        GPU_FREQ_MAX=$(average-fps --show-config --loop $LOOP --gpu-freq max "$@" | awk '{ print $1 }')
-    else
-        GPU_FREQ_MIN=0
-        GPU_FREQ_CUR=0
-        GPU_FREQ_MAX=0
-    fi
-    RESOLUTION_1K=$(average-fps --show-config --loop $LOOP --resolution ${_1K} "$@" | awk '{ print $1 }')
-    RESOLUTION_2K=$(average-fps --show-config --loop $LOOP --resolution ${_2K} "$@" | awk '{ print $1 }')
-    RESOLUTION_4K=$(average-fps --show-config --loop $LOOP --resolution ${_4K} "$@" | awk '{ print $1 }')
+    LOOS=1
     
-    printf "Game: %s"
-    printf "CPU Freq Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $CPU_FREQ_MIN $CPU_FREQ_CUR $CPU_FREQ_MAX
-    printf "GPU Freq Levels: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $GPU_FREQ_MIN $GPU_FREQ_CUR $GPU_FREQ_MAX
-    printf "    Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $RESOLUTION_1K $RESOLUTION_2K $RESOLUTION_4K
+    FPS_RESOLUTION_1K=$(average-fps --show-config --loop $LOOPS --resolution ${_1K} "$@" | awk '{ print $1 }')
+    FPS_RESOLUTION_2K=$(average-fps --show-config --loop $LOOPS --resolution ${_2K} "$@" | awk '{ print $1 }')
+    FPS_RESOLUTION_4K=$(average-fps --show-config --loop $LOOPS --resolution ${_4K} "$@" | awk '{ print $1 }')
+    
+    FPS_CPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOPS --cpu-clock min "$@" | awk '{ print $1 }')
+    FPS_CPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOPS --cpu-clock cur "$@" | awk '{ print $1 }')
+    FPS_CPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOPS --cpu-clock max "$@" | awk '{ print $1 }')
+    
+    if [[ $(has-nvidia-gpu) == 1 ]]; then
+        FPS_GPU_CLOCK_MIN=$(average-fps --show-config --loop $LOOPS --gpu-clock min "$@" | awk '{ print $1 }')
+        FPS_GPU_CLOCK_CUR=$(average-fps --show-config --loop $LOOPS --gpu-clock cur "$@" | awk '{ print $1 }')
+        FPS_GPU_CLOCK_MAX=$(average-fps --show-config --loop $LOOPS --gpu-clock max "$@" | awk '{ print $1 }')
+    else
+        FPS_GPU_CLOCK_MIN=0
+        FPS_GPU_CLOCK_CUR=0
+        FPS_GPU_CLOCK_MAX=0
+    fi
+    
+    printf "Target Application: %s" $1
+    printf "FPS with Resolutions: [ 1K: %6.2f     2K: %6.2f     4K: %6.2f]\n" $FPS_RESOLUTION_1K $FPS_RESOLUTION_2K $FPS_RESOLUTION_4K
+    printf " FPS with CPU Clocks: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $FPS_CPU_CLOCK_MIN $FPS_CPU_CLOCK_CUR $FPS_CPU_CLOCK_MAX
+    printf " FPS with GPU Clocks: [Min: %6.2f    Cur: %6.2f    Max: %6.2f]\n" $FPS_GPU_CLOCK_MIN $FPS_GPU_CLOCK_CUR $FPS_GPU_CLOCK_MAX
 }
 
 function config-htop() {
