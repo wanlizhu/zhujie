@@ -2035,27 +2035,11 @@ function show-cpu-clock() {
 }
 
 function lock-gpu-clock() {
-    NEW_CLOCK=$1
-    if [[ -z $NEW_CLOCK ]]; then
-        echo "Usage: lock-gpu-clock <NEW_CLOCK in KHz>" > /dev/stderr
-        exit 1
-    fi
-    
-    if [[ -f $HOME/zhujie-lock-gpu-clock-backups ]]; then 
-        echo "Error: $HOME/zhujie-lock-gpu-clock-backups already exists" > /dev/stderr
-        exit 1
-    fi
-    
-    if [[ $NEW_CLOCK == 0 ]]; then
-        echo "Keep current GPU clock"
-        return 0
-    fi
+    echo "Locked GPU clock"
 }
 
 function unlock-gpu-clock() {
-    if [[ ! -f $HOME/zhujie-lock-gpu-clock-backups ]]; then 
-        return 0
-    fi
+    echo "Unlocked GPU clock"
 }
 
 function show-gpu-clock() {
