@@ -1999,7 +1999,7 @@ function average-fps() {
     push-gpu-freq $GPU_FREQ > /dev/null
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     
-    for i in `seq 1 $COUNT`; do
+    for i in `seq 1 $LOOP`; do
         "$@" | tee -a /tmp/zhujie-average-fps$SUFFIX
     done
     
