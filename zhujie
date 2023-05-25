@@ -9,7 +9,7 @@ export _2K=2560x1440
 export _4K=3840x2160
 alias ll='ls -alhF'
 
-if [[ -z $DISPLAY && $(uname) == Linux ]]; then
+if [[ -z $DISPLAY ]]; then
     export DISPLAY=:0
 fi
 
@@ -2031,7 +2031,7 @@ function lock-cpu-clock() {
         echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     done
     
-    echo "Locked CPU clock"
+    echo "Lock CPU clock"
 }
 
 function unlock-cpu-clock() {
@@ -2052,7 +2052,7 @@ function unlock-cpu-clock() {
         rm -rf $HOME/zhujie-no_turbo-backup
     fi
     
-    echo "Unlocked CPU clock"
+    echo "Unlock CPU clock"
 }
 
 function show-cpu-clock() {
@@ -2060,11 +2060,11 @@ function show-cpu-clock() {
 }
 
 function lock-gpu-clock() {
-    echo "Locked GPU clock"
+    echo "Lock GPU clock"
 }
 
 function unlock-gpu-clock() {
-    echo "Unlocked GPU clock"
+    echo "Unlock GPU clock"
 }
 
 function show-gpu-clock() {
@@ -2088,12 +2088,10 @@ function average-fps() {
     done
     
     SUFFIX="$1$SUFFIX"
-    DP=$([[ -z $DISPLAY ]] && echo ":0" || echo $DISPLAY)
     
     lock-cpu-clock 
     lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
-    echo $DP > /tmp/zhujie-active-display
     
     rm -rf /tmp/zhujie-average-fps$SUFFIX
     for i in `seq 1 $LOOPS`; do
@@ -2103,9 +2101,8 @@ function average-fps() {
         echo ""
     done
     
-    echo "$(average /tmp/zhujie-average-fps$SUFFIX)    :: CPU Clock: $(show-cpu-clock) KHz, GPU Clock: $(show-gpu-clock) KHz, Resolution: $RESOLUTION"
+    echo "$(average /tmp/zhujie-average-fps$SUFFIX)    :: CPU Clock: $(show-cpu-clock), GPU Clock: $(show-gpu-clock), Resolution: $RESOLUTION"
     
-    rm -rf /tmp/zhujie-active-display
     rm -rf /tmp/zhujie-active-resolution
     unlock-gpu-clock
     unlock-cpu-clock 
