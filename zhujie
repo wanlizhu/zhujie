@@ -2006,7 +2006,7 @@ function lock-cpu-clock() {
         echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     done
     
-    echo "Locked CPU clock ($CPU_LIST @ $(show-cpu-clock))"
+    echo "Locked CPU clock"
 }
 
 function unlock-cpu-clock() {
