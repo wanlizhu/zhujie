@@ -1979,17 +1979,23 @@ function lock-cpu-clock() {
             NEW_CLOCK=$MAX_FREQ
         fi
         
-        SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
-        SCALING_MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq)
-        SCALING_MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq)
-        SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
-        echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
-        echo "$INDEX scaling_max_freq $SCALING_MAX_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
-        echo "$INDEX scaling_min_freq $SCALING_MIN_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
-        echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
+        if [[ $(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed) == "<unsupported>" ]]; then
+            SCALING_MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq)
+            echo "$INDEX scaling_max_freq $SCALING_MAX_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq > /dev/null
+            
+            SCALING_MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq)
+            echo "$INDEX scaling_min_freq $SCALING_MIN_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
+            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq > /dev/null
+        else
+            SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
+            echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
+            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
+        fi
         
+        SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
+        echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
-        echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
     done
     
     echo "Locked CPU clock ($CPU_LIST @ $NEW_CLOCK KHz)"
@@ -2002,7 +2008,9 @@ function unlock-cpu-clock() {
     
     while read -r LINE; do
         IFS=" " read -a WORDS <<< "$LINE"
-        echo ${WORDS[2]} | sudo tee /sys/devices/system/cpu/cpu${WORDS[0]}/cpufreq/${WORDS[1]} > /dev/nullI
+        if [[ -n ${WORDS[0]} && -n ${WORDS[1]} && -n ${WORDS[2]} ]]; then
+            echo ${WORDS[2]} | sudo tee /sys/devices/system/cpu/cpu${WORDS[0]}/cpufreq/${WORDS[1]} > /dev/null
+        fi
     done < $HOME/zhujie-lock-cpu-clock-backups
     rm -rf $HOME/zhujie-lock-cpu-clock-backups
     
