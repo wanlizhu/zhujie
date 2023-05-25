@@ -2001,6 +2001,7 @@ function average-fps() {
     
     for i in `seq 1 $LOOP`; do
         "$@" | tee -a /tmp/zhujie-average-fps$SUFFIX
+        echo ""
     done
     
     rm -rf /tmp/zhujie-active-resolution
@@ -2010,7 +2011,7 @@ function average-fps() {
     FPS=$(average --inline /tmp/zhujie-average-fps$SUFFIX)
     
     if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%s    :: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" $(average /tmp/zhujie-average-fps$SUFFIX) $CPU_CLOCK $GPU_CLOCK $RESOLUTION
+        printf "%s\t\t:: CPU Freq: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" $CPU_CLOCK $GPU_CLOCK $RESOLUTION
     else
         average --inline /tmp/zhujie-average-fps$SUFFIX
     fi
