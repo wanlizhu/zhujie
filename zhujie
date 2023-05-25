@@ -2246,7 +2246,7 @@ function build-gcc() {
     ./contrib/download_prerequisites
     mkdir build-objdir
     cd build-objdir
-    ../configure --prefix=$HOME/GCC-$VERSION --enable-languages=c,c++,fortran,go
+    ../configure --prefix=$HOME/GCC-$VERSION --enable-languages=c,c++,fortran,go --disable-multilib
     make -j$(($(nproc) - 2))
     make install
     popd
