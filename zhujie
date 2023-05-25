@@ -66,7 +66,7 @@ function combine-file-lines() {
     sed ':a;N;$!ba;s/\n/, /g' /tmp/zhujie-combine-lines | sed 's/\n$//g'
 }
 
-function check-display() {
+function get-active-display() {
     # if [[ -z $(ps aux | grep [X]org) ]]; then
     #     echo "Xorg is not running" > /dev/stderr
     #     read -p "Do you wanna run a fake display? (empty for Yes): " RSVP
@@ -81,11 +81,16 @@ function check-display() {
     # fi
 
     if [[ -z $DISPLAY ]]; then
-        read -p "Name a DISPLAY to continue (empty for :0) " RSVP
-        case $RSVP in
-            "") export DISPLAY=:0 ;;
-             *) export DISPLAY=$RSVP ;;
-        esac
+        if [[ -f /tmp/zhujie-active-display ]]; then
+            export DISPLAY=$(cat /tmp/zhujie-active-display)
+        else
+            read -p "Name a DISPLAY to continue (empty for :0) " RSVP
+            case $RSVP in
+                "") export DISPLAY=:0 ;;
+                *) export DISPLAY=$RSVP ;;
+            esac
+            echo $RSVP > /tmp/zhujie-active-display
+        fi
     fi
 
     glxinfo 1> /dev/null 2> /dev/null || (
@@ -404,7 +409,7 @@ function install() {
             fi
             
             if [[ -f $HOME/Downloads/SPECviewperf2020v3.0/viewperf2020_3.0_amd64.deb ]]; then
-                check-display
+                get-active-display
                 echo "Continue in SPECviewperf GUI"
                 cd $HOME/Downloads/SPECviewperf2020v3.0
                 chmod 777 viewperf2020_3.0_amd64.deb
@@ -1029,7 +1034,7 @@ function ddnet() {
     # Default
     # RaiNyMore2 -- GPU-intensive 
 
-    check-display
+    get-active-display
 
     (echo 7; echo 2; echo 1; echo 1; echo 2; echo n) | phoronix-test-suite benchmark pts/ddnet
 }
@@ -1085,7 +1090,7 @@ function kill-talos-later() {
 }
 
 function talos() {
-    check-display
+    get-active-display
     
     DIRECT_CALL=0
     while [[ -n $1 ]]; do
@@ -1174,7 +1179,7 @@ function apex() {
     if [[ $DIRECT_CALL == 0 ]]; then
         FPS_FILE=$HOME/zhujie-Apex_Legends_Ultra_${RESOLUTION}_1xAA_16xAF.fps
     else
-        check-display
+        get-active-display
         FPS_FILE=$HOME/zhujie-Apex_Legends.fps
     fi
     
@@ -1252,7 +1257,7 @@ function catia() {
         exit 1
     fi
     
-    check-display
+    get-active-display
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
         echo "Unset NVTEST_DRIVER_DIR for mesa driver"
@@ -1299,7 +1304,7 @@ function creo() {
         exit 1
     fi
     
-    check-display
+    get-active-display
     
     if [[ $(has-nvidia-gpu) == 0 ]]; then
         echo "Unset NVTEST_DRIVER_DIR for mesa driver"
@@ -2063,10 +2068,12 @@ function average-fps() {
     done
     
     SUFFIX="$1$SUFFIX"
+    DP=$([[ -z $DISPLAY ]] && echo ":0" || echo $DISPLAY)
     
     lock-cpu-clock 
     lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
+    echo $DP > /tmp/zhujie-active-display
     
     rm -rf /tmp/zhujie-average-fps$SUFFIX
     for i in `seq 1 $LOOPS`; do
@@ -2078,6 +2085,7 @@ function average-fps() {
     
     printf "%s\t:: CPU Clock: $-4d KHz, GPU Clock: $-4d KHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
     
+    rm -rf /tmp/zhujie-active-display
     rm -rf /tmp/zhujie-active-resolution
     unlock-gpu-clock
     unlock-cpu-clock 
