@@ -1953,8 +1953,12 @@ function get-active-resolution() {
 function lock-cpu-clock() {
     NEW_CLOCK=$1
     if [[ -z $NEW_CLOCK ]]; then
-        echo "Usage: lock-cpu-clock <NEW_CLOCK in KHz>" > /dev/stderr
-        exit 1
+        if [[ $(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed) == "<unsupported>" ]]; then
+            SCALING_SETSPEED_SUPPORTED=0
+            NEW_CLOCK=""
+        else 
+            SCALING_SETSPEED_SUPPORTED=1
+        fi
     fi
     
     if [[ -f $HOME/zhujie-lock-cpu-clock-backups ]]; then 
@@ -1979,15 +1983,7 @@ function lock-cpu-clock() {
             NEW_CLOCK=$MAX_FREQ
         fi
         
-        if [[ $(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed) == "<unsupported>" ]]; then
-            SCALING_MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq)
-            echo "$INDEX scaling_max_freq $SCALING_MAX_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
-            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_max_freq > /dev/null
-            
-            SCALING_MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq)
-            echo "$INDEX scaling_min_freq $SCALING_MIN_FREQ" >> $HOME/zhujie-lock-cpu-clock-backups
-            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq > /dev/null
-        else
+        if [[ $SCALING_SETSPEED_SUPPORTED == 1 ]]; then
             SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
             echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
             echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
@@ -1996,6 +1992,10 @@ function lock-cpu-clock() {
         SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
         echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
+        
+        NO_TURBO=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
+        echo "no_turbo $NO_TURBO" > $HOME/zhujie-no_turbo-backup
+        echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
     done
     
     echo "Locked CPU clock ($CPU_LIST @ $NEW_CLOCK KHz)"
@@ -2013,6 +2013,11 @@ function unlock-cpu-clock() {
         fi
     done < $HOME/zhujie-lock-cpu-clock-backups
     rm -rf $HOME/zhujie-lock-cpu-clock-backups
+    
+    if [[ -f $HOME/zhujie-no_turbo-backup ]]; then
+        echo "$(cat $HOME/zhujie-no_turbo-backup)" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+        rm -rf $HOME/zhujie-no_turbo-backup
+    fi
     
     echo "Unlocked CPU clock"
 }
@@ -2050,8 +2055,6 @@ function show-gpu-clock() {
 }
 
 function average-fps() {
-    CPU_CLOCK=0
-    GPU_CLOCK=0
     RESOLUTION=""
     LOOPS=1
     SHOW_CONFIG=0
@@ -2059,8 +2062,8 @@ function average-fps() {
     
     while [[ -n $1 ]]; do
         case $1 in
-               -c|--cpu-clock) shift; CPU_CLOCK=$1; SUFFIX="$SUFFIX-cpu-clock-$1" ;;
-               -g|--gpu-clock) shift; GPU_CLOCK=$1; SUFFIX="$SUFFIX-gpu-clock-$1" ;;
+               # -c|--cpu-clock) shift; CPU_CLOCK=$1; SUFFIX="$SUFFIX-cpu-clock-$1" ;;
+               # -g|--gpu-clock) shift; GPU_CLOCK=$1; SUFFIX="$SUFFIX-gpu-clock-$1" ;;
              -r|--resolution) shift; RESOLUTION=$1; SUFFIX="$SUFFIX-$1" ;;
                    -l|--loop) shift; LOOPS=$1; SUFFIX="$SUFFIX-loop-$1" ;;
             -s|--show-config) SHOW_CONFIG=1 ;;
@@ -2071,8 +2074,8 @@ function average-fps() {
     
     SUFFIX="$1$SUFFIX"
     
-    lock-cpu-clock $CPU_CLOCK 
-    lock-gpu-clock $GPU_CLOCK 
+    lock-cpu-clock 
+    lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     
     rm -rf /tmp/zhujie-average-fps$SUFFIX
@@ -2084,7 +2087,7 @@ function average-fps() {
     done
     
     if [[ $SHOW_CONFIG == 1 ]]; then
-        printf "%s\t:: CPU Clock: $-4d MHz, GPU Clock: $-4d MHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
+        printf "%s\t:: CPU Clock: $-4d KHz, GPU Clock: $-4d KHz, Resolution: %s\n" "$(average /tmp/zhujie-average-fps$SUFFIX)" "$(show-cpu-clock)" "$(show-gpu-clock)" $RESOLUTION
     else
         average --inline /tmp/zhujie-average-fps$SUFFIX
     fi
