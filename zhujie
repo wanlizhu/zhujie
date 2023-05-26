@@ -127,7 +127,9 @@ function cpu() {
     echo -ne "CPU Model Name: " 
     lscpu | grep "Model name:" | awk -F "name:" '{print $2}' | awk '{$1=$1; print}'
     
-    # lscpu --all --extended 
+    lscpu --all --extended 
+    
+    sudo tlp-stat -p
 }
 
 function gpu() {
