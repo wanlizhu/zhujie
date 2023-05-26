@@ -1149,7 +1149,7 @@ function talos() {
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64" > /dev/null
     rm -rf /tmp/zhujie-talos.fps
-    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua > /tmp/zhujie-talos.log 
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 1> /tmp/zhujie-talos.log 2> /tmp/zhujie-talos.error
     popd > /dev/null
     
     FPS=$(cat "/tmp/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}')
@@ -1157,7 +1157,7 @@ function talos() {
         echo "$FPS :: "
         echo "$FPS" >> /tmp/zhujie-talos.fps
     else
-        cat /tmp/zhujie-talos.log
+        cat /tmp/zhujie-talos.error
         return 1
     fi
 }
