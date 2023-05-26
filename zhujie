@@ -2169,6 +2169,8 @@ function config-ssh() {
     
     cat $(dirname $0)/id_zhujie.pub >> $HOME/.ssh/authorized_keys
     cp  $(dirname $0)/id_zhujie $HOME/.ssh
+    eval "$(ssh-agent)"
+    sudo ssh-add $HOME/.ssh/id_zhujie
     
     # # On the client side
     # if [[ $(! test -f $HOME/.ssh/config) || -z $(cat $HOME/.ssh/config | grep '[[:blank:]]ForwardX11[[:blank:]]# yes') ]]; then
