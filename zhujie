@@ -2238,16 +2238,25 @@ function mount-windows-folder() {
 }
 
 function build-kernel() {
-    if [[ ! -d $HOME/linux-src ]]; then
-        git clone https://github.com/torvalds/linux.git $HOME/linux-src
+    if [[ ! -d $HOME/linux-kernel/src ]]; then
+        mkdir -p $HOME/linux-kernel/src
+        git clone https://github.com/torvalds/linux.git $HOME/linux-kernel/src
     fi
     
-    pushd $HOME/linux-src
+    pushd $HOME/linux-kernel/src
+    
     sudo apt install -y git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison dwarves debhelper
+    
     cp -v /boot/config-$(uname -r) .config
     scripts/config --disable SYSTEM_TRUSTED_KEYS
     scripts/config --disable SYSTEM_REVOCATION_KEYS
-    make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+    
+    if [[ $1 == deb ]]; then
+        make -j$(($(nproc) - 2)) deb-pkg
+    else
+        make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+    fi
+    
     popd 
 }
 
