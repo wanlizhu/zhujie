@@ -2096,13 +2096,15 @@ function average-fps() {
     rm -rf /tmp/zhujie-average-fps$SUFFIX
     
     for i in `seq 1 $LOOPS`; do
-        echo -ne "Running $i out of $LOOPS iterations ... "
+        echo "Running $i out of $LOOPS iterations ... "
+        "$@" | tee /tmp/zhujie-$1.log 
         
-        "$@" | tee /tmp/zhujie-$1.log && (
-            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print "FPS: " $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
-        ) || (
-            cat /tmp/zhujie-$1.log
-        )
+        FPS=$(cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print $1 }')
+        echo "FPS: $FPS"
+        
+        if [[ -n $FPS ]]; then
+            echo "$FPS" >> /tmp/zhujie-average-fps$SUFFIX
+        fi
     done
     
     rm -rf /tmp/zhujie-active-resolution
