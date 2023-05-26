@@ -2164,7 +2164,7 @@ function config-ssh() {
     
     if [[ ! -f $HOME/.ssh/authorized_keys ]]; then
         touch $HOME/.ssh/authorized_keys
-        chmod 777 $HOME/.ssh/authorized_keys
+        chmod 600 $HOME/.ssh/authorized_keys
     fi
     
     PUBLIC_KEY=$(cat $(dirname $0)/id_zhujie.pub)
@@ -2179,6 +2179,7 @@ function config-ssh() {
     fi
     
     cp  $(dirname $0)/id_zhujie $HOME/.ssh
+    chmod 600 $HOME/.ssh/id_zhujie
     eval "$(ssh-agent)"
     ssh-add $HOME/.ssh/id_zhujie
     
