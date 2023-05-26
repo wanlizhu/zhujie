@@ -1049,7 +1049,7 @@ function click-talos-message-window() {
     
     STOP=0
     while [[ $STOP == 0 ]]; do
-        WINDOW_ID=$(xdotool getactivewindow)
+        WINDOW_ID=$(xdotool getactivewindow || STOP=1)
         WINDOW_NAME=$(xdotool getwindowname $WINDOW_ID)
         if [[ $WINDOW_NAME == Message ]]; then
             POSITION=$(xdotool getwindowgeometry $WINDOW_ID | grep Position: | awk '{print $2}')
