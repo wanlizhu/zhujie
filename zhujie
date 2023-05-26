@@ -2276,12 +2276,7 @@ function build-gcc() {
 }
 
 function test() {
-    for i in `seq 1 20`; do
-        cpu-online
-        cpu-offline $(randoms 8 1 23)
-        talos >> talos-disable-random-8-cores.log
-    done
-    cpu-online 
+    echo 
 }
 
 
