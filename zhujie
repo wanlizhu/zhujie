@@ -2107,18 +2107,16 @@ function average-fps() {
     done
     
     SUFFIX="-$1$SUFFIX"
-    
     lock-cpu-clock 
     lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
-    
     rm -rf /tmp/zhujie-average-fps$SUFFIX
-
+    
     for i in `seq 1 $LOOPS`; do
         echo -ne "Running $i out of $LOOPS iterations ... "
         
         "$@" 1>/tmp/zhujie-$1.log 2>/tmp/zhujie-$1.error && (
-            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print "FPS:" $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
+            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print "FPS: " $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
         ) || (
             cat /tmp/zhujie-$1.log
             cat /tmp/zhujie-$1.error
