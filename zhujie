@@ -90,10 +90,17 @@ function get-active-display() {
         else
             read -p "Name a DISPLAY to continue (empty for :0) " RSVP
             case $RSVP in
-                "") export DISPLAY=:0 ;;
-                *) export DISPLAY=$RSVP ;;
+                "") RSVP=:0 ;;
             esac
-            echo $RSVP > /tmp/zhujie-active-display
+            
+            export DISPLAY=$RSVP
+            
+            read -p "Save to /tmp/zhujie-active-display? (Y/n): " RSVP
+            case $RSVP in
+                yes|y|"")
+                    echo $RSVP > /tmp/zhujie-active-display
+                ;;
+            esac
         fi
     fi
 
@@ -1970,7 +1977,15 @@ function get-active-resolution() {
         4k|4K|3840|2160) RESOLUTION=$_4K ;; 
     esac
     
-    echo $RESOLUTION | tee /tmp/zhujie-active-resolution
+    read -p "Save to /tmp/zhujie-active-resolution? (Y/n): " RSVP
+    case $RSVP in
+        yes|y|"")
+            echo $RESOLUTION | tee /tmp/zhujie-active-resolution
+        ;;
+        *)
+            echo $RESOLUTION
+        ;;
+    esac
 }
 
 function lock-cpu-clock() {
