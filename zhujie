@@ -2115,22 +2115,23 @@ function average-fps() {
     rm -rf /tmp/zhujie-average-fps$SUFFIX
 
     for i in `seq 1 $LOOPS`; do
-        echo "Running $i out of $LOOPS iterations ..."
-        echo "$@"
+        echo -ne "Running $i out of $LOOPS iterations ... "
         
         "$@" 1>/tmp/zhujie-$1.log 2>/tmp/zhujie-$1.error && (
-            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
+            cat /tmp/zhujie-$1.log | grep "::" | awk -F '::' '{ print "FPS:" $1 }' | tee -a /tmp/zhujie-average-fps$SUFFIX
         ) || (
             cat /tmp/zhujie-$1.log
             cat /tmp/zhujie-$1.error
         )
     done
     
-    echo "$(average /tmp/zhujie-average-fps$SUFFIX)    :: CPU Clock: $(show-cpu-clock), GPU Clock: $(show-gpu-clock), Resolution: $RESOLUTION"
-    
     rm -rf /tmp/zhujie-active-resolution
     unlock-gpu-clock
     unlock-cpu-clock 
+    
+    if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
+        average /tmp/zhujie-average-fps$SUFFIX
+    fi
 }
 
 function is-cpu-limited() {
