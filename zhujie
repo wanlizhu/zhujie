@@ -2157,16 +2157,29 @@ function config-htop() {
 }
 
 function config-ssh() {
-    mkdir -p $HOME/.ssh
-    
-    # On the client side
-    if [[ $(! test -f $HOME/.ssh/config) || -z $(cat $HOME/.ssh/config | grep '[[:blank:]]ForwardX11[[:blank:]]yes') ]]; then
-        echo "ForwardX11 yes" >> $HOME/.ssh/config
+    if [[ ! -d $HOME/.ssh ]]; then
+        mkdir $HOME/.ssh
+        chmod 777 $HOME/.ssh
     fi
     
-    # On the server side
-    if [[ -z $(cat /etc/ssh/sshd_config | grep '[[:blank:]]X11Forwarding[[:blank:]]yes') ]]; then
-        echo 'X11Forwarding yes' | sudo tee -a /etc/ssh/sshd_config > /dev/null
+    if [[ ! -f $HOME/.ssh/authorized_keys ]]; then
+        touch $HOME/.ssh/authorized_keys
+        chmod 777 $HOME/.ssh/authorized_keys
+    fi
+    
+    echo $(dirname $0)/id_zhujie.pub >> $HOME/.ssh/authorized_keys
+    cp   $(dirname $0)/id_zhujie -t $HOME/.ssh
+    
+    if [[ 0 ]]; then
+        # On the client side
+        if [[ $(! test -f $HOME/.ssh/config) || -z $(cat $HOME/.ssh/config | grep '[[:blank:]]ForwardX11[[:blank:]]yes') ]]; then
+            echo "ForwardX11 yes" >> $HOME/.ssh/config
+        fi
+        
+        # On the server side
+        if [[ -z $(cat /etc/ssh/sshd_config | grep '[[:blank:]]X11Forwarding[[:blank:]]yes') ]]; then
+            echo 'X11Forwarding yes' | sudo tee -a /etc/ssh/sshd_config > /dev/null
+        fi
     fi
 }
 
@@ -2208,10 +2221,6 @@ function mount-windows-folder() {
     fi
     
     sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME || return 1
-}
-
-function ssh-key() {
-    echo TODO
 }
 
 function build-kernel() {
@@ -2442,10 +2451,6 @@ case $1 in
     mount-windows-folder)
         shift
         mount-windows-folder "$@"
-    ;;
-    ssh-key)
-        shift
-        ssh-key "$@"
     ;;
     build-kernel)
         shift
