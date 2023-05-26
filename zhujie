@@ -1121,12 +1121,10 @@ function talos() {
         return 1
     )
     
-    STEAM_PROC=$(pgrep -x steam)
-    while [[ -z $STEAM_PROC ]]; do
-        STEAM_PROC=$(pgrep -x steam)
-        echo "To be continued when steam is running"
-        sleep 5
-    done
+    if [[ -z $(pgrep -x steam) ]]; then
+        echo "Launch steam client first"
+        return 1
+    fi
 
     if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
         echo "Error: install 'Talos Principle' in steam's window and try again" > /dev/stderr
