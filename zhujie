@@ -1110,11 +1110,10 @@ function talos() {
         return 1
     )
     
-    STEAM_PROC=$(pgrep -x steam)
     while [[ -z $STEAM_PROC ]]; do
-        echo "To be continued when steam is running"
-        sleep 3
         STEAM_PROC=$(pgrep -x steam)
+        echo "To be continued when steam is running"
+        sleep 5
     done
 
     if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
