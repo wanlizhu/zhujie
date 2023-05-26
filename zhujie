@@ -1106,13 +1106,13 @@ function talos() {
     
     which steam > /dev/null || (
         sudo apt install -y steam
-        steam &
+        steam > /dev/null &
         echo "Continue in Steam GUI to log in"
         return 0
     )
     
     pgrep -x steam >/dev/null || (
-        steam &
+        steam > /dev/null &
         sleep 20
     )
 
