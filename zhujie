@@ -2036,12 +2036,12 @@ function lock-cpu-clock() {
         # echo $BASE_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_min_freq > /dev/null
             
         SCALING_GOVERNOR=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor)
-        echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
-        echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
+        #echo "$INDEX scaling_governor $SCALING_GOVERNOR" >> $HOME/zhujie-lock-cpu-clock-backups
+        #echo "performance" | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_governor > /dev/null
         
         NO_TURBO=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
-        echo "$NO_TURBO" > $HOME/zhujie-no_turbo-backup
-        echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+        #echo "$NO_TURBO" > $HOME/zhujie-no_turbo-backup
+        #echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     done
     
     echo "Lock CPU clock"
@@ -2101,8 +2101,8 @@ function average-fps() {
     done
     
     SUFFIX="-$1$SUFFIX"
-    lock-cpu-clock 
-    lock-gpu-clock 
+    #lock-cpu-clock 
+    #lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     rm -rf /tmp/zhujie-average-fps$SUFFIX
     
@@ -2119,8 +2119,8 @@ function average-fps() {
     done
     
     rm -rf /tmp/zhujie-active-resolution
-    unlock-gpu-clock
-    unlock-cpu-clock 
+    #unlock-gpu-clock
+    #unlock-cpu-clock 
     
     if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
         average /tmp/zhujie-average-fps$SUFFIX
