@@ -2009,21 +2009,21 @@ function lock-cpu-clock() {
     CPU_CORES=$(lscpu | grep "On-line CPU(s) list:" | awk '{ print $4 }')
     
     for INDEX in `seq $(expand-range $CPU_CORES)`; do
-        if [[ $SCALING_SETSPEED_SUPPORTED == 1 ]]; then
-            MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
-            if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
-                NEW_CLOCK=$MIN_FREQ
-            fi
-            
-            MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_max_freq)
-            if [[ $NEW_CLOCK > $MAX_FREQ ]]; then
-                NEW_CLOCK=$MAX_FREQ
-            fi
-        
-            SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
-            echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
-            echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
-        fi
+        # if [[ $SCALING_SETSPEED_SUPPORTED == 1 ]]; then
+        #     MIN_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_min_freq)
+        #     if [[ $NEW_CLOCK < $MIN_FREQ ]]; then
+        #         NEW_CLOCK=$MIN_FREQ
+        #     fi
+        #     
+        #     MAX_FREQ=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/cpuinfo_max_freq)
+        #     if [[ $NEW_CLOCK > $MAX_FREQ ]]; then
+        #         NEW_CLOCK=$MAX_FREQ
+        #     fi
+        # 
+        #     SCALING_MIN_SETSPEED=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed)
+        #     echo "$INDEX scaling_setspeed $SCALING_SETSPEED" >> $HOME/zhujie-lock-cpu-clock-backups
+        #     echo $NEW_CLOCK | sudo tee /sys/devices/system/cpu/cpu$INDEX/cpufreq/scaling_setspeed > /dev/null
+        # fi
         
         # BASE_CLOCK=$(cat /sys/devices/system/cpu/cpu$INDEX/cpufreq/base_frequency)
         # 
@@ -2101,8 +2101,8 @@ function average-fps() {
     done
     
     SUFFIX="-$1$SUFFIX"
-    lock-cpu-clock 
-    lock-gpu-clock 
+    # lock-cpu-clock 
+    # lock-gpu-clock 
     echo $RESOLUTION > /tmp/zhujie-active-resolution
     rm -rf /tmp/zhujie-average-fps$SUFFIX
     
@@ -2119,8 +2119,8 @@ function average-fps() {
     done
     
     rm -rf /tmp/zhujie-active-resolution
-    unlock-gpu-clock
-    unlock-cpu-clock 
+    # unlock-gpu-clock
+    # unlock-cpu-clock 
     
     if [[ -f /tmp/zhujie-average-fps$SUFFIX ]]; then
         average /tmp/zhujie-average-fps$SUFFIX
