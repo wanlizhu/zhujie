@@ -61,7 +61,7 @@ esac
 function on-user-cancel() {
     echo ""
     popd > /dev/null
-    exit 0
+    return 0
 }
 
 function combine-file-lines() {
@@ -80,7 +80,7 @@ function get-active-display() {
     #             echo "Sleep for 10 seconds waiting for fake display..."
     #             sleep 10
     #         ;;
-    #         *) exit 1 ;;
+    #         *) return 1 ;;
     #     esac
     # fi
 
@@ -99,7 +99,7 @@ function get-active-display() {
 
     glxinfo 1> /dev/null 2> /dev/null || (
         echo "Error: can't open display $DISPLAY" > /dev/stderr
-        exit 1
+        return 1
     )
 }
 
@@ -137,7 +137,7 @@ function gpu() {
 function nvidia-smi-static() {
     which nvidia-smi > /dev/null || (
         echo "Error: can't find nvidia-smi in PATH"
-        exit 1
+        return 1
     )
     
     nvidia-smi --query | grep "Driver Version" | awk -F ":" '{print "NVIDIA Driver Version:" $2}'
@@ -214,12 +214,12 @@ function nvmake() {
 
     if [[ -z $P4ROOT ]]; then
         echo "Error: P4ROOT is not configured" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     if [[ -z $NVBRANCH ]]; then
         echo "Error: NVBRANCH is not configured" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     if [[ $(stat -c '%U' $P4ROOT/sw/misc/linux/unix-build) != root ]]; then
@@ -228,7 +228,7 @@ function nvmake() {
 
     case $MODULE in
          dev_a) MODULE="drivers dist" ;;
-        opengl) exit 1 ;; #TODO
+        opengl) return 1 ;; #TODO
            ppp) MODULE="post-process-packages dist" ;;
          sweep)
             pushd $P4ROOT/$NVBRANCH > /dev/null
@@ -241,7 +241,7 @@ function nvmake() {
         ;;
         *)
             echo "Error: NVIDIA module $MODULE is not supported" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac
 
@@ -270,14 +270,14 @@ function nvmake() {
     ) || (
         grep -E -i -w "fatal|error|errors|critical|failed|: \*\*\*" /tmp/zhujie-nvmake-Linux-$MODULE-$ARCH-$BUILD_TYPE.log;
         popd > /dev/null 
-        exit 1
+        return 1
     )
 }
 
 function build() {
     if [[ -z $1 ]]; then
         echo "Usage: build <dev_a|opengl|sweep|ppp> [ARCHS...] [TYPES...]" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     ARCHS=""
@@ -294,7 +294,7 @@ function build() {
             *)
                 echo "Error: unknown argument $1" > /dev/stderr
                 build
-                exit 1
+                return 1
             ;;
         esac
         shift
@@ -324,7 +324,7 @@ function install() {
         echo "    e.g. install <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
         echo "    e.g. install <-r|--revert> <ARCH>" > /dev/stderr
         echo "    e.g. install mesa [version]" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     case $1 in
@@ -398,14 +398,14 @@ function install() {
                     fi
                     unzip -o SPECviewperf2020v3.0.zip
                 elif [[ $RSVP == 2 ]]; then
-                    mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' || exit 1
+                    mount-windows-folder '\\wsapps02\wsapps02\Benchmarks\SPEC\GPC\ViewPerf' || return 1
                     rm -r -f $HOME/Downloads/SPECviewperf2020v3.0 
                     cp -r -f /mnt/ViewPerf/Linux/SPECviewperf2020v3.0 $HOME/Downloads/SPECviewperf2020v3.0 
                     umount /mnt/ViewPerf
                     rm -rf /mnt/ViewPerf
                 else
                     echo "Error: unexpected argument $RSVP" > /dev/stderr
-                    exit 1
+                    return 1
                 fi
             fi
             
@@ -422,7 +422,7 @@ function install() {
                 run-nvidia-installer "$1"
             else
                 echo "Error: $1 doesn't exist" > /dev/stderr
-                exit 1
+                return 1
             fi
         ;;
     esac
@@ -432,7 +432,7 @@ function remove() {
     if [[ -z $1 ]]; then
         echo "Usage: remove [OPTIONS]" > /dev/stderr
         echo "    e.g. remove mesa" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     case $1 in
@@ -451,7 +451,7 @@ function remove() {
         ;;
         *)
             echo "Error: can't remove $1" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac
 }
@@ -460,12 +460,12 @@ function run-nvidia-installer() {
     INSTALLER=$1
     if [[ -z $INSTALLER ]]; then
         echo "Usage: run-nvidia-installer <INSTALLER_PATH>" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     if [[ ! -f $INSTALLER ]]; then
         echo "Error: NVIDIA installer $INSTALLER doesn't exist" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     sudo chmod +x "$INSTALLER"
@@ -480,14 +480,14 @@ function run-nvidia-installer() {
         sudo systemctl isolate graphical
     ) || (
     	echo "Error: can't run NVIDIA installer locally" > /dev/stderr
-        exit 1
+        return 1
     )	
 }
 
 function revert-nvidia-libs() {
     if [[ -z $1 ]]; then
         echo "Usage: revert-nvidia-libs <ARCH>" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     ARCH=$1 && shift
@@ -503,7 +503,7 @@ function revert-nvidia-libs() {
 function update-nvidia-libs() {
     if [[  -z $1 || -z $2 || -z $3 ]]; then
         echo "Usage: update-nvidia-libs <MODULE> <ARCH> <BUILD_TYPE>" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     MODULE=$1 && shift
@@ -513,7 +513,7 @@ function update-nvidia-libs() {
 
     if [[ $(nvidia-source-version) != $(nvidia-version-installed $ARCH) ]]; then  
         echo "Error: NVIDIA modules are version locked can't overwrite *.so.$(nvidia-version-installed $ARCH) with *.so.$(nvidia-source-version)" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     echo "Update NVIDIA module [$MODULE $ARCH $BUILD_TYPE]"
@@ -535,7 +535,7 @@ function update-nvidia-libs() {
                     sudo cp -f $OUTDIR/$BASENAME $TARGETNAME
                 else
                     echo "Error: $TARGETNAME is missing" > /dev/stderr
-                    exit 1
+                    return 1
                 fi
 
                 echo "Updated: $TARGETNAME"
@@ -543,7 +543,7 @@ function update-nvidia-libs() {
         ;;
         *)
             echo "Error: NVIDIA module $MODULE is not supported" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac 
 }
@@ -555,7 +555,7 @@ function nvidia-source-version() {
 function nvidia-version-installed() {
     if [[ -z $1 ]]; then
         echo "Usage: nvidia-version-installed <ARCH>" > /dev/stderr
-        exit 1
+        return 1
     fi  
 
     ARCH=$1
@@ -569,7 +569,7 @@ function nvidia-version-installed() {
         echo $VERSION
     else
         echo "Error: can't parse NVIDIA version installed" > /dev/stderr
-        exit 1
+        return 1
     fi
 }
 
@@ -586,7 +586,7 @@ function install-dvs-driver() {
              public)  shift; BRANCH=public; CL=$1 ;;
             *)
                 echo "Error: unknown argument $1" > /dev/stderr
-                exit 1
+                return 1
             ;;
         esac
         shift
@@ -617,7 +617,7 @@ function install-dvs-driver() {
             chmod 777 $OUT
         ) || (
             echo "Error: can't download $URL" > /dev/stderr
-            exit 1
+            return 1
         )
     fi
 
@@ -639,7 +639,7 @@ function drivers() {
         echo "    e.g. drivers dev_a CL debug" > /dev/stderr
         echo "    e.g. drivers public RELEASE_ID" > /dev/stderr
         echo "    e.g. drivers public RELEASE_ID develop" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     IS_PUBLIC=0
@@ -659,7 +659,7 @@ function drivers() {
 function flamegraph() {    
     which perf || (
         echo "Error: can't find perf in PATH" > /dev/stderr
-        exit 1
+        return 1
     )
 
     NAME=Perf-NoName
@@ -696,7 +696,7 @@ function flamegraph() {
                     PERF_RECORD_PID=" --pid=$(pidof $NAME) "
 	            else
 	                echo "Error: process $1 doesn't exist" > /dev/stderr
-	                exit 1
+	                return 1
 	            fi
             ;;
         esac
@@ -722,13 +722,13 @@ function flamegraph() {
     && echo "[OK]" || (
         echo "[FAILED]"
         cat /tmp/zhujie-$(basename $PERF_DATA).error
-        exit 1
+        return 1
     )
     sudo chmod 777 "$PERF_DATA"
 
     if [[ ! -f $PERF_DATA ]]; then
         echo "Error: $PERF_DATA is missing" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     BASENAME=$(basename "$PERF_DATA")
@@ -740,7 +740,7 @@ function flamegraph() {
     && echo "[OK]" || (
         echo "[FAILED]"
         cat "/tmp/zhujie-$BASENAME.perf.error"
-        exit 1
+        return 1
     ) 
     
     echo -ne "Running stackcollapse-perf.pl\t"
@@ -750,7 +750,7 @@ function flamegraph() {
     && echo "[OK]" || (\
         echo "[FAILED]"
         cat "/tmp/zhujie-$BASENAME.perf.folded.error"
-        exit 1
+        return 1
     )
     
     echo -ne "Running stackcollapse-recursive.pl\t"
@@ -760,7 +760,7 @@ function flamegraph() {
     && echo "[OK]" || (\
         echo "[FAILED]"
         cat "/tmp/zhujie-$BASENAME.perf.folded.recursive.error"
-        exit 1
+        return 1
     )
     
     echo -ne "Running flamegraph.pl\t"
@@ -770,19 +770,19 @@ function flamegraph() {
     && echo "[OK]" || (\
         echo "[FAILED]"
         cat "/tmp/zhujie-$BASENAME.perf.folded.recursive.error"
-        exit 1
+        return 1
     )
 }
     
 function p4bisect() {
     which p4 || (
         echo "Error: can't find p4 in PATH" > /dev/stderr
-        exit 1
+        return 1
     )
     
     if [[ -z $1 || -z $2 || -z $3 ]]; then
         echo "Usage: p4bisect <dev_a|opengl> <DATE_OLD> <DATE_NEW>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     MODULE=$1
@@ -795,7 +795,7 @@ function p4bisect() {
         opengl) FOLDER="$P4ROOT/sw/dev/gpu_drv/dev_a/drivers/OpenGL" ;;
         *)
             echo "Error: NVIDIA module $1 is not supported" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac 
     
@@ -837,12 +837,12 @@ function p4bisect() {
 function pic-v() {
     which pic-v || (
         echo "Error: can't find pic-v in PATH" > /dev/stderr
-        exit 1
+        return 1
     )
     
     if [[ -z $1 ]]; then
         echo "Usage: pic-v [APP]" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     # Launch pic-v if it's not running
@@ -855,7 +855,7 @@ function pic-v() {
     PIC_V_DIR=$(dirname `while pic-v | head -n 1`)
     if [[ ! -f $PIC_V_DIR ]]; then
         echo "Error: can't find pic-v's parent directory" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     cd $PIC_V_DIR
@@ -910,7 +910,7 @@ function choose-kernel() {
     
     if [[ $INVALID == 1 ]]; then
         echo "Error: kernel $KNAME is invalid" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     rm -rf /tmp/zhujie-grub.tmp
@@ -929,7 +929,7 @@ function choose-kernel() {
 function fake-display() {
     if [[ $EUID != 0 ]]; then
         echo "Error: please run as root" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     RESOLUTION=$1
@@ -964,7 +964,7 @@ function x0vnc() {
             echo "VNC password is 123456"
         ) || (
             echo "Error: failed to call vncpasswd" > /dev/stderr
-            exit 1
+            return 1
         )
     fi
     
@@ -983,7 +983,7 @@ function x0vnc() {
         ;;
         *)
             echo "Error: unexpected argument $1" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac
 }
@@ -1007,7 +1007,7 @@ function vnc() {
             echo "VNC password is 123456"
         ) || (
             echo "Error: failed to call vncpasswd" > /dev/stderr
-            exit 1
+            return 1
         )
     fi
 
@@ -1026,7 +1026,7 @@ function vnc() {
         ;;
         *)
             echo "Error: unexpected argument $1" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac
 }
@@ -1106,19 +1106,20 @@ function talos() {
     
     which steam > /dev/null || (
         sudo apt install -y steam
-        steam > /dev/null &
         echo "Continue in Steam GUI to log in"
-        return 0
+        return 1
     )
     
-    pgrep -x steam >/dev/null || (
-        steam > /dev/null &
-        sleep 20
-    )
+    STEAM_PROC=$(pgrep -x steam)
+    while [[ -z $STEAM_PROC ]]; do
+        echo "To be continued when steam is running"
+        sleep 3
+        STEAM_PROC=$(pgrep -x steam)
+    done
 
     if [[ ! -f "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64/Talos" ]]; then
         echo "Error: install 'Talos Principle' in steam's window and try again" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     click-talos-message-window &
@@ -1165,7 +1166,7 @@ function talos() {
 function apex() {
     if [[ $EUID != 0 ]]; then
         echo "Error: please run as root" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     DIRECT_CALL=0
@@ -1241,14 +1242,14 @@ function get-viewperf-home() {
         echo /opt/SPEC/SPECviewperf2020
     else
         echo "NOT-FOUND"
-        exit 1
+        return 1
     fi
 }
 
 function list-viewperf-resolutions() {
     if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ -f $(get-viewperf-home)/viewsets/$1/config/$1.xml ]]; then
@@ -1256,14 +1257,14 @@ function list-viewperf-resolutions() {
         cat $(get-viewperf-home)/viewsets/$1/config/$1.xml | grep '<Window Resolution=' | awk '{ print $2 }' | awk -F '=' '{ print $2}' | awk -F '"' '{ print $2 }'
     else
         echo "Usage: list-viewperf-resolutions <TEST_NAME>" > /dev/stderr
-        exit 1
+        return 1
     fi
 }
     
 function catia() {
     if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     get-active-display
@@ -1311,7 +1312,7 @@ function catia() {
 function creo() {
     if [[ $(get-viewperf-home) == NOT-FOUND ]]; then
         echo "Error: can't find viewperf" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     get-active-display
@@ -1374,7 +1375,7 @@ function cpu-count() {
 function cpu-offline() {
     if [[ -z $1 ]]; then
         echo "Error: No CPU to put offline" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     for RANGE in $@; do
@@ -1425,7 +1426,7 @@ function myscp() {
     
     if [[ -z $REMOTE || -z $PASSWORD || -z $SRC ]]; then
         echo "Usage: myscp <USER@IP> <PASSWORD> <PATH>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ -d $SRC ]]; then
@@ -1452,7 +1453,7 @@ function sync-on-LAN() {
     
     if [[ -z REMOTE || -z FILES ]]; then
         echo "Usage: sync-on-LAN <USER@IP> <FILES...>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     for SRC in $FILES; do
@@ -1491,7 +1492,7 @@ function sync-zhujie() {
         read -p "Force update/overwrite $0? (empty for Yes): " RSVP
         case $RSVP in
             yes|y|"") USE_TMP_GIT=1 ;;
-            *) echo "Nothing updated"; exit 1 ;;
+            *) echo "Nothing updated"; return 1 ;;
         esac
     fi
     
@@ -1542,7 +1543,7 @@ function vpn() {
     
     which openconnect || (
         echo "Error: can't find openconnect in PATH" > /dev/stderr
-        exit 1
+        return 1
     )
     
     echo "Xavier#35224047,$CODE" | sudo openconnect --authgroup Employee -u wanliz https://ngvpn32.vpn.nvidia.com:8443
@@ -1562,7 +1563,7 @@ function mean() {
     
     if [[ ! -f $FILE ]]; then
         echo "Error: $FILE doesn't exist" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     python3 -c "
@@ -1609,7 +1610,7 @@ function mean2() {
     
     if [[ ! -f $FILE ]]; then
         echo "Error: $FILE doesn't exist" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     python3 -c "
@@ -1684,7 +1685,7 @@ function visualize() {
     
     if [[ ! -f $INFILE ]]; then
         echo "Usage: visualize -i <INFILE> -t <TITLE> -x <XLABEL> -y <YLABEL>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ -z $TITLE ]]; then
@@ -1768,7 +1769,7 @@ viz_polylines(values_list)
 function randoms() {
     if [[ -z $1 ]]; then
         echo "Usage: randoms <COUNT> <MIN> <MAX>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     COUNT=$1
@@ -1791,7 +1792,7 @@ function randoms() {
 function image() {
     if [[ -z $1 ]]; then
         echo "Usage: image <SUBCMD> [FILE...]" > /dev/stderr
-        exit 1
+        return 1
     fi
 
     case $1 in
@@ -1859,7 +1860,7 @@ new_image.save('combined-image.jpg')
 function check-ssh() {
     if [[ -z $1 ]]; then
         echo "Usage: check-ssh <IP>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     which nmap > /dev/null || sudo apt install -y nmap
@@ -1893,12 +1894,12 @@ function files() {
     
     which gtlfs > /dev/null || (
         echo "Error: can't find gtlfs in PATH" > /dev/stderr
-        exit 1
+        return 1
     )
     
     if [[ -z $1 || -z $2 ]]; then
         echo "Usage: files <SUBCMD> <FILES...>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ -f /tmp/zhujie-gtlfs-password-cache ]]; then
@@ -1937,7 +1938,7 @@ function files() {
         ;;
         *)
             echo "Error: unknown argument $1" > /dev/stderr
-            exit 1
+            return 1
         ;;
     esac
 }
@@ -1987,7 +1988,7 @@ function lock-cpu-clock() {
     
     if [[ -f $HOME/zhujie-lock-cpu-clock-backups ]]; then 
         echo "Error: $HOME/zhujie-lock-cpu-clock-backups already exists" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ $NEW_CLOCK == 0 ]]; then
@@ -2176,7 +2177,7 @@ function mount-windows-folder() {
     
     if [[ -z $URL ]]; then
         echo "Usage: mount-windows-folder <URL> [--name NAME]" > /dev/stderr
-        exit 1
+        return 1
     else
         URL="${URL//\\/\/}"
     fi
@@ -2190,13 +2191,13 @@ function mount-windows-folder() {
         read -p "Mount point exists, reuse /mnt/$NAME? (empty for Yes): " RSVP
         case $RSVP in
             yes|y|"") ;;
-            *) echo "Cancelled"; exit 1 ;;
+            *) echo "Cancelled"; return 1 ;;
         esac
     else
         sudo mkdir /mnt/$NAME
     fi
     
-    sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME || exit 1
+    sudo mount -o ro,username=wanliz "$URL" /mnt/$NAME || return 1
 }
 
 function ssh-key() {
@@ -2221,7 +2222,7 @@ function build-gcc() {
     VERSION=$1
     if [[ -z $VERSION ]]; then
         echo "Usage: build-gcc <VERSION>" > /dev/stderr
-        exit 1
+        return 1
     fi
     
     if [[ ! -d $HOME/gcc-src ]]; then
@@ -2232,7 +2233,7 @@ function build-gcc() {
     git checkout releases/gcc-$VERSION || (
         echo "Error: releases/gcc-$VERSION doesn't exist" > /dev/stderr
         popd
-        exit 1    
+        return 1    
     )
     
     ./contrib/download_prerequisites
@@ -2263,7 +2264,6 @@ function test() {
 case $1 in
     help)
         echo "Usage: zhujie <SUBCMD>" > /dev/stderr
-        exit 1
     ;;
     ip)
         shift
