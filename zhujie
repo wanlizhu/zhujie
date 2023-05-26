@@ -1124,9 +1124,6 @@ function talos() {
         return 1
     fi
 
-    click-talos-message-window &
-    kill-talos-later &
-
     RESOLUTION=$(get-active-resolution --default $_2K)
     WIDTH=$(echo $RESOLUTION | awk -F 'x' '{ print $1 }')
     HEIGHT=$(echo $RESOLUTION | awk -F 'x' '{ print $2 }')
@@ -1152,6 +1149,8 @@ function talos() {
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
     rm -rf /tmp/zhujie-talos.fps
+    click-talos-message-window &
+    kill-talos-later &
     $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>/tmp/zhujie-talos.error
     popd 
     
@@ -2221,7 +2220,7 @@ function build-kernel() {
     fi
     
     pushd $HOME/linux-src
-    sudo apt install -y git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison dwarves
+    sudo apt install -y git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison dwarves debhelper
     cp -v /boot/config-$(uname -r) .config
     scripts/config --disable SYSTEM_TRUSTED_KEYS
     scripts/config --disable SYSTEM_REVOCATION_KEYS
