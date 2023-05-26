@@ -1107,14 +1107,6 @@ function kill-talos-later() {
 function talos() {
     get-active-display
     
-    DIRECT_CALL=0
-    while [[ -n $1 ]]; do
-        case $1 in
-            -d|--direct) shift; DIRECT_CALL=1 ;;
-        esac
-        shift
-    done
-    
     which steam > /dev/null || (
         sudo apt install -y steam
         echo "Continue in Steam GUI to log in"
@@ -1158,7 +1150,11 @@ function talos() {
     rm -rf /tmp/zhujie-talos.fps
     click-talos-message-window &
     kill-talos-later &
-    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>/tmp/zhujie-talos.error
+    if [[ $1 == 1 ]]; then
+        $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 
+    else
+        $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2>/tmp/zhujie-talos.error
+    fi
     popd 
     
     if [[ -f /tmp/zhujie-talos.log ]]; then
