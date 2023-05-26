@@ -122,14 +122,21 @@ function has-intel-gpu() {
     [[ -n $(sudo lshw -class display | grep 'vendor: Intel') ]] && echo 1 || echo 0
 }
 
-function cpu() {
+function cpu-basic() {
     # CPU Model Name
     echo -ne "CPU Model Name: " 
     lscpu | grep "Model name:" | awk -F "name:" '{print $2}' | awk '{$1=$1; print}'
+}
+
+function cpu() {
+    cpu-basic
+    echo ""
     
     lscpu --all --extended 
+    echo ""
     
     sudo tlp-stat -p
+    echo ""
 }
 
 function gpu() {
@@ -210,7 +217,7 @@ function info() {
     fi
     
     echo "Kernel: $(uname -r)"
-    cpu && echo 
+    cpu-basic && echo 
     gpu && echo 
     display && echo 
 }
