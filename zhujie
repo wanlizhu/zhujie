@@ -1976,13 +1976,13 @@ function get-active-resolution() {
         4k|4K|3840|2160) RESOLUTION=$_4K ;; 
     esac
     
-    read -p "Save to /tmp/zhujie-active-resolution? (Y/n): " RSVP
+    read -p "Save to /tmp/zhujie-active-resolution? (N/y): " RSVP
     case $RSVP in
-        yes|y|"")
-            echo $RESOLUTION | tee /tmp/zhujie-active-resolution
+        no|n|"")
+            echo $RESOLUTION  
         ;;
         *)
-            echo $RESOLUTION
+            echo $RESOLUTION | tee /tmp/zhujie-active-resolution
         ;;
     esac
 }
