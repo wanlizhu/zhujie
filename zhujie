@@ -2167,7 +2167,17 @@ function config-ssh() {
         chmod 777 $HOME/.ssh/authorized_keys
     fi
     
-    cat $(dirname $0)/id_zhujie.pub >> $HOME/.ssh/authorized_keys
+    PUBLIC_KEY=$(cat $(dirname $0)/id_zhujie.pub)
+    while read -r LINE; do
+        if [[ $LINE == $PUBLIC_KEY ]]; then
+            PUBLIC_KEY=""
+        fi
+    done < $HOME/.ssh/authorized_keys
+
+    if [[ -n $PUBLIC_KEY ]]; then
+        echo "$PUBLIC_KEY" >> $HOME/.ssh/authorized_keys
+    fi
+    
     cp  $(dirname $0)/id_zhujie $HOME/.ssh
     eval "$(ssh-agent)"
     sudo ssh-add $HOME/.ssh/id_zhujie
