@@ -1079,7 +1079,7 @@ function kill-talos-later() {
             continue
         fi
 
-        LINE=$(cat /tmp/zhujie-talos.error | grep "corrupted size vs. prev_size")
+        LINE=$(cat /tmp/zhujie-talos.log | grep "corrupted size vs. prev_size")
         if [[ -n $LINE ]]; then
             pkill -9 Talos 
             STOP=1
@@ -1150,7 +1150,7 @@ function talos() {
     
     pushd "$HOME/.steam/steam/steamapps/common/The Talos Principle/Bin/x64"
     rm -rf /tmp/zhujie-talos.fps
-    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua 2> /tmp/zhujie-talos.error | tee /tmp/zhujie-talos.log
+    $TASKSET $TASKSET_OPTIONS $CPU_LIST ./Talos +gfx_strAPI VLK +gfx_pixResWidth $WIDTH +gfx_pixResHeight $HEIGHT +exec $HOME/.phoronix-test-suite/installed-tests/pts/talos-principle-1.2.1/talos-run-test.lua | tee /tmp/zhujie-talos.log
     popd 
     
     FPS=$(cat "/tmp/zhujie-talos.log" | grep "Average:" | tail -n1 | awk '{print $3}')
@@ -1158,7 +1158,6 @@ function talos() {
         echo "$FPS :: "
         echo "$FPS" >> /tmp/zhujie-talos.fps
     else
-        cat /tmp/zhujie-talos.error
         return 1
     fi
 }
