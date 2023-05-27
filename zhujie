@@ -2253,9 +2253,9 @@ function build-kernel() {
     scripts/config --disable SYSTEM_REVOCATION_KEYS
     
     if [[ $1 == deb ]]; then
-        make -j$(($(nproc) - 2)) deb-pkg
+        make -j$(($(nproc) / 2)) deb-pkg
     else
-        make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+        make -j$(($(nproc) / 2)) && sudo make modules_install && sudo make install
     fi
     
     popd 
@@ -2277,9 +2277,9 @@ function build-kernel2() {
     scripts/config --disable SYSTEM_REVOCATION_KEYS
     
     if [[ $1 == deb ]]; then
-        make -j$(($(nproc) - 2)) deb-pkg
+        make -j$(($(nproc) / 2)) deb-pkg
     else
-        make -j$(($(nproc) - 2)) && sudo make modules_install && sudo make install
+        make -j$(($(nproc) / 2)) && sudo make modules_install && sudo make install
     fi
     
     popd 
